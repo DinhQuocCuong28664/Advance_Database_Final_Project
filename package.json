@@ -1,0 +1,30 @@
+{
+  "name": "luxereserve",
+  "version": "1.0.0",
+  "description": "Global Luxury Hotel Reservation Engine — Polyglot Persistence (SQL Server + MongoDB)",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "db:init": "sqlcmd -S localhost\\SQLEXPRESS -i database/sql/01_create_database.sql -C && sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/02_create_tables.sql -C",
+    "db:seed": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/06_seed_data.sql -C && node database/mongodb/02_seed_data.js",
+    "db:views": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/03_create_views.sql -C",
+    "db:triggers": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/04_create_triggers.sql -C",
+    "db:procedures": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/05_create_procedures.sql -C",
+    "db:all": "npm run db:init && npm run db:views && npm run db:triggers && npm run db:procedures && npm run db:seed",
+    "mongo:init": "node database/mongodb/01_init_collections.js",
+    "mongo:seed": "node database/mongodb/02_seed_data.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongodb": "^6.12.0",
+    "morgan": "^1.10.0",
+    "msnodesqlv8": "^5.1.7",
+    "mssql": "^11.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
