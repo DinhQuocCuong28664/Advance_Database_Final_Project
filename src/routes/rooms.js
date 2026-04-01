@@ -18,8 +18,8 @@ router.get('/availability', async (req, res) => {
     const pool = getSqlPool();
     const result = await pool.request()
       .input('hotelId', sql.BigInt, parseInt(hotel_id))
-      .input('checkin', sql.Date, checkin)
-      .input('checkout', sql.Date, checkout)
+      .input('checkin', sql.VarChar(10), checkin)
+      .input('checkout', sql.VarChar(10), checkout)
       .query(`
         SELECT r.room_id, r.room_number, r.floor_number,
                rt.room_type_name, rt.category, rt.bed_type,

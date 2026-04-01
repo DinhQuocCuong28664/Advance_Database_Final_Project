@@ -46,7 +46,7 @@ router.post('/', async (req, res) => {
 
         const spRequest = new sql.Request(transaction);
         spRequest.input('room_id', sql.BigInt, room_id);
-        spRequest.input('stay_date', sql.Date, dateStr);
+        spRequest.input('stay_date', sql.VarChar(10), dateStr);
         spRequest.input('reservation_code', sql.VarChar(50), reservationCode);
         spRequest.input('session_id', sql.VarChar(100), `API-${Date.now()}`);
         spRequest.output('result_status', sql.Int);
@@ -75,8 +75,8 @@ router.post('/', async (req, res) => {
         .input('guest_id', sql.BigInt, guest_id)
         .input('channel_id', sql.BigInt, booking_channel_id || 1)
         .input('source', sql.VarChar(20), booking_source || 'DIRECT_WEB')
-        .input('checkin', sql.Date, checkin_date)
-        .input('checkout', sql.Date, checkout_date)
+        .input('checkin', sql.VarChar(10), checkin_date)
+        .input('checkout', sql.VarChar(10), checkout_date)
         .input('nights', sql.Int, nightCount)
         .input('adults', sql.Int, adult_count || 2)
         .input('children', sql.Int, child_count || 0)
@@ -113,8 +113,8 @@ router.post('/', async (req, res) => {
         .input('room_id', sql.BigInt, room_id)
         .input('rt_id', sql.BigInt, room_type_id || 1)
         .input('rp_id', sql.BigInt, rate_plan_id || 1)
-        .input('start', sql.Date, checkin_date)
-        .input('end', sql.Date, checkout_date)
+        .input('start', sql.VarChar(10), checkin_date)
+        .input('end', sql.VarChar(10), checkout_date)
         .input('adults', sql.Int, adult_count || 2)
         .input('rate', sql.Decimal(18, 2), nightly_rate || 0)
         .input('subtotal', sql.Decimal(18, 2), (nightly_rate || 0) * nightCount)
