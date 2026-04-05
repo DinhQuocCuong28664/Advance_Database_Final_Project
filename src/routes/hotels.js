@@ -53,6 +53,9 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const hotelId = parseInt(req.params.id);
+    if (isNaN(hotelId)) {
+      return res.status(400).json({ success: false, error: 'Invalid hotel ID' });
+    }
     const pool = getSqlPool();
     const mongo = getMongoDb();
 

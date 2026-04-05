@@ -71,7 +71,7 @@ The architecture is set up via automated SQL scripts:
 ```
 *A Node.js seed script (`/database/mongodb/02_seed_data.js`) populates MongoDB Atlas.*
 
-### 2. Configure Environment Environment
+### 2. Configure Environment
 Create a `.env` file in the root directory:
 ```env
 PORT=3000

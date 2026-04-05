@@ -41,13 +41,37 @@ app.get('/api', (req, res) => {
       nosql: 'MongoDB Atlas (Flexible content)',
     },
     endpoints: {
-      hotels: '/api/hotels',
-      rooms: '/api/rooms',
-      guests: '/api/guests',
-      reservations: '/api/reservations',
-      payments: '/api/payments',
-      admin: '/api/admin',
-      locations: '/api/locations',
+      hotels: {
+        'GET /api/hotels': 'List all hotels (Hybrid SQL + MongoDB merge)',
+        'GET /api/hotels/:id': 'Get hotel detail with room types, amenities, images',
+      },
+      rooms: {
+        'GET /api/rooms/availability?hotel_id&checkin&checkout': 'Check room availability by date range',
+      },
+      guests: {
+        'GET /api/guests': 'List all guests',
+        'GET /api/guests/:id': 'Get guest profile with preferences, loyalty, addresses',
+        'POST /api/guests': 'Create new guest (body: guest_code, first_name, last_name, ...)',
+      },
+      reservations: {
+        'POST /api/reservations': 'Create reservation with Pessimistic Locking (body: hotel_id, guest_id, room_id, checkin_date, checkout_date, nightly_rate, ...)',
+        'GET /api/reservations/:code': 'Get reservation by confirmation code',
+        'POST /api/reservations/:id/checkin': 'Check-in process (body: agent_id)',
+        'POST /api/reservations/:id/checkout': 'Check-out process (body: agent_id)',
+      },
+      payments: {
+        'POST /api/payments': 'Create payment (body: reservation_id, amount, payment_method, ...)',
+        'GET /api/payments?reservation_id=': 'List payments, optionally filter by reservation',
+      },
+      admin: {
+        'PUT /api/admin/rates/:id': 'Update room rate — triggers Price Guard if change > 50% (body: final_rate)',
+        'GET /api/admin/rates/alerts': 'View Price Integrity Guard alerts',
+        'GET /api/admin/reports/revenue': 'Revenue analytics with Window Functions',
+      },
+      locations: {
+        'GET /api/locations': 'List all locations (flat)',
+        'GET /api/locations/tree?root=&root_id=': 'Location hierarchy tree (Recursive CTE)',
+      },
     },
   });
 });

@@ -12,7 +12,7 @@
     "db:triggers": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/04_create_triggers.sql -C",
     "db:procedures": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/05_create_procedures.sql -C",
     "db:all": "npm run db:init && npm run db:views && npm run db:triggers && npm run db:procedures && npm run db:seed",
-    "mongo:init": "node database/mongodb/01_init_collections.js",
+    "mongo:init": "node database/mongodb/02_seed_data.js",
     "mongo:seed": "node database/mongodb/02_seed_data.js"
   },
   "dependencies": {

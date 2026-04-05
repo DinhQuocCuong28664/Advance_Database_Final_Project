@@ -24,6 +24,11 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing required fields: hotel_id, guest_id, room_id, checkin_date, checkout_date' });
     }
 
+    // [FIX] LOGIC-2: Validate nightly_rate is positive
+    if (!nightly_rate || nightly_rate <= 0) {
+      return res.status(400).json({ success: false, error: 'nightly_rate must be a positive number' });
+    }
+
     const pool = getSqlPool();
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
@@ -233,14 +238,25 @@ router.post('/:id/checkin', async (req, res) => {
     const resvId = parseInt(req.params.id);
     const { agent_id } = req.body;
 
+    // [FIX] BUG-3: Validate parsed ID
+    if (isNaN(resvId)) {
+      return res.status(400).json({ success: false, error: 'Invalid reservation ID' });
+    }
+
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
 
     try {
       // Update reservation status
       const reqUpdate = new sql.Request(transaction);
-      await reqUpdate.input('id', sql.BigInt, resvId)
+      const updateResult = await reqUpdate.input('id', sql.BigInt, resvId)
         .query(`UPDATE Reservation SET reservation_status = 'CHECKED_IN', updated_at = GETDATE() WHERE reservation_id = @id AND reservation_status = 'CONFIRMED'`);
+
+      // [FIX] BUG-1: Check rowsAffected — reject if reservation not in CONFIRMED status
+      if (updateResult.rowsAffected[0] === 0) {
+        await transaction.rollback();
+        return res.status(409).json({ success: false, error: 'Check-in failed: Reservation not found or not in CONFIRMED status' });
+      }
 
       // Update room occupancy
       const reqRoom = new sql.Request(transaction);
@@ -289,14 +305,25 @@ router.post('/:id/checkout', async (req, res) => {
     const resvId = parseInt(req.params.id);
     const { agent_id } = req.body;
 
+    // [FIX] BUG-3: Validate parsed ID
+    if (isNaN(resvId)) {
+      return res.status(400).json({ success: false, error: 'Invalid reservation ID' });
+    }
+
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
 
     try {
-      // Update reservation
+      // [FIX] BUG-2: Add WHERE status = 'CHECKED_IN' guard
       const req1 = new sql.Request(transaction);
-      await req1.input('id', sql.BigInt, resvId)
-        .query(`UPDATE Reservation SET reservation_status = 'CHECKED_OUT', updated_at = GETDATE() WHERE reservation_id = @id`);
+      const updateResult = await req1.input('id', sql.BigInt, resvId)
+        .query(`UPDATE Reservation SET reservation_status = 'CHECKED_OUT', updated_at = GETDATE() WHERE reservation_id = @id AND reservation_status = 'CHECKED_IN'`);
+
+      // [FIX] BUG-2: Check rowsAffected
+      if (updateResult.rowsAffected[0] === 0) {
+        await transaction.rollback();
+        return res.status(409).json({ success: false, error: 'Check-out failed: Reservation not found or not in CHECKED_IN status' });
+      }
 
       // Update occupancy
       const req2 = new sql.Request(transaction);
@@ -336,12 +363,11 @@ router.post('/:id/checkout', async (req, res) => {
         .input('agent', sql.BigInt, agent_id || null)
         .query(`INSERT INTO ReservationStatusHistory (reservation_id, old_status, new_status, changed_by, change_reason) VALUES (@id, 'CHECKED_IN', 'CHECKED_OUT', @agent, 'Guest checked out')`);
 
-      // Get balance info
-      const req7 = new sql.Request(transaction);
-      const balance = await req7.input('id', sql.BigInt, resvId)
-        .query(`SELECT grand_total, total_paid, balance_due FROM vw_ReservationTotal WHERE reservation_id = @id`);
-
       await transaction.commit();
+
+      // [FIX] BUG-4: Query balance AFTER commit to avoid deadlock on vw_ReservationTotal
+      const balanceReq = pool.request().input('id', sql.BigInt, resvId);
+      const balance = await balanceReq.query(`SELECT grand_total, total_paid, balance_due FROM vw_ReservationTotal WHERE reservation_id = @id`);
 
       res.json({
         success: true,

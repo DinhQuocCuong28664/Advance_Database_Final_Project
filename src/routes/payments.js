@@ -16,6 +16,14 @@ router.post('/', async (req, res) => {
     }
 
     const pool = getSqlPool();
+
+    // [FIX] LOGIC-5: Validate reservation exists before creating payment
+    const resvCheck = await pool.request()
+      .input('resvId', sql.BigInt, reservation_id)
+      .query('SELECT reservation_id, reservation_status FROM Reservation WHERE reservation_id = @resvId');
+    if (resvCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Reservation not found' });
+    }
     const payRef = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
     const result = await pool.request()

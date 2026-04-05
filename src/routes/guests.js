@@ -26,6 +26,9 @@ router.get('/:id', async (req, res) => {
   try {
     const pool = getSqlPool();
     const guestId = parseInt(req.params.id);
+    if (isNaN(guestId)) {
+      return res.status(400).json({ success: false, error: 'Invalid guest ID' });
+    }
 
     const guest = await pool.request()
       .input('id', sql.BigInt, guestId)

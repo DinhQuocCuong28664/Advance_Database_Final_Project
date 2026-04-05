@@ -57,13 +57,46 @@ SET IDENTITY_INSERT Brand OFF;
 GO
 
 -- ═══════════════════════════════════
--- HOTELS
+-- HOTELS (Full data — no nulls)
 -- ═══════════════════════════════════
 SET IDENTITY_INSERT Hotel ON;
-INSERT INTO Hotel (hotel_id, brand_id, hotel_code, hotel_name, hotel_type, star_rating, status, timezone, currency_code, check_in_time, check_out_time, total_floors, total_rooms, location_id, address_line_1) VALUES
-(1, 1, 'RITZ-HCMC-001', N'The Ritz-Carlton, Saigon',        'CITY_HOTEL',     5, 'ACTIVE', 'Asia/Ho_Chi_Minh', 'VND', '15:00', '12:00', 35, 300, 14, N'28 Dong Khoi Street'),
-(2, 2, 'W-BKK-001',     N'W Bangkok',                       'CITY_HOTEL',     5, 'ACTIVE', 'Asia/Bangkok',     'THB', '15:00', '11:00', 30, 403, 16, N'106 North Sathorn Road'),
-(3, 3, 'IC-SG-001',     N'InterContinental Singapore',      'BUSINESS_LUXURY',5, 'ACTIVE', 'Asia/Singapore',   'SGD', '15:00', '12:00', 25, 406, 17, N'80 Middle Road');
+
+INSERT INTO Hotel (
+  hotel_id, brand_id, hotel_code, hotel_name, legal_name, hotel_type,
+  star_rating, opening_date, status, timezone, currency_code,
+  check_in_time, check_out_time, total_floors, total_rooms,
+  primary_language_code, contact_email, contact_phone,
+  reservation_email, reservation_phone,
+  location_id, address_line_1, address_line_2, postal_code,
+  latitude, longitude
+) VALUES
+(1, 1, 'RITZ-HCMC-001', N'The Ritz-Carlton, Saigon',
+  N'Ritz-Carlton Saigon Hotel Co., Ltd.', 'CITY_HOTEL',
+  5, '2015-06-15', 'ACTIVE', 'Asia/Ho_Chi_Minh', 'VND',
+  '15:00', '12:00', 35, 300,
+  'vi', 'info@ritzcarlton-saigon.com', '+84-28-3823-6688',
+  'reservations.saigon@ritzcarlton.com', '+84-28-3823-6600',
+  14, N'28 Dong Khoi Street', N'Ben Nghe Ward', '700000',
+  10.7769, 106.7009),
+
+(2, 2, 'W-BKK-001', N'W Bangkok',
+  N'W Bangkok Hotel Co., Ltd.', 'CITY_HOTEL',
+  5, '2012-10-01', 'ACTIVE', 'Asia/Bangkok', 'THB',
+  '15:00', '11:00', 30, 403,
+  'th', 'info@wbangkok.com', '+66-2-344-4000',
+  'reservations@wbangkok.com', '+66-2-344-4111',
+  16, N'106 North Sathorn Road', N'Silom, Bang Rak', '10500',
+  13.7227, 100.5289),
+
+(3, 3, 'IC-SG-001', N'InterContinental Singapore',
+  N'InterContinental Hotels Singapore Pte. Ltd.', 'BUSINESS_LUXURY',
+  5, '1995-09-01', 'ACTIVE', 'Asia/Singapore', 'SGD',
+  '15:00', '12:00', 25, 406,
+  'en', 'singapore@ihg.com', '+65-6338-7600',
+  'reservations.singapore@ihg.com', '+65-6338-7611',
+  17, N'80 Middle Road', N'Bugis, Downtown Core', '188966',
+  1.2995, 103.8553);
+
 SET IDENTITY_INSERT Hotel OFF;
 GO
 

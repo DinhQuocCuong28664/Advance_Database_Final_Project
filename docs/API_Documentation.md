@@ -196,3 +196,7 @@ Get intelligent financial reporting partitioned by quarter, year, and hotel.
 - **Query Params** (Optional):
   - \`root\` (string) - Name of location root. Example: \`Châu Á\`
   - \`root_id\` (number) - ID of location root. Example: \`1\`
+
+### 7.2 List All Locations (Flat)
+- **Method**: \`GET\`
+- **Endpoint**: \`/locations\`

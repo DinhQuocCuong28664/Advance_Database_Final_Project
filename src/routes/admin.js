@@ -12,6 +12,9 @@ router.put('/rates/:id', async (req, res) => {
   try {
     const pool = getSqlPool();
     const rateId = parseInt(req.params.id);
+    if (isNaN(rateId)) {
+      return res.status(400).json({ success: false, error: 'Invalid rate ID' });
+    }
     const { final_rate, price_source, updated_by } = req.body;
 
     if (!final_rate) {
