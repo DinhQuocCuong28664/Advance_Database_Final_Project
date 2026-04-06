@@ -323,11 +323,13 @@ INSERT INTO Reservation (
     reservation_id, reservation_code, hotel_id, guest_id, booking_channel_id,
     booking_source, reservation_status, checkin_date, checkout_date, nights,
     adult_count, room_count, currency_code, subtotal_amount, grand_total_amount,
+    deposit_required_flag, deposit_amount,
     guarantee_type, purpose_of_stay, created_by_user_id
 ) VALUES (
     1, 'RES-20260401-001', 1, 1, 1,
     'DIRECT_WEB', 'CONFIRMED', '2026-04-05', '2026-04-08', 3,
     2, 1, 'VND', 13500000, 14850000,
+    1, 4500000,
     'CARD', 'LEISURE', 2
 );
 SET IDENTITY_INSERT Reservation OFF;
