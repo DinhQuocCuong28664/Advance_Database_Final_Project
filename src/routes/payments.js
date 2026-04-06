@@ -76,6 +76,15 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // [FIX] LOGIC-10: FULL_PAYMENT must cover the entire remaining balance
+    const remainingBalance = grandTotal - total_paid;
+    if (resolvedType === 'FULL_PAYMENT' && newAmount !== remainingBalance) {
+      return res.status(400).json({
+        success: false,
+        error: `FULL_PAYMENT must cover the entire remaining balance. Remaining: ${remainingBalance}, Attempted: ${newAmount}. Use payment_type 'PREPAYMENT' for partial payments.`
+      });
+    }
+
     const payRef = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
     const result = await pool.request()

@@ -384,4 +384,378 @@ router.post('/:id/checkout', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════
+// POST /api/reservations/:id/guest-cancel
+// Guest initiates cancellation → FORFEIT DEPOSIT (no refund)
+// ═══════════════════════════════════════════════════════════
+router.post('/:id/guest-cancel', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const resvId = parseInt(req.params.id);
+    const { reason } = req.body;
+
+    if (isNaN(resvId)) {
+      return res.status(400).json({ success: false, error: 'Invalid reservation ID' });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      // STEP 1: Validate reservation is cancellable (only CONFIRMED allowed)
+      const req1 = new sql.Request(transaction);
+      const resvCheck = await req1.input('id', sql.BigInt, resvId).query(`
+        SELECT reservation_id, reservation_status, reservation_code, hotel_id,
+               checkin_date, checkout_date, nights, deposit_amount,
+               grand_total_amount
+        FROM Reservation WHERE reservation_id = @id
+      `);
+
+      if (resvCheck.recordset.length === 0) {
+        await transaction.rollback();
+        return res.status(404).json({ success: false, error: 'Reservation not found' });
+      }
+
+      const resv = resvCheck.recordset[0];
+
+      if (resv.reservation_status !== 'CONFIRMED') {
+        await transaction.rollback();
+        return res.status(409).json({
+          success: false,
+          error: `Cannot cancel: reservation is ${resv.reservation_status}. Only CONFIRMED reservations can be guest-cancelled.`
+        });
+      }
+
+      // STEP 2: Update reservation → CANCELLED
+      const req2 = new sql.Request(transaction);
+      await req2.input('id', sql.BigInt, resvId).query(`
+        UPDATE Reservation
+        SET reservation_status = 'CANCELLED', updated_at = GETDATE()
+        WHERE reservation_id = @id
+      `);
+
+      // STEP 3: Release RoomAvailability → OPEN
+      const req3 = new sql.Request(transaction);
+      await req3.input('id', sql.BigInt, resvId).query(`
+        UPDATE RoomAvailability
+        SET availability_status = 'OPEN', sellable_flag = 1,
+            version_no = version_no + 1,
+            inventory_note = N'Released by guest cancellation',
+            updated_at = GETDATE()
+        WHERE room_id IN (SELECT room_id FROM ReservationRoom WHERE reservation_id = @id)
+          AND stay_date >= (SELECT checkin_date FROM Reservation WHERE reservation_id = @id)
+          AND stay_date <  (SELECT checkout_date FROM Reservation WHERE reservation_id = @id)
+          AND availability_status = 'BOOKED'
+      `);
+
+      // STEP 4: Update Room status
+      const req4 = new sql.Request(transaction);
+      await req4.input('id', sql.BigInt, resvId).query(`
+        UPDATE Room SET room_status = 'AVAILABLE', updated_at = GETDATE()
+        WHERE room_id IN (SELECT room_id FROM ReservationRoom WHERE reservation_id = @id AND room_id IS NOT NULL)
+      `);
+
+      // STEP 5: Update ReservationRoom
+      const req5 = new sql.Request(transaction);
+      await req5.input('id', sql.BigInt, resvId).query(`
+        UPDATE ReservationRoom SET occupancy_status = 'CANCELLED', updated_at = GETDATE()
+        WHERE reservation_id = @id
+      `);
+
+      // STEP 6: Status history
+      const req6 = new sql.Request(transaction);
+      await req6.input('id', sql.BigInt, resvId)
+        .input('reason', sql.NVarChar(255), reason || 'Guest requested cancellation')
+        .query(`
+          INSERT INTO ReservationStatusHistory
+            (reservation_id, old_status, new_status, change_reason)
+          VALUES (@id, 'CONFIRMED', 'CANCELLED', @reason)
+        `);
+
+      await transaction.commit();
+
+      // Calculate forfeited deposit
+      const depositInfo = await pool.request().input('id', sql.BigInt, resvId).query(`
+        SELECT ISNULL(SUM(amount), 0) AS deposit_forfeited
+        FROM Payment
+        WHERE reservation_id = @id AND payment_type = 'DEPOSIT'
+          AND payment_status = 'CAPTURED'
+      `);
+
+      res.json({
+        success: true,
+        message: 'Reservation cancelled by guest. Deposit forfeited (no refund).',
+        data: {
+          reservation_id: resvId,
+          reservation_code: resv.reservation_code,
+          old_status: 'CONFIRMED',
+          new_status: 'CANCELLED',
+          cancelled_by: 'GUEST',
+          deposit_forfeited: depositInfo.recordset[0].deposit_forfeited,
+          refund_amount: 0,
+          reason: reason || 'Guest requested cancellation'
+        }
+      });
+    } catch (innerErr) {
+      await transaction.rollback();
+      throw innerErr;
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/reservations/:id/hotel-cancel
+// Hotel initiates cancellation → FULL REFUND (hotel's fault)
+// ═══════════════════════════════════════════════════════════
+router.post('/:id/hotel-cancel', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const resvId = parseInt(req.params.id);
+    const { reason, agent_id } = req.body;
+
+    if (isNaN(resvId)) {
+      return res.status(400).json({ success: false, error: 'Invalid reservation ID' });
+    }
+
+    if (!reason) {
+      return res.status(400).json({ success: false, error: 'reason is required for hotel-initiated cancellation' });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      // STEP 1: Validate reservation
+      const req1 = new sql.Request(transaction);
+      const resvCheck = await req1.input('id', sql.BigInt, resvId).query(`
+        SELECT reservation_id, reservation_status, reservation_code, hotel_id,
+               checkin_date, checkout_date, currency_code
+        FROM Reservation WHERE reservation_id = @id
+      `);
+
+      if (resvCheck.recordset.length === 0) {
+        await transaction.rollback();
+        return res.status(404).json({ success: false, error: 'Reservation not found' });
+      }
+
+      const resv = resvCheck.recordset[0];
+
+      if (['CANCELLED', 'CHECKED_OUT', 'NO_SHOW'].includes(resv.reservation_status)) {
+        await transaction.rollback();
+        return res.status(409).json({
+          success: false,
+          error: `Cannot cancel: reservation is ${resv.reservation_status}`
+        });
+      }
+
+      // STEP 2: Calculate total paid (to refund)
+      const req2 = new sql.Request(transaction);
+      const paidResult = await req2.input('id', sql.BigInt, resvId).query(`
+        SELECT ISNULL(SUM(amount), 0) AS total_paid
+        FROM Payment
+        WHERE reservation_id = @id AND payment_status = 'CAPTURED'
+          AND payment_type <> 'REFUND'
+      `);
+      const totalPaid = parseFloat(paidResult.recordset[0].total_paid);
+
+      // STEP 3: Update reservation → CANCELLED
+      const req3 = new sql.Request(transaction);
+      await req3.input('id', sql.BigInt, resvId).query(`
+        UPDATE Reservation
+        SET reservation_status = 'CANCELLED', updated_at = GETDATE()
+        WHERE reservation_id = @id
+      `);
+
+      // STEP 4: Release RoomAvailability
+      const req4 = new sql.Request(transaction);
+      await req4.input('id', sql.BigInt, resvId).query(`
+        UPDATE RoomAvailability
+        SET availability_status = 'OPEN', sellable_flag = 1,
+            version_no = version_no + 1,
+            inventory_note = N'Released by hotel cancellation: ' + CAST(@id AS NVARCHAR),
+            updated_at = GETDATE()
+        WHERE room_id IN (SELECT room_id FROM ReservationRoom WHERE reservation_id = @id)
+          AND stay_date >= (SELECT checkin_date FROM Reservation WHERE reservation_id = @id)
+          AND stay_date <  (SELECT checkout_date FROM Reservation WHERE reservation_id = @id)
+          AND availability_status = 'BOOKED'
+      `);
+
+      // STEP 5: Room + ReservationRoom status
+      const req5 = new sql.Request(transaction);
+      await req5.input('id', sql.BigInt, resvId).query(`
+        UPDATE Room SET room_status = 'AVAILABLE', updated_at = GETDATE()
+        WHERE room_id IN (SELECT room_id FROM ReservationRoom WHERE reservation_id = @id AND room_id IS NOT NULL);
+
+        UPDATE ReservationRoom SET occupancy_status = 'CANCELLED', updated_at = GETDATE()
+        WHERE reservation_id = @id;
+      `);
+
+      // STEP 6: Create REFUND payment if any amount was paid
+      let refundPayment = null;
+      if (totalPaid > 0) {
+        const req6 = new sql.Request(transaction);
+        const refundRef = `REFUND-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+        const refundResult = await req6
+          .input('resvId', sql.BigInt, resvId)
+          .input('ref', sql.VarChar(80), refundRef)
+          .input('amount', sql.Decimal(18, 2), totalPaid)
+          .input('currency', sql.Char(3), resv.currency_code)
+          .query(`
+            INSERT INTO Payment
+              (reservation_id, payment_reference, payment_type, payment_method,
+               payment_status, amount, currency_code, paid_at)
+            OUTPUT INSERTED.*
+            VALUES (@resvId, @ref, 'REFUND', 'BANK_TRANSFER',
+                    'CAPTURED', @amount, @currency, GETDATE())
+          `);
+        refundPayment = refundResult.recordset[0];
+      }
+
+      // STEP 7: Status history
+      const req7 = new sql.Request(transaction);
+      await req7.input('id', sql.BigInt, resvId)
+        .input('agent', sql.BigInt, agent_id || null)
+        .input('reason', sql.NVarChar(255), 'HOTEL CANCEL: ' + reason)
+        .query(`
+          INSERT INTO ReservationStatusHistory
+            (reservation_id, old_status, new_status, changed_by, change_reason)
+          VALUES (@id, '${resv.reservation_status}', 'CANCELLED', @agent, @reason)
+        `);
+
+      await transaction.commit();
+
+      res.json({
+        success: true,
+        message: 'Reservation cancelled by hotel. Full refund issued.',
+        data: {
+          reservation_id: resvId,
+          reservation_code: resv.reservation_code,
+          old_status: resv.reservation_status,
+          new_status: 'CANCELLED',
+          cancelled_by: 'HOTEL',
+          reason,
+          refund_amount: totalPaid,
+          refund_payment: refundPayment
+        }
+      });
+    } catch (innerErr) {
+      await transaction.rollback();
+      throw innerErr;
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/reservations/:id/transfer
+// Room Transfer — calls sp_TransferRoom (Pessimistic Locking)
+// ═══════════════════════════════════════════════════════════
+router.post('/:id/transfer', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const resvId = parseInt(req.params.id);
+    const { new_room_id, reason, agent_id } = req.body;
+
+    if (isNaN(resvId)) {
+      return res.status(400).json({ success: false, error: 'Invalid reservation ID' });
+    }
+    if (!new_room_id) {
+      return res.status(400).json({ success: false, error: 'new_room_id is required' });
+    }
+    if (!reason) {
+      return res.status(400).json({ success: false, error: 'reason is required for room transfer' });
+    }
+
+    // Validate reservation
+    const resvCheck = await pool.request().input('id', sql.BigInt, resvId).query(`
+      SELECT r.reservation_id, r.reservation_status, r.reservation_code,
+             r.checkin_date, r.checkout_date, r.hotel_id,
+             rr.room_id AS current_room_id, rr.room_type_id,
+             rm.room_number AS current_room_number
+      FROM Reservation r
+      JOIN ReservationRoom rr ON r.reservation_id = rr.reservation_id
+      JOIN Room rm ON rr.room_id = rm.room_id
+      WHERE r.reservation_id = @id
+    `);
+
+    if (resvCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Reservation not found' });
+    }
+
+    const resv = resvCheck.recordset[0];
+
+    if (!['CONFIRMED', 'CHECKED_IN'].includes(resv.reservation_status)) {
+      return res.status(409).json({
+        success: false,
+        error: `Cannot transfer: reservation is ${resv.reservation_status}. Must be CONFIRMED or CHECKED_IN.`
+      });
+    }
+
+    // Validate new room belongs to same hotel
+    const newRoomCheck = await pool.request()
+      .input('roomId', sql.BigInt, new_room_id)
+      .input('hotelId', sql.BigInt, resv.hotel_id)
+      .query(`
+        SELECT room_id, room_number, room_type_id, room_status
+        FROM Room
+        WHERE room_id = @roomId AND hotel_id = @hotelId
+      `);
+
+    if (newRoomCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'New room not found in this hotel' });
+    }
+
+    const newRoom = newRoomCheck.recordset[0];
+
+    // Call sp_TransferRoom (Pessimistic Locking)
+    const spRequest = pool.request();
+    spRequest.input('reservation_id', sql.BigInt, resvId);
+    spRequest.input('old_room_id', sql.BigInt, resv.current_room_id);
+    spRequest.input('new_room_id', sql.BigInt, new_room_id);
+    spRequest.input('checkin_date', sql.Date, new Date(resv.checkin_date));
+    spRequest.input('checkout_date', sql.Date, new Date(resv.checkout_date));
+    spRequest.input('reason', sql.NVarChar(255), reason);
+    spRequest.input('agent_id', sql.BigInt, agent_id || null);
+    spRequest.output('result_status', sql.Int);
+    spRequest.output('result_message', sql.NVarChar(500));
+
+    const spResult = await spRequest.execute('sp_TransferRoom');
+    const status = spResult.output.result_status;
+    const message = spResult.output.result_message;
+
+    if (status !== 0) {
+      const httpStatus = status === 2 ? 409 : 500;
+      return res.status(httpStatus).json({
+        success: false,
+        error: 'Room transfer failed: ' + message
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Room transferred successfully',
+      data: {
+        reservation_id: resvId,
+        reservation_code: resv.reservation_code,
+        old_room: {
+          room_id: resv.current_room_id,
+          room_number: resv.current_room_number
+        },
+        new_room: {
+          room_id: new_room_id,
+          room_number: newRoom.room_number
+        },
+        reason,
+        sp_message: message
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
+

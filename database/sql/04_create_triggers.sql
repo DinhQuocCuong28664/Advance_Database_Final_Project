@@ -63,3 +63,67 @@ GO
 
 PRINT '✅ TRIGGER trg_RoomRate_PriceIntegrityGuard created.';
 GO
+
+-- ============================================================
+-- trg_Reservation_CancellationAudit
+-- AFTER UPDATE on Reservation
+-- Auto-log to AuditLog when status → CANCELLED
+-- ============================================================
+
+CREATE OR ALTER TRIGGER trg_Reservation_CancellationAudit
+ON Reservation
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Only fire when reservation_status column is modified
+    IF NOT UPDATE(reservation_status)
+        RETURN;
+
+    BEGIN TRY
+        INSERT INTO AuditLog (
+            entity_name,
+            entity_pk,
+            action_type,
+            old_value_json,
+            new_value_json,
+            changed_by,
+            changed_at,
+            source_module
+        )
+        SELECT
+            'Reservation',
+            CAST(i.reservation_id AS VARCHAR(100)),
+            'STATUS_CHANGE',
+            N'{"reservation_status":"' + d.reservation_status
+                + N'","deposit_amount":' + CAST(ISNULL(d.deposit_amount, 0) AS NVARCHAR)
+                + N',"grand_total":' + CAST(ISNULL(d.grand_total_amount, 0) AS NVARCHAR)
+                + N'}',
+            N'{"reservation_status":"' + i.reservation_status
+                + N'","reservation_code":"' + i.reservation_code
+                + N'","guest_id":' + CAST(i.guest_id AS NVARCHAR)
+                + N',"cancel_type":"' + CASE
+                    WHEN i.reservation_status = 'CANCELLED' THEN 'CANCELLATION'
+                    WHEN i.reservation_status = 'NO_SHOW' THEN 'NO_SHOW'
+                    ELSE 'OTHER' END
+                + N'"}',
+            i.created_by_user_id,
+            GETDATE(),
+            'trg_Reservation_CancellationAudit'
+        FROM inserted i
+        INNER JOIN deleted d ON i.reservation_id = d.reservation_id
+        WHERE i.reservation_status IN ('CANCELLED', 'NO_SHOW')
+          AND d.reservation_status <> i.reservation_status;
+
+    END TRY
+    BEGIN CATCH
+        DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrMsg, 10, 1) WITH LOG;
+    END CATCH
+END;
+GO
+
+PRINT '✅ TRIGGER trg_Reservation_CancellationAudit created.';
+GO
+

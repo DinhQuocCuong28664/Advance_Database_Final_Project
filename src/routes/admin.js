@@ -142,4 +142,90 @@ router.get('/reports/revenue', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════
+// PUT /api/admin/availability/:id — Optimistic Locking
+// Update room availability with version check
+// Uses version_no column for conflict detection
+// ═══════════════════════════════════════════════
+router.put('/availability/:id', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const availId = parseInt(req.params.id);
+    const { availability_status, expected_version, inventory_note } = req.body;
+
+    if (isNaN(availId)) {
+      return res.status(400).json({ success: false, error: 'Invalid availability ID' });
+    }
+    if (!availability_status) {
+      return res.status(400).json({ success: false, error: 'availability_status is required' });
+    }
+    if (expected_version === undefined || expected_version === null) {
+      return res.status(400).json({
+        success: false,
+        error: 'expected_version is required for Optimistic Locking. Get current version from GET /api/rooms/availability first.'
+      });
+    }
+
+    // ═══════════════════════════════════════════
+    // OPTIMISTIC LOCKING pattern:
+    // UPDATE ... WHERE id = @id AND version_no = @expectedVersion
+    // If rowsAffected = 0 → someone else modified it → CONFLICT
+    // ═══════════════════════════════════════════
+    const result = await pool.request()
+      .input('id', sql.BigInt, availId)
+      .input('status', sql.VarChar(10), availability_status)
+      .input('version', sql.Int, expected_version)
+      .input('note', sql.NVarChar(255), inventory_note || null)
+      .query(`
+        UPDATE RoomAvailability
+        SET availability_status = @status,
+            sellable_flag = CASE WHEN @status = 'OPEN' THEN 1 ELSE 0 END,
+            version_no = version_no + 1,
+            inventory_note = @note,
+            updated_at = GETDATE()
+        OUTPUT INSERTED.availability_id, INSERTED.room_id, INSERTED.stay_date,
+               INSERTED.availability_status, INSERTED.version_no AS new_version,
+               DELETED.version_no AS old_version
+        WHERE availability_id = @id
+          AND version_no = @version
+      `);
+
+    if (result.recordset.length === 0) {
+      // Conflict detected — get current version to help client
+      const current = await pool.request()
+        .input('id', sql.BigInt, availId)
+        .query('SELECT availability_id, availability_status, version_no FROM RoomAvailability WHERE availability_id = @id');
+
+      if (current.recordset.length === 0) {
+        return res.status(404).json({ success: false, error: 'Availability record not found' });
+      }
+
+      return res.status(409).json({
+        success: false,
+        error: 'OPTIMISTIC LOCK CONFLICT: This record was modified by another user since you last read it. Please re-read and retry.',
+        your_expected_version: expected_version,
+        current_version: current.recordset[0].version_no,
+        current_status: current.recordset[0].availability_status
+      });
+    }
+
+    const updated = result.recordset[0];
+    res.json({
+      success: true,
+      message: 'Updated with Optimistic Locking',
+      data: {
+        availability_id: updated.availability_id,
+        room_id: updated.room_id,
+        stay_date: updated.stay_date,
+        availability_status: updated.availability_status,
+        old_version: updated.old_version,
+        new_version: updated.new_version
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
+

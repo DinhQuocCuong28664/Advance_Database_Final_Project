@@ -14,6 +14,9 @@
 | Xem chi tiết đặt phòng theo mã xác nhận | `GET /api/reservations/:code` | `Reservation`, `ReservationRoom`, `ReservationStatusHistory`, `Guest`, `Hotel`, `RoomType`, `Room`, `SystemUser` | **View** `vw_ReservationTotal` (aggregation từ 3 bảng: ReservationRoom + ReservationService + Payment) |
 | Check-in khách | `POST /api/reservations/:id/checkin` | `Reservation`, `ReservationRoom`, `Room`, `StayRecord`, `ReservationStatusHistory` | Transaction multi-step: cập nhật 4 bảng đồng thời |
 | Check-out khách | `POST /api/reservations/:id/checkout` | `Reservation`, `ReservationRoom`, `Room`, `StayRecord`, `HousekeepingTask`, `ReservationStatusHistory` | Transaction multi-step: cập nhật 5 bảng + auto-tạo HousekeepingTask; Query `vw_ReservationTotal` sau commit để tránh deadlock |
+| Khách hủy đặt phòng (mất cọc) | `POST /api/reservations/:id/guest-cancel` | `Reservation`, `ReservationRoom`, `Room`, `RoomAvailability`, `ReservationStatusHistory`, `AuditLog` | Transaction 6 bảng; **Trigger** `trg_Reservation_CancellationAudit` tự động ghi `AuditLog`; Forfeit deposit (không hoàn tiền) |
+| Khách sạn hủy (hoàn tiền 100%) | `POST /api/reservations/:id/hotel-cancel` | `Reservation`, `ReservationRoom`, `Room`, `RoomAvailability`, `Payment`, `ReservationStatusHistory`, `AuditLog` | Transaction 7 bảng; Auto-tạo `REFUND` Payment; **Trigger** `trg_Reservation_CancellationAudit` |
+| Chuyển phòng (Pessimistic Locking) | `POST /api/reservations/:id/transfer` | `ReservationRoom`, `Room`, `RoomAvailability`, `InventoryLockLog`, `ReservationStatusHistory` | **Stored Procedure** `sp_TransferRoom` với `UPDLOCK + HOLDLOCK`; Atomic release old + lock new cho tất cả đêm |
 
 ### 1.2 Kiểm Tra Phòng Trống (Room Availability)
 
@@ -33,23 +36,59 @@
 
 | Chức năng | API Endpoint | Bảng SQL liên quan | Kỹ thuật DB nâng cao |
 |---|---|---|---|
-| Tạo thanh toán | `POST /api/payments` | `Payment`, `Reservation` | Validate reservation tồn tại trước khi tạo payment |
+| Tạo thanh toán (có validation chống vượt mức) | `POST /api/payments` | `Payment`, `Reservation` | LOGIC-6→10: Validate reservation status, tính SUM payments đã CAPTURED, chặn vượt `grand_total`, chặn deposit vượt `deposit_amount`, `FULL_PAYMENT` phải bằng đúng remaining balance |
 | Danh sách thanh toán (lọc theo reservation) | `GET /api/payments?reservation_id=` | `Payment` | Dynamic query building |
 
-### 1.5 Quản Lý Giá & Báo Cáo (Admin)
+### 1.5 Quản Lý Dịch Vụ Phát Sinh (Services & Incidental Charges)
+
+| Chức năng | API Endpoint | Bảng SQL liên quan | Kỹ thuật DB nâng cao |
+|---|---|---|---|
+| Xem danh mục dịch vụ khách sạn | `GET /api/services?hotel_id=` | `ServiceCatalog`, `Hotel` | JOIN lấy `currency_code` từ Hotel; filter `is_active = 1` |
+| Đặt dịch vụ phát sinh (spa, ăn uống, transfer...) | `POST /api/services/order` | `ReservationService`, `ServiceCatalog`, `Reservation`, `ReservationRoom` | Validate reservation status (chỉ CONFIRMED/CHECKED_IN), validate service thuộc đúng hotel, auto-calculate `final_amount` |
+| Xem danh sách dịch vụ đã đặt | `GET /api/services/orders?reservation_id=` | `ReservationService`, `ServiceCatalog` | JOIN lấy tên dịch vụ; tính tổng tiền active orders vs all orders |
+| Cập nhật trạng thái dịch vụ | `PUT /api/services/orders/:id/status` | `ReservationService` | Validate status transitions: CONFIRMED, DELIVERED, CANCELLED |
+| Thanh toán dịch vụ phát sinh | `POST /api/services/orders/:id/pay` | `ReservationService`, `Payment`, `ServiceCatalog` | Tạo `INCIDENTAL_HOLD` payment; chống double-payment bằng unique `payment_reference`; auto-update service status → DELIVERED |
+
+### 1.6 Quản Lý Giá & Báo Cáo (Admin)
 
 | Chức năng | API Endpoint | Bảng SQL liên quan | Kỹ thuật DB nâng cao |
 |---|---|---|---|
 | Cập nhật giá phòng (kích hoạt Price Guard) | `PUT /api/admin/rates/:id` | `RoomRate`, `RateChangeLog` | **AFTER UPDATE Trigger** `trg_RoomRate_PriceIntegrityGuard`: tự động ghi log nếu thay đổi giá > 50% với severity = `CRITICAL` |
 | Xem cảnh báo Price Guard | `GET /api/admin/rates/alerts` | `RateChangeLog`, `RoomRate`, `RoomType`, `Hotel`, `SystemUser` | JOIN 5 bảng để hiển thị alert đầy đủ context |
 | Báo cáo doanh thu (Revenue Analytics) | `GET /api/admin/reports/revenue` | `Reservation`, `ReservationRoom`, `Hotel`, `RoomType` | **Window Functions**: `DENSE_RANK() OVER()` xếp hạng doanh thu; `SUM() OVER()` tính doanh thu tích lũy; Revenue share percentage |
+| Cập nhật trạng thái phòng (Optimistic Locking) | `PUT /api/admin/availability/:id` | `RoomAvailability` | **Optimistic Locking**: `UPDATE ... WHERE version_no = @expected_version`; Trả 409 Conflict nếu version không khớp |
 
-### 1.6 Cây Phân Cấp Vị Trí (Location Hierarchy)
+### 1.7 Cây Phân Cấp Vị Trí (Location Hierarchy)
 
 | Chức năng | API Endpoint | Bảng SQL liên quan | Kỹ thuật DB nâng cao |
 |---|---|---|---|
 | Xem cây vị trí phân cấp | `GET /api/locations/tree?root=&root_id=` | `Location` (self-referencing) | **Recursive CTE** (`WITH LocationTree AS ...`): duyệt cây từ root đến leaf với depth tracking |
 | Danh sách vị trí (flat) | `GET /api/locations` | `Location` | Sắp xếp theo level + name |
+
+### 1.8 Quản Lý Housekeeping (Dọn phòng)
+
+| Chức năng | API Endpoint | Bảng SQL liên quan | Kỹ thuật DB nâng cao |
+|---|---|---|---|
+| Danh sách task dọn phòng | `GET /api/housekeeping?hotel_id=&status=` | `HousekeepingTask`, `Room`, `RoomType`, `SystemUser` | JOIN 4 bảng; priority sorting; summary stats GROUP BY |
+| Tạo task dọn phòng | `POST /api/housekeeping` | `HousekeepingTask` | Auto-set status `ASSIGNED` nếu có staff |
+| Phân công nhân viên | `PUT /api/housekeeping/:id/assign` | `HousekeepingTask` | Validate task_status phải là OPEN/ASSIGNED |
+| Cập nhật trạng thái (sync Room) | `PUT /api/housekeeping/:id/status` | `HousekeepingTask`, `Room` | **Transaction**: update task + sync `Room.housekeeping_status` (IN_PROGRESS→CLEAN→INSPECTED); status flow validation |
+
+### 1.9 Quản Lý Bảo Trì (Maintenance)
+
+| Chức năng | API Endpoint | Bảng SQL liên quan | Kỹ thuật DB nâng cao |
+|---|---|---|---|
+| Danh sách ticket bảo trì | `GET /api/maintenance?hotel_id=&status=` | `MaintenanceTicket`, `Room`, `SystemUser` | JOIN + severity sorting; resolution hours tracking |
+| Tạo ticket bảo trì | `POST /api/maintenance` | `MaintenanceTicket`, `Room` | **Transaction**: create ticket + auto-update `Room.maintenance_status = 'UNDER_REPAIR'` nếu severity HIGH/CRITICAL |
+| Cập nhật/Giải quyết ticket | `PUT /api/maintenance/:id` | `MaintenanceTicket`, `Room` | **Transaction multi-ticket aware**: chỉ reset `Room.maintenance_status → 'NORMAL'` khi TẤT CẢ tickets của room đều resolved |
+
+### 1.10 Quản Lý Hóa Đơn (Invoice)
+
+| Chức năng | API Endpoint | Bảng SQL liên quan | Kỹ thuật DB nâng cao |
+|---|---|---|---|
+| Tạo hóa đơn từ View | `POST /api/invoices` | `Invoice`, `vw_ReservationTotal`, `Guest`, `Hotel` | **View-to-INSERT pattern**: dùng `vw_ReservationTotal` (computed view) làm nguồn tài chính duy nhất; chống duplicate invoice |
+| Xem chi tiết hóa đơn | `GET /api/invoices/:id` | `Invoice`, `Reservation`, `ReservationRoom`, `ReservationService`, `Payment`, `Guest`, `Hotel` | JOIN 7 bảng: invoice header + line items (rooms + services) + payment history |
+| Xuất hóa đơn (DRAFT → ISSUED) | `POST /api/invoices/:id/issue` | `Invoice` | Status transition validation |
 
 ---
 
@@ -108,16 +147,16 @@
 
 | Nguồn dữ liệu | Số chức năng | Endpoints |
 |---|---|---|
-| **SQL Server only** | 13 | Reservations (4), Rooms (1), Guests (3), Payments (2), Admin (3), Locations (2) |
+| **SQL Server only** | 32 | Reservations (7), Rooms (1), Guests (3), Payments (2), Services (5), Admin (4), Locations (2), Housekeeping (4), Maintenance (3), Invoices (3) |
 | **MongoDB only** | 0 | *(MongoDB luôn được merge với SQL trong endpoint Hybrid)* |
 | **Hybrid (SQL + MongoDB)** | 2 | Hotels (2) |
-| **Tổng** | **15** | |
+| **Tổng** | **34** | |
 
 ### Tỷ lệ sử dụng
 
 ```
-SQL Server ███████████████████████████████████████░░ 87% (13/15 endpoints)
-Hybrid     ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 13% (2/15 endpoints)
+SQL Server ████████████████████████████████████████ 94% (32/34 endpoints)
+Hybrid     ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  6% (2/34 endpoints)
 MongoDB    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  0% (0 standalone endpoints)
 ```
 

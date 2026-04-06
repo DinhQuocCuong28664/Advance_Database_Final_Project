@@ -67,7 +67,7 @@ LEFT JOIN (
 
 LEFT JOIN (
     SELECT reservation_id,
-           SUM(amount) AS total_paid
+           SUM(CASE WHEN payment_type <> 'REFUND' THEN amount ELSE -amount END) AS total_paid
     FROM Payment
     WHERE payment_status = 'CAPTURED'
     GROUP BY reservation_id

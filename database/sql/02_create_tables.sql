@@ -991,7 +991,7 @@ CREATE TABLE InventoryLockLog (
     note                        NVARCHAR(255)   NULL,
 
     CONSTRAINT FK_LockLog_Room  FOREIGN KEY (room_id) REFERENCES Room(room_id),
-    CONSTRAINT CK_LockLog_Status CHECK (lock_status IN ('SUCCESS','TIMEOUT','FAILED'))
+    CONSTRAINT CK_LockLog_Status CHECK (lock_status IN ('SUCCESS','TIMEOUT','FAILED','RELEASED'))
 );
 CREATE INDEX IX_LockLog_RoomDate ON InventoryLockLog(room_id, stay_date);
 GO
