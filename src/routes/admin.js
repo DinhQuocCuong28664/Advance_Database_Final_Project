@@ -143,6 +143,64 @@ router.get('/reports/revenue', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
+// GET /api/admin/reports/revenue-by-brand
+// Revenue Analytics grouped by Brand & Chain (Window Functions)
+// Demonstrates: HotelChain → Brand → Hotel hierarchy utilization
+// ═══════════════════════════════════════════════
+router.get('/reports/revenue-by-brand', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const result = await pool.request().query(`
+      SELECT
+        hc.chain_name,
+        b.brand_name,
+        h.hotel_name,
+        DATEPART(YEAR, r.checkin_date)      AS year,
+        DATEPART(QUARTER, r.checkin_date)   AS quarter,
+        COUNT(*)                            AS booking_count,
+        SUM(rr.final_amount)               AS total_revenue,
+        AVG(rr.nightly_rate_snapshot)       AS avg_nightly_rate,
+
+        -- Window Functions: Ranking within Brand
+        DENSE_RANK() OVER (
+          PARTITION BY b.brand_id
+          ORDER BY SUM(rr.final_amount) DESC
+        ) AS revenue_rank_in_brand,
+
+        -- Window Functions: Cumulative revenue per Brand over time
+        SUM(SUM(rr.final_amount)) OVER (
+          PARTITION BY b.brand_id
+          ORDER BY DATEPART(YEAR, r.checkin_date), DATEPART(QUARTER, r.checkin_date)
+        ) AS cumulative_brand_revenue,
+
+        -- Window Functions: Revenue share % within the entire Chain
+        SUM(rr.final_amount) * 100.0 / NULLIF(SUM(SUM(rr.final_amount)) OVER (PARTITION BY hc.chain_id), 0)
+          AS revenue_share_in_chain_pct,
+
+        -- Window Functions: Revenue share % within Brand
+        SUM(rr.final_amount) * 100.0 / NULLIF(SUM(SUM(rr.final_amount)) OVER (PARTITION BY b.brand_id), 0)
+          AS revenue_share_in_brand_pct
+
+      FROM Reservation r
+      JOIN ReservationRoom rr ON r.reservation_id = rr.reservation_id
+      JOIN Hotel h ON r.hotel_id = h.hotel_id
+      JOIN Brand b ON h.brand_id = b.brand_id
+      JOIN HotelChain hc ON b.chain_id = hc.chain_id
+      JOIN RoomType rt ON rr.room_type_id = rt.room_type_id
+      WHERE r.reservation_status NOT IN ('CANCELLED', 'NO_SHOW')
+      GROUP BY hc.chain_id, hc.chain_name, b.brand_id, b.brand_name,
+               h.hotel_id, h.hotel_name,
+               DATEPART(YEAR, r.checkin_date), DATEPART(QUARTER, r.checkin_date)
+      ORDER BY hc.chain_name, b.brand_name, year, quarter
+    `);
+
+    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════
 // PUT /api/admin/availability/:id — Optimistic Locking
 // Update room availability with version check
 // Uses version_no column for conflict detection

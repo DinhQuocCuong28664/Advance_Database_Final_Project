@@ -55,7 +55,8 @@
 |---|---|---|---|
 | Cập nhật giá phòng (kích hoạt Price Guard) | `PUT /api/admin/rates/:id` | `RoomRate`, `RateChangeLog` | **AFTER UPDATE Trigger** `trg_RoomRate_PriceIntegrityGuard`: tự động ghi log nếu thay đổi giá > 50% với severity = `CRITICAL` |
 | Xem cảnh báo Price Guard | `GET /api/admin/rates/alerts` | `RateChangeLog`, `RoomRate`, `RoomType`, `Hotel`, `SystemUser` | JOIN 5 bảng để hiển thị alert đầy đủ context |
-| Báo cáo doanh thu (Revenue Analytics) | `GET /api/admin/reports/revenue` | `Reservation`, `ReservationRoom`, `Hotel`, `RoomType` | **Window Functions**: `DENSE_RANK() OVER()` xếp hạng doanh thu; `SUM() OVER()` tính doanh thu tích lũy; Revenue share percentage |
+| Báo cáo doanh thu theo Hotel (Revenue Analytics) | `GET /api/admin/reports/revenue` | `Reservation`, `ReservationRoom`, `Hotel`, `RoomType` | **Window Functions**: `DENSE_RANK() OVER()` xếp hạng doanh thu; `SUM() OVER()` tính doanh thu tích lũy; Revenue share percentage |
+| Báo cáo doanh thu theo Brand & Chain | `GET /api/admin/reports/revenue-by-brand` | `Reservation`, `ReservationRoom`, `Hotel`, `Brand`, `HotelChain`, `RoomType` | **Window Functions** multi-level: `DENSE_RANK() OVER (PARTITION BY brand_id)` ranking trong brand; `SUM() OVER (PARTITION BY brand_id)` doanh thu tích lũy; Revenue share % trong chain và brand |
 | Cập nhật trạng thái phòng (Optimistic Locking) | `PUT /api/admin/availability/:id` | `RoomAvailability` | **Optimistic Locking**: `UPDATE ... WHERE version_no = @expected_version`; Trả 409 Conflict nếu version không khớp |
 
 ### 1.7 Cây Phân Cấp Vị Trí (Location Hierarchy)
@@ -147,16 +148,16 @@
 
 | Nguồn dữ liệu | Số chức năng | Endpoints |
 |---|---|---|
-| **SQL Server only** | 32 | Reservations (7), Rooms (1), Guests (3), Payments (2), Services (5), Admin (4), Locations (2), Housekeeping (4), Maintenance (3), Invoices (3) |
+| **SQL Server only** | 33 | Reservations (7), Rooms (1), Guests (3), Payments (2), Services (5), Admin (5), Locations (2), Housekeeping (4), Maintenance (3), Invoices (3) |
 | **MongoDB only** | 0 | *(MongoDB luôn được merge với SQL trong endpoint Hybrid)* |
 | **Hybrid (SQL + MongoDB)** | 2 | Hotels (2) |
-| **Tổng** | **34** | |
+| **Tổng** | **35** | |
 
 ### Tỷ lệ sử dụng
 
 ```
-SQL Server ████████████████████████████████████████ 94% (32/34 endpoints)
-Hybrid     ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  6% (2/34 endpoints)
+SQL Server ████████████████████████████████████████ 94% (33/35 endpoints)
+Hybrid     ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  6% (2/35 endpoints)
 MongoDB    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  0% (0 standalone endpoints)
 ```
 

@@ -278,6 +278,44 @@ curl http://localhost:3000/api/admin/reports/revenue
 - `cumulative_revenue` sẽ tích lũy qua từng quarter
 - `revenue_share_pct` cho thấy tỷ lệ đóng góp của mỗi room type
 
+### Test 3.3 — Báo cáo Doanh thu theo Brand & Chain
+**Mục tiêu**: Kiểm tra Window Functions với multi-level PARTITION BY (brand_id, chain_id) và JOIN toàn bộ hierarchy HotelChain → Brand → Hotel
+
+```bash
+curl http://localhost:3000/api/admin/reports/revenue-by-brand
+```
+
+**Expected Response**:
+```json
+{
+  "success": true,
+  "count": 2,
+  "data": [
+    {
+      "chain_name": "Marriott International",
+      "brand_name": "The Ritz-Carlton",
+      "hotel_name": "The Ritz-Carlton, Saigon",
+      "year": 2026,
+      "quarter": 2,
+      "booking_count": 1,
+      "total_revenue": 14850000,
+      "avg_nightly_rate": 4500000,
+      "revenue_rank_in_brand": 1,
+      "cumulative_brand_revenue": 14850000,
+      "revenue_share_in_chain_pct": 100.00,
+      "revenue_share_in_brand_pct": 100.00
+    }
+  ]
+}
+```
+
+**Kiểm tra điểm khác biệt với `/reports/revenue`**:
+- Có thêm `chain_name`, `brand_name` (JOIN `HotelChain`, `Brand`)
+- `revenue_rank_in_brand`: xếp hạng TRONG brand (khác với `revenue_rank_in_hotel`)
+- `revenue_share_in_chain_pct`: % đóng góp vào toàn chuỗi
+- `revenue_share_in_brand_pct`: % đóng góp vào brand
+- Khi có nhiều hotel thuộc cùng brand, ranking sẽ thấy rõ sự khác biệt
+
 ---
 
 ## 4. Recursive CTE — Location Tree
@@ -395,8 +433,11 @@ $restore = '{"final_rate":4500000,"price_source":"MANUAL","updated_by":3}'
 Invoke-RestMethod -Uri "$base/admin/rates/1" -Method Put -Headers $headers -Body $restore | Out-Null
 
 Write-Host "`n═══ TEST 3: WINDOW FUNCTIONS ═══" -ForegroundColor Cyan
-Write-Host "`n[3.1] Revenue Analytics Report..." -ForegroundColor Yellow
+Write-Host "`n[3.1] Revenue Analytics Report (per Hotel)..." -ForegroundColor Yellow
 Invoke-RestMethod -Uri "$base/admin/reports/revenue" | ConvertTo-Json -Depth 5
+
+Write-Host "`n[3.3] Revenue Analytics by Brand & Chain..." -ForegroundColor Yellow
+Invoke-RestMethod -Uri "$base/admin/reports/revenue-by-brand" | ConvertTo-Json -Depth 5
 
 Write-Host "`n═══ TEST 4: RECURSIVE CTE ═══" -ForegroundColor Cyan
 
@@ -575,8 +616,9 @@ curl -X POST http://localhost:3000/api/services/orders/1/pay \
 | 2.1 | Rate change < 50% | Trigger | ✅ No alert triggered |
 | 2.2 | Rate change > 50% | Trigger | 🚨 CRITICAL alert logged |
 | 2.3 | View alerts list | Trigger | 📋 Alert records visible |
-| 3.1 | Revenue report | Window Functions | 📊 DENSE_RANK, cumulative, share% |
+| 3.1 | Revenue report (per hotel) | Window Functions | 📊 DENSE_RANK, cumulative, share% |
 | 3.2 | Multi-booking revenue | Window Functions | 📊 Ranking changes |
+| 3.3 | Revenue by Brand & Chain | Window Functions | 📊 Multi-level PARTITION BY brand_id, chain_id |
 | 4.1 | Full location tree | Recursive CTE | 🌳 17 nodes, hierarchy display |
 | 4.2 | Vietnam subtree | Recursive CTE | 🌳 7 nodes (VN → districts) |
 | 4.3 | Singapore subtree | Recursive CTE | 🌳 3 nodes |

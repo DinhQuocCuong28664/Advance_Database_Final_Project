@@ -37,9 +37,8 @@ Serves as the integration layer merging both databases in real-time.
    - Automatically logs any rate change exceeding 50% into `RateChangeLog` as a `CRITICAL` alert.
 
 3. **Window Functions & Revenue Analytics**
-   - `GET /api/admin/reports/revenue` generates intelligence reports.
-   - Uses `DENSE_RANK() OVER()` to rank hotel revenue.
-   - Uses `SUM() OVER()` to calculate cumulative revenue distribution.
+   - `GET /api/admin/reports/revenue` — Revenue per hotel with `DENSE_RANK()` and cumulative `SUM() OVER()`.
+   - `GET /api/admin/reports/revenue-by-brand` — Revenue across the full **HotelChain → Brand → Hotel** hierarchy with multi-level `PARTITION BY brand_id` and `PARTITION BY chain_id`.
 
 4. **Recursive CTE (Hierarchical Data)**
    - `Location` table stores worldwide regions, countries, cities, and districts.

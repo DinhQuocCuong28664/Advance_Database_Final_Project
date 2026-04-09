@@ -80,7 +80,8 @@ app.get('/api', (req, res) => {
       admin: {
         'PUT /api/admin/rates/:id': 'Update room rate — triggers Price Guard if change > 50% (body: final_rate)',
         'GET /api/admin/rates/alerts': 'View Price Integrity Guard alerts',
-        'GET /api/admin/reports/revenue': 'Revenue analytics with Window Functions',
+        'GET /api/admin/reports/revenue': 'Revenue analytics with Window Functions (per hotel)',
+        'GET /api/admin/reports/revenue-by-brand': 'Revenue analytics by Brand & Chain hierarchy (Window Functions)',
         'PUT /api/admin/availability/:id': 'Update room availability with Optimistic Locking (body: availability_status, expected_version)',
       },
       housekeeping: {

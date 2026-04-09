@@ -103,6 +103,14 @@ Reserves a room, executing individual SQL Server locks for each night.
 }
 \`\`\`
 
+#### ⚠️ Validation Rules
+| Rule | Description |
+|------|-------------|
+| Required Fields | `hotel_id`, `guest_id`, `room_id`, `checkin_date`, `checkout_date` |
+| LOGIC-2 | `nightly_rate` must be a positive number |
+| TC_EDGE_002 | `checkout_date` must be strictly after `checkin_date` (prevents negative nights/money) |
+| TC_BND_001 | Maximum stay duration is **90 nights** (prevents Pessimistic Lock timeout) |
+
 ### 4.2 Get Reservation by Code
 Find a single reservation by its unique confirmation code.
 - **Method**: \`GET\`
@@ -309,12 +317,35 @@ Changes a room rate. If changed by > 50%, an automatic Alert is logged.
 - **Method**: `GET`
 - **Endpoint**: `/admin/rates/alerts`
 
-### 7.3 Revenue Analytics (Window Functions)
+### 7.3 Revenue Analytics — Per Hotel (Window Functions)
 Get intelligent financial reporting partitioned by quarter, year, and hotel.
 - **Method**: `GET`
 - **Endpoint**: `/admin/reports/revenue`
+- **DB Techniques**: `DENSE_RANK() OVER (PARTITION BY hotel_id)`, cumulative `SUM() OVER()`, revenue share percentage
 
-### 7.4 Update Availability (Optimistic Locking) 🔒
+### 7.4 Revenue Analytics — Per Brand & Chain (Window Functions)
+Get revenue analytics across the full **HotelChain → Brand → Hotel** hierarchy. Demonstrates multi-level Window Function partitioning.
+- **Method**: `GET`
+- **Endpoint**: `/admin/reports/revenue-by-brand`
+- **Response Fields**:
+
+| Field | Description |
+|-------|-------------|
+| `chain_name` | Tên chuỗi khách sạn (VD: Marriott International) |
+| `brand_name` | Tên thương hiệu (VD: Ritz-Carlton, W Hotels) |
+| `hotel_name` | Tên khách sạn cụ thể |
+| `year`, `quarter` | Thời gian |
+| `booking_count` | Số lượng booking |
+| `total_revenue` | Tổng doanh thu |
+| `avg_nightly_rate` | Giá đêm trung bình |
+| `revenue_rank_in_brand` | Xếp hạng doanh thu trong cùng Brand (`DENSE_RANK() OVER PARTITION BY brand_id`) |
+| `cumulative_brand_revenue` | Doanh thu tích lũy theo Brand (`SUM() OVER PARTITION BY brand_id ORDER BY year, quarter`) |
+| `revenue_share_in_chain_pct` | % đóng góp vào toàn chuỗi (`SUM() OVER PARTITION BY chain_id`) |
+| `revenue_share_in_brand_pct` | % đóng góp trong Brand (`SUM() OVER PARTITION BY brand_id`) |
+
+- **DB Techniques**: 4 Window Functions — `DENSE_RANK()` ranking within brand, cumulative revenue per brand, revenue share % within chain, revenue share % within brand. JOIN across `HotelChain → Brand → Hotel → Reservation → ReservationRoom`.
+
+### 7.5 Update Availability (Optimistic Locking) 🔒
 Update room availability with **version-based conflict detection**. If `expected_version` doesn't match, returns `409 Conflict`.
 - **Method**: `PUT`
 - **Endpoint**: `/admin/availability/:id`

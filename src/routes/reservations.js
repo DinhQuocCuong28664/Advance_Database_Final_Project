@@ -29,6 +29,16 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'nightly_rate must be a positive number' });
     }
 
+    // [FIX] TC_EDGE_002: Validate checkout_date > checkin_date to prevent negative nights/money
+    const parsedCheckin = new Date(checkin_date);
+    const parsedCheckout = new Date(checkout_date);
+    if (isNaN(parsedCheckin.getTime()) || isNaN(parsedCheckout.getTime())) {
+      return res.status(400).json({ success: false, error: 'Invalid date format for checkin_date or checkout_date' });
+    }
+    if (parsedCheckout <= parsedCheckin) {
+      return res.status(400).json({ success: false, error: 'checkout_date must be after checkin_date' });
+    }
+
     const pool = getSqlPool();
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
@@ -43,6 +53,12 @@ router.post('/', async (req, res) => {
       const checkin = new Date(checkin_date);
       const checkout = new Date(checkout_date);
       const nightCount = nights || Math.round((checkout - checkin) / (1000 * 60 * 60 * 24));
+
+      // [FIX] TC_BND_001: Limit max nights to prevent Pessimistic Lock timeout
+      const MAX_NIGHTS = 90;
+      if (nightCount <= 0 || nightCount > MAX_NIGHTS) {
+        return res.status(400).json({ success: false, error: `Invalid stay duration. Must be 1-${MAX_NIGHTS} nights. Got: ${nightCount}` });
+      }
 
       for (let i = 0; i < nightCount; i++) {
         const stayDate = new Date(checkin);
@@ -167,7 +183,7 @@ router.post('/', async (req, res) => {
         },
       });
     } catch (innerErr) {
-      await transaction.rollback();
+      try { await transaction.rollback(); } catch (_) { /* transaction already aborted by SQL Server */ }
       throw innerErr;
     }
   } catch (err) {
@@ -290,7 +306,7 @@ router.post('/:id/checkin', async (req, res) => {
       await transaction.commit();
       res.json({ success: true, message: 'Check-in successful', reservation_id: resvId });
     } catch (innerErr) {
-      await transaction.rollback();
+      try { await transaction.rollback(); } catch (_) { /* transaction already aborted by SQL Server */ }
       throw innerErr;
     }
   } catch (err) {
@@ -376,7 +392,7 @@ router.post('/:id/checkout', async (req, res) => {
         financials: balance.recordset[0] || null,
       });
     } catch (innerErr) {
-      await transaction.rollback();
+      try { await transaction.rollback(); } catch (_) { /* transaction already aborted by SQL Server */ }
       throw innerErr;
     }
   } catch (err) {
@@ -497,7 +513,7 @@ router.post('/:id/guest-cancel', async (req, res) => {
         }
       });
     } catch (innerErr) {
-      await transaction.rollback();
+      try { await transaction.rollback(); } catch (_) { /* transaction already aborted by SQL Server */ }
       throw innerErr;
     }
   } catch (err) {
@@ -641,7 +657,7 @@ router.post('/:id/hotel-cancel', async (req, res) => {
         }
       });
     } catch (innerErr) {
-      await transaction.rollback();
+      try { await transaction.rollback(); } catch (_) { /* transaction already aborted by SQL Server */ }
       throw innerErr;
     }
   } catch (err) {
