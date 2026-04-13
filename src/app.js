@@ -50,7 +50,7 @@ app.get('/api', (req, res) => {
         'GET /api/hotels/:id': 'Get hotel detail with room types, amenities, images',
       },
       rooms: {
-        'GET /api/rooms/availability?hotel_id&checkin&checkout': 'Check room availability by date range',
+        'GET /api/rooms/availability?hotel_id&checkin&checkout': 'Check room availability by date range, including availability_records for optimistic locking',
       },
       guests: {
         'GET /api/guests': 'List all guests',
@@ -58,7 +58,7 @@ app.get('/api', (req, res) => {
         'POST /api/guests': 'Create new guest (body: guest_code, first_name, last_name, ...)',
       },
       reservations: {
-        'POST /api/reservations': 'Create reservation with Pessimistic Locking (body: hotel_id, guest_id, room_id, checkin_date, checkout_date, nightly_rate, ...)',
+        'POST /api/reservations': 'Create reservation with direct pessimistic locking on RoomAvailability (body: hotel_id, guest_id, room_id, checkin_date, checkout_date, nightly_rate, ...)',
         'GET /api/reservations/:code': 'Get reservation by confirmation code',
         'POST /api/reservations/:id/checkin': 'Check-in process (body: agent_id)',
         'POST /api/reservations/:id/checkout': 'Check-out process (body: agent_id)',
@@ -67,7 +67,7 @@ app.get('/api', (req, res) => {
         'POST /api/reservations/:id/transfer': 'Room transfer via sp_TransferRoom with Pessimistic Locking (body: new_room_id, reason, agent_id)',
       },
       payments: {
-        'POST /api/payments': 'Create payment (body: reservation_id, amount, payment_type, payment_method, ...)',
+        'POST /api/payments': 'Create payment with reservation-state and balance validation (body: reservation_id, amount, payment_type, payment_method, ...)',
         'GET /api/payments?reservation_id=': 'List payments, optionally filter by reservation',
       },
       services: {
@@ -82,7 +82,7 @@ app.get('/api', (req, res) => {
         'GET /api/admin/rates/alerts': 'View Price Integrity Guard alerts',
         'GET /api/admin/reports/revenue': 'Revenue analytics with Window Functions (per hotel)',
         'GET /api/admin/reports/revenue-by-brand': 'Revenue analytics by Brand & Chain hierarchy (Window Functions)',
-        'PUT /api/admin/availability/:id': 'Update room availability with Optimistic Locking (body: availability_status, expected_version)',
+        'PUT /api/admin/availability/:id': 'Update room availability with Optimistic Locking using expected_version from GET /api/rooms/availability',
       },
       housekeeping: {
         'GET /api/housekeeping?hotel_id=&status=': 'List housekeeping tasks with priority sorting',

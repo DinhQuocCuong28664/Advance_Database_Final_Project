@@ -39,24 +39,27 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'checkout_date must be after checkin_date' });
     }
 
+    const checkin = new Date(checkin_date);
+    const checkout = new Date(checkout_date);
+    const nightCount = nights || Math.round((checkout - checkin) / (1000 * 60 * 60 * 24));
+    const reservationTotal = (nightly_rate || 0) * nightCount;
+    const requiresDeposit = guarantee_type === 'DEPOSIT';
+    const depositAmount = requiresDeposit ? Math.round(reservationTotal * 0.3 * 100) / 100 : 0;
+
     const pool = getSqlPool();
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
 
     try {
-      const request = new sql.Request(transaction);
       const reservationCode = `RES-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
       // ═══════════════════════════════════
       // STEP 1: Call sp_ReserveRoom for EACH night (Pessimistic Lock)
       // ═══════════════════════════════════
-      const checkin = new Date(checkin_date);
-      const checkout = new Date(checkout_date);
-      const nightCount = nights || Math.round((checkout - checkin) / (1000 * 60 * 60 * 24));
-
       // [FIX] TC_BND_001: Limit max nights to prevent Pessimistic Lock timeout
       const MAX_NIGHTS = 90;
       if (nightCount <= 0 || nightCount > MAX_NIGHTS) {
+        await transaction.rollback();
         return res.status(400).json({ success: false, error: `Invalid stay duration. Must be 1-${MAX_NIGHTS} nights. Got: ${nightCount}` });
       }
 
@@ -64,26 +67,49 @@ router.post('/', async (req, res) => {
         const stayDate = new Date(checkin);
         stayDate.setDate(stayDate.getDate() + i);
         const dateStr = stayDate.toISOString().slice(0, 10);
+        const lockRequest = new sql.Request(transaction);
+        const lockResult = await lockRequest
+          .input('roomId', sql.BigInt, room_id)
+          .input('stayDate', sql.VarChar(10), dateStr)
+          .query(`
+            SELECT availability_status
+            FROM RoomAvailability WITH (UPDLOCK, HOLDLOCK)
+            WHERE room_id = @roomId AND stay_date = @stayDate
+          `);
 
-        const spRequest = new sql.Request(transaction);
-        spRequest.input('room_id', sql.BigInt, room_id);
-        spRequest.input('stay_date', sql.VarChar(10), dateStr);
-        spRequest.input('reservation_code', sql.VarChar(50), reservationCode);
-        spRequest.input('session_id', sql.VarChar(100), `API-${Date.now()}`);
-        spRequest.output('result_status', sql.Int);
-        spRequest.output('result_message', sql.NVarChar(500));
-
-        const spResult = await spRequest.execute('sp_ReserveRoom');
-        const status = spResult.output.result_status;
-
-        if (status !== 0) {
+        if (lockResult.recordset.length === 0) {
           await transaction.rollback();
           return res.status(409).json({
             success: false,
-            error: 'Booking failed: ' + spResult.output.result_message,
+            error: `Booking failed: NOT_FOUND: No inventory record for room_id=${room_id}, date=${dateStr}`,
             failed_date: dateStr,
           });
         }
+
+        const currentStatus = lockResult.recordset[0].availability_status;
+        if (currentStatus !== 'OPEN') {
+          await transaction.rollback();
+          return res.status(409).json({
+            success: false,
+            error: `Booking failed: REJECTED: Room not available. Current status: ${currentStatus}`,
+            failed_date: dateStr,
+          });
+        }
+
+        await new sql.Request(transaction)
+          .input('roomId', sql.BigInt, room_id)
+          .input('stayDate', sql.VarChar(10), dateStr)
+          .input('reservationCode', sql.VarChar(50), reservationCode)
+          .query(`
+            UPDATE RoomAvailability
+            SET availability_status = 'BOOKED',
+                sellable_flag = 0,
+                version_no = version_no + 1,
+                inventory_note = N'Reserved by API booking: ' + @reservationCode,
+                updated_at = GETDATE()
+            WHERE room_id = @roomId AND stay_date = @stayDate
+          `);
+
       }
 
       // ═══════════════════════════════════
@@ -102,8 +128,10 @@ router.post('/', async (req, res) => {
         .input('adults', sql.Int, adult_count || 2)
         .input('children', sql.Int, child_count || 0)
         .input('currency', sql.Char(3), currency_code || 'VND')
-        .input('subtotal', sql.Decimal(18, 2), (nightly_rate || 0) * nightCount)
-        .input('total', sql.Decimal(18, 2), (nightly_rate || 0) * nightCount)
+        .input('subtotal', sql.Decimal(18, 2), reservationTotal)
+        .input('total', sql.Decimal(18, 2), reservationTotal)
+        .input('depositRequired', sql.Bit, requiresDeposit ? 1 : 0)
+        .input('depositAmount', sql.Decimal(18, 2), depositAmount)
         .input('guarantee', sql.VarChar(20), guarantee_type || 'CARD')
         .input('purpose', sql.VarChar(15), purpose_of_stay || 'LEISURE')
         .input('special', sql.NVarChar(sql.MAX), special_request_text || null)
@@ -112,14 +140,15 @@ router.post('/', async (req, res) => {
             reservation_code, hotel_id, guest_id, booking_channel_id, booking_source,
             reservation_status, checkin_date, checkout_date, nights,
             adult_count, child_count, room_count, currency_code,
-            subtotal_amount, grand_total_amount, guarantee_type, purpose_of_stay, special_request_text
+            subtotal_amount, grand_total_amount, deposit_required_flag, deposit_amount,
+            guarantee_type, purpose_of_stay, special_request_text
           )
           OUTPUT INSERTED.reservation_id, INSERTED.reservation_code, INSERTED.reservation_status
           VALUES (
             @code, @hotel_id, @guest_id, @channel_id, @source,
             'CONFIRMED', @checkin, @checkout, @nights,
             @adults, @children, 1, @currency,
-            @subtotal, @total, @guarantee, @purpose, @special
+            @subtotal, @total, @depositRequired, @depositAmount, @guarantee, @purpose, @special
           )
         `);
 
@@ -138,8 +167,8 @@ router.post('/', async (req, res) => {
         .input('end', sql.VarChar(10), checkout_date)
         .input('adults', sql.Int, adult_count || 2)
         .input('rate', sql.Decimal(18, 2), nightly_rate || 0)
-        .input('subtotal', sql.Decimal(18, 2), (nightly_rate || 0) * nightCount)
-        .input('final', sql.Decimal(18, 2), (nightly_rate || 0) * nightCount)
+        .input('subtotal', sql.Decimal(18, 2), reservationTotal)
+        .input('final', sql.Decimal(18, 2), reservationTotal)
         .query(`
           INSERT INTO ReservationRoom (
             reservation_id, room_id, room_type_id, rate_plan_id,
@@ -179,7 +208,9 @@ router.post('/', async (req, res) => {
           checkin_date,
           checkout_date,
           nights: nightCount,
-          total: (nightly_rate || 0) * nightCount,
+          total: reservationTotal,
+          deposit_required: requiresDeposit,
+          deposit_amount: depositAmount,
         },
       });
     } catch (innerErr) {
@@ -774,4 +805,3 @@ router.post('/:id/transfer', async (req, res) => {
 });
 
 module.exports = router;
-

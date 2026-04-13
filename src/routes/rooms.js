@@ -45,7 +45,39 @@ router.get('/availability', async (req, res) => {
         ORDER BY rt.category, r.floor_number
       `);
 
-    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+    const availabilityRows = await pool.request()
+      .input('hotelId', sql.BigInt, parseInt(hotel_id))
+      .input('checkin', sql.VarChar(10), checkin)
+      .input('checkout', sql.VarChar(10), checkout)
+      .query(`
+        SELECT ra.availability_id, ra.room_id, ra.stay_date,
+               ra.availability_status, ra.version_no
+        FROM RoomAvailability ra
+        JOIN Room r ON ra.room_id = r.room_id
+        WHERE r.hotel_id = @hotelId
+          AND ra.stay_date >= @checkin AND ra.stay_date < @checkout
+        ORDER BY ra.room_id, ra.stay_date
+      `);
+
+    const availabilityMap = new Map();
+    for (const row of availabilityRows.recordset) {
+      if (!availabilityMap.has(row.room_id)) {
+        availabilityMap.set(row.room_id, []);
+      }
+      availabilityMap.get(row.room_id).push({
+        availability_id: row.availability_id,
+        stay_date: row.stay_date,
+        availability_status: row.availability_status,
+        version_no: row.version_no,
+      });
+    }
+
+    const rooms = result.recordset.map(room => ({
+      ...room,
+      availability_records: availabilityMap.get(room.room_id) || [],
+    }));
+
+    res.json({ success: true, count: rooms.length, data: rooms });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

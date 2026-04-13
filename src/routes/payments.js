@@ -34,7 +34,7 @@ router.post('/', async (req, res) => {
     const reservation = resvCheck.recordset[0];
 
     // [FIX] LOGIC-6: Prevent payment on cancelled/checked-out reservations
-    if (['CANCELLED', 'NO_SHOW'].includes(reservation.reservation_status)) {
+    if (['CANCELLED', 'CHECKED_OUT', 'NO_SHOW'].includes(reservation.reservation_status)) {
       return res.status(400).json({
         success: false,
         error: `Cannot create payment for reservation with status: ${reservation.reservation_status}`
@@ -53,31 +53,32 @@ router.post('/', async (req, res) => {
           AND payment_status IN ('CAPTURED', 'AUTHORIZED')
       `);
 
-    const { total_paid, total_deposit_paid } = paidResult.recordset[0];
+    const totalPaid = parseFloat(paidResult.recordset[0].total_paid);
+    const totalDepositPaid = parseFloat(paidResult.recordset[0].total_deposit_paid);
     const grandTotal = parseFloat(reservation.grand_total_amount);
     const depositRequired = parseFloat(reservation.deposit_amount);
     const newAmount = parseFloat(amount);
 
     // [FIX] LOGIC-8: Prevent total payments from exceeding grand total
-    if (total_paid + newAmount > grandTotal) {
+    if (totalPaid + newAmount > grandTotal) {
       return res.status(400).json({
         success: false,
-        error: `Payment would exceed reservation total. Grand total: ${grandTotal}, Already paid: ${total_paid}, Attempted: ${newAmount}, Overage: ${(total_paid + newAmount - grandTotal).toFixed(2)}`
+        error: `Payment would exceed reservation total. Grand total: ${grandTotal}, Already paid: ${totalPaid}, Attempted: ${newAmount}, Overage: ${(totalPaid + newAmount - grandTotal).toFixed(2)}`
       });
     }
 
     // [FIX] LOGIC-9: For DEPOSIT type, also check against deposit_amount limit
     if (resolvedType === 'DEPOSIT' && depositRequired > 0) {
-      if (total_deposit_paid + newAmount > depositRequired) {
+      if (totalDepositPaid + newAmount > depositRequired) {
         return res.status(400).json({
           success: false,
-          error: `Deposit would exceed required deposit amount. Deposit required: ${depositRequired}, Already deposited: ${total_deposit_paid}, Attempted: ${newAmount}, Overage: ${(total_deposit_paid + newAmount - depositRequired).toFixed(2)}`
+          error: `Deposit would exceed required deposit amount. Deposit required: ${depositRequired}, Already deposited: ${totalDepositPaid}, Attempted: ${newAmount}, Overage: ${(totalDepositPaid + newAmount - depositRequired).toFixed(2)}`
         });
       }
     }
 
     // [FIX] LOGIC-10: FULL_PAYMENT must cover the entire remaining balance
-    const remainingBalance = grandTotal - total_paid;
+    const remainingBalance = grandTotal - totalPaid;
     if (resolvedType === 'FULL_PAYMENT' && newAmount !== remainingBalance) {
       return res.status(400).json({
         success: false,
@@ -105,8 +106,8 @@ router.post('/', async (req, res) => {
       data: result.recordset[0],
       payment_summary: {
         grand_total: grandTotal,
-        total_paid_after: total_paid + newAmount,
-        remaining_balance: grandTotal - (total_paid + newAmount)
+        total_paid_after: totalPaid + newAmount,
+        remaining_balance: grandTotal - (totalPaid + newAmount)
       }
     });
   } catch (err) {
