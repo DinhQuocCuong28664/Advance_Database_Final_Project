@@ -6,6 +6,9 @@
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
+const { requireSystemUser } = require('../middleware/auth');
+
+router.use(requireSystemUser);
 
 // PUT /api/admin/rates/:id — Update room rate (triggers Price Integrity Guard)
 router.put('/rates/:id', async (req, res) => {
@@ -286,4 +289,3 @@ router.put('/availability/:id', async (req, res) => {
 });
 
 module.exports = router;
-

@@ -13,14 +13,17 @@
     "db:views": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/03_create_views.sql -C",
     "db:triggers": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/04_create_triggers.sql -C",
     "db:procedures": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/05_create_procedures.sql -C",
+    "db:auth": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/07_auth_extension.sql -C",
     "db:all": "npm run db:init && npm run db:views && npm run db:triggers && npm run db:procedures && npm run db:seed",
     "mongo:init": "node database/mongodb/02_seed_data.js",
     "mongo:seed": "node database/mongodb/02_seed_data.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
     "mongodb": "^6.12.0",
     "morgan": "^1.10.0",
     "msnodesqlv8": "^5.1.7",

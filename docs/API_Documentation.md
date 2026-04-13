@@ -177,7 +177,79 @@ Validation:
 
 ---
 
-## 4. Reservations
+## 4. Authentication
+
+### 4.1 Admin Login
+
+- Method: `POST`
+- Endpoint: `/auth/admin/login`
+
+Body:
+
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+Response returns:
+- `token`
+- `user` with `user_type = SYSTEM_USER`
+- `roles`
+
+### 4.2 Guest Register
+
+- Method: `POST`
+- Endpoint: `/auth/guest/register`
+
+Body:
+
+```json
+{
+  "guest_id": 1,
+  "login_email": "quoc.nguyen@gmail.com",
+  "password": "guest12345"
+}
+```
+
+Notes:
+- Creates login credentials for an existing guest profile
+- Does not replace anonymous booking flow
+
+### 4.3 Guest Login
+
+- Method: `POST`
+- Endpoint: `/auth/guest/login`
+
+Body:
+
+```json
+{
+  "login": "quoc.nguyen@gmail.com",
+  "password": "guest12345"
+}
+```
+
+`login` may be:
+- `login_email`
+- `guest_code`
+
+Response returns:
+- `token`
+- `user` with `user_type = GUEST`
+- `loyalty_accounts`
+
+### 4.4 Current Authenticated User
+
+- Method: `GET`
+- Endpoint: `/auth/me`
+- Headers:
+  - `Authorization: Bearer <token>`
+
+---
+
+## 5. Reservations
 
 ### 4.1 Create Reservation
 
@@ -427,7 +499,7 @@ Validation:
 
 ---
 
-## 5. Payments
+## 6. Payments
 
 ### 5.1 Create Payment
 
@@ -519,7 +591,7 @@ Behavior:
 
 ---
 
-## 6. Services
+## 7. Services
 
 ### 6.1 List Available Services
 
@@ -638,7 +710,7 @@ Validation:
 
 ---
 
-## 7. Admin and Reporting
+## 8. Admin and Reporting
 
 ### 7.1 Update Room Rate
 
@@ -659,11 +731,13 @@ Validation:
 Behavior:
 - Updates `RoomRate`
 - If price change is greater than `50%`, trigger-based logging may create a `RateChangeLog` entry
+- All `/api/admin/*` endpoints now require a valid system-user bearer token
 
 Validation:
 - Invalid rate ID -> `400`
 - Missing `final_rate` -> `400`
 - Rate not found -> `404`
+- Missing or invalid auth -> `401`
 
 ### 7.2 View Rate Alerts
 
@@ -731,7 +805,7 @@ Conflict response shape:
 
 ---
 
-## 8. Locations
+## 9. Locations
 
 ### 8.1 Get Location Tree
 
@@ -753,7 +827,7 @@ Behavior:
 
 ---
 
-## 9. Housekeeping
+## 10. Housekeeping
 
 ### 9.1 List Housekeeping Tasks
 
@@ -852,7 +926,7 @@ Validation:
 
 ---
 
-## 10. Maintenance
+## 11. Maintenance
 
 ### 10.1 List Maintenance Tickets
 
@@ -924,7 +998,7 @@ Validation:
 
 ---
 
-## 11. Invoices
+## 12. Invoices
 
 ### 11.1 Create Invoice
 
@@ -1004,5 +1078,7 @@ Validation:
 - `POST /api/reservations` now documents the actual runtime behavior: direct pessimistic locking on `RoomAvailability`, not a stored procedure call.
 - `GET /api/rooms/availability` now exposes `availability_records`, which the admin optimistic locking flow depends on.
 - `POST /api/payments` currently blocks payments for reservations in `CANCELLED`, `CHECKED_OUT`, and `NO_SHOW`.
+- `/api/auth/*` now provides admin login, guest login, guest registration, and `/api/auth/me`.
+- `/api/admin/*` now requires a system-user bearer token.
 - `POST /api/reservations/:id/transfer` still depends on `sp_TransferRoom`.
 - `POST /api/invoices` uses `vw_ReservationTotal` as the financial source of truth.

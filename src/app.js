@@ -15,7 +15,9 @@ const roomRoutes = require('./routes/rooms');
 const guestRoutes = require('./routes/guests');
 const reservationRoutes = require('./routes/reservations');
 const paymentRoutes = require('./routes/payments');
+const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
+const promotionRoutes = require('./routes/promotions');
 const locationRoutes = require('./routes/locations');
 const serviceRoutes = require('./routes/services');
 const housekeepingRoutes = require('./routes/housekeeping');
@@ -57,6 +59,16 @@ app.get('/api', (req, res) => {
         'GET /api/guests/:id': 'Get guest profile with preferences, loyalty, addresses',
         'POST /api/guests': 'Create new guest (body: guest_code, first_name, last_name, ...)',
       },
+      auth: {
+        'POST /api/auth/login': 'Unified login that auto-detects system user vs guest account',
+        'POST /api/auth/admin/login': 'System user login with username/password',
+        'POST /api/auth/guest/register': 'Create a new guest account, or attach login credentials to an existing guest profile',
+        'POST /api/auth/guest/login': 'Guest login with login_email or guest_code',
+        'GET /api/auth/me': 'Resolve the currently authenticated user from bearer token',
+      },
+      promotions: {
+        'GET /api/promotions?hotel_id=&guest_id=': 'List active promotions, with guest eligibility when a guest context is present',
+      },
       reservations: {
         'POST /api/reservations': 'Create reservation with direct pessimistic locking on RoomAvailability (body: hotel_id, guest_id, room_id, checkin_date, checkout_date, nightly_rate, ...)',
         'GET /api/reservations/:code': 'Get reservation by confirmation code',
@@ -96,6 +108,7 @@ app.get('/api', (req, res) => {
         'PUT /api/maintenance/:id': 'Update ticket — resolve restores Room status (body: status, resolution_note)',
       },
       invoices: {
+        'GET /api/invoices?reservation_id=': 'List invoices, optionally filtered by reservation',
         'POST /api/invoices': 'Generate invoice from vw_ReservationTotal (body: reservation_id)',
         'GET /api/invoices/:id': 'Get invoice with line items (rooms + services + payments)',
         'POST /api/invoices/:id/issue': 'Issue invoice: DRAFT → ISSUED',
@@ -111,6 +124,8 @@ app.get('/api', (req, res) => {
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/guests', guestRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/promotions', promotionRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);

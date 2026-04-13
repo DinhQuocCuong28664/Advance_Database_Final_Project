@@ -95,6 +95,20 @@ npm run dev
 
 The API will be running at `http://localhost:3000/api`.
 
+### Demo Authentication
+
+Admin:
+- username: `admin`
+- password: `admin123`
+
+Guest:
+- login: `quoc.nguyen@gmail.com`
+- password: `guest12345`
+
+Guest:
+- login: `sakura.t@yahoo.co.jp`
+- password: `member12345`
+
 ### 4. Start the Frontend MVP
 ```bash
 npm run frontend:dev

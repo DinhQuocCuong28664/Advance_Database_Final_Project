@@ -222,15 +222,26 @@ INSERT INTO LoyaltyAccount (guest_id, chain_id, membership_no, tier_code, points
 GO
 
 -- ═══════════════════════════════════
+-- GUEST AUTH
+-- Test passwords:
+--   guest 1 -> guest12345
+--   guest 2 -> member12345
+-- ═══════════════════════════════════
+INSERT INTO GuestAuth (guest_id, login_email, password_hash, account_status, email_verified_at) VALUES
+(1, 'quoc.nguyen@gmail.com', '$2b$10$K3Kp5MKFb48b8phwwwhokuKHshaw7hBmeW75CSXbqYiicUeMPAle2', 'ACTIVE', GETDATE()),
+(2, 'sakura.t@yahoo.co.jp',  '$2b$10$0tAP4OlXtTYWX4ze4PF8ReQ1S48G4vNIXcaobGU./dhsPPHA7JO6y', 'ACTIVE', GETDATE());
+GO
+
+-- ═══════════════════════════════════
 -- SYSTEM USERS
 -- ═══════════════════════════════════
 SET IDENTITY_INSERT SystemUser ON;
 INSERT INTO SystemUser (user_id, hotel_id, username, password_hash, full_name, email, department, account_status) VALUES
-(1, 1, 'admin',          'hashed_pw_admin',  N'System Admin',         'admin@luxereserve.com',           'IT',           'ACTIVE'),
-(2, 1, 'fd.nguyen',      'hashed_pw_fd01',   N'Nguyen Thi Mai',      'mai.nguyen@ritzcarlton-sgn.com',  'FRONT_OFFICE', 'ACTIVE'),
-(3, 1, 'rev.tran',       'hashed_pw_rev01',  N'Tran Van Duc',        'duc.tran@ritzcarlton-sgn.com',    'FINANCE',      'ACTIVE'),
-(4, 2, 'fd.somchai',     'hashed_pw_fd02',   N'Somchai Paticharoen', 'somchai@wbangkok.com',            'FRONT_OFFICE', 'ACTIVE'),
-(5, 3, 'fd.lim',         'hashed_pw_fd03',   N'Lim Wei Ming',       'weiming@ic-singapore.com',        'FRONT_OFFICE', 'ACTIVE');
+(1, 1, 'admin',          '$2b$10$JcsOWTu5PIkaKfo5mJOX2uTjhRd2LNeBUmTfoK9xuFIYZWBqaFeZq',  N'System Admin',         'admin@luxereserve.com',           'IT',           'ACTIVE'),
+(2, 1, 'fd.nguyen',      '$2b$10$Y2II8hvj4oUwso5gaKHBVe0qK9ad.M04TCofqPCxIlaD0iIlvaOCq',  N'Nguyen Thi Mai',      'mai.nguyen@ritzcarlton-sgn.com',  'FRONT_OFFICE', 'ACTIVE'),
+(3, 1, 'rev.tran',       '$2b$10$9DPo8uBPW3gVNHGD8Ce3MeHSHghUGyFuLXXqHypnhRXeXVnp/P.7a',  N'Tran Van Duc',        'duc.tran@ritzcarlton-sgn.com',    'FINANCE',      'ACTIVE'),
+(4, 2, 'fd.somchai',     '$2b$10$Y2II8hvj4oUwso5gaKHBVe0qK9ad.M04TCofqPCxIlaD0iIlvaOCq',  N'Somchai Paticharoen', 'somchai@wbangkok.com',            'FRONT_OFFICE', 'ACTIVE'),
+(5, 3, 'fd.lim',         '$2b$10$Y2II8hvj4oUwso5gaKHBVe0qK9ad.M04TCofqPCxIlaD0iIlvaOCq',  N'Lim Wei Ming',        'weiming@ic-singapore.com',        'FRONT_OFFICE', 'ACTIVE');
 SET IDENTITY_INSERT SystemUser OFF;
 GO
 
@@ -313,6 +324,25 @@ INSERT INTO ServiceCatalog (hotel_id, service_code, service_name, service_catego
 (1, 'SVC-DINING-PRV', N'Private Dining Experience',      'DINING',           'PER_PERSON', 8000000, N'Chef''s table with wine pairing'),
 (2, 'SVC-SPA-AWAY',   N'AWAY Spa Retreat',               'SPA',              'PER_PERSON', 4500,    N'Signature Thai-inspired treatment'),
 (3, 'SVC-CLUB-ACC',   N'Club Lounge Access',             'DINING',           'PER_USE',    180,     N'All-day refreshments and cocktails');
+GO
+
+-- ═══════════════════════════════════
+-- PROMOTIONS
+-- ═══════════════════════════════════
+INSERT INTO Promotion (
+  hotel_id, brand_id, promotion_code, promotion_name, promotion_type,
+  discount_value, currency_code, applies_to,
+  booking_start_date, booking_end_date, stay_start_date, stay_end_date,
+  member_only_flag, min_nights, status
+) VALUES
+(1, NULL, 'RC-SGN-SUITE-2026', N'Ritz-Carlton Suite Escape', 'PERCENT_OFF', 15, 'VND', 'ROOM_ONLY',
+ '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 2, 'ACTIVE'),
+(NULL, 1, 'MARRIOTT-ELITE-APR', N'Marriott Elite Member Privilege', 'PERCENT_OFF', 18, NULL, 'ROOM_ONLY',
+ '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 1, 2, 'ACTIVE'),
+(2, NULL, 'W-BKK-SPA-CREDIT', N'W Bangkok Spa Credit', 'VALUE_CREDIT', 3500, 'THB', 'SERVICE_ONLY',
+ '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 1, 'ACTIVE'),
+(NULL, 3, 'IC-SG-CLUB-MEMBER', N'Club InterContinental Member Privilege', 'VALUE_CREDIT', 120, 'SGD', 'ROOM_AND_SERVICE',
+ '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 1, 1, 'ACTIVE');
 GO
 
 -- ═══════════════════════════════════

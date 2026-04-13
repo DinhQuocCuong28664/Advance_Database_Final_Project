@@ -419,6 +419,28 @@ GO
 PRINT '  ✅ LoyaltyAccount';
 GO
 
+CREATE TABLE GuestAuth (
+    guest_auth_id         BIGINT IDENTITY(1,1) PRIMARY KEY,
+    guest_id              BIGINT          NOT NULL,
+    login_email           VARCHAR(150)    NOT NULL,
+    password_hash         VARCHAR(255)    NOT NULL,
+    account_status        VARCHAR(10)     NOT NULL DEFAULT 'ACTIVE',
+    email_verified_at     DATETIME        NULL,
+    last_login_at         DATETIME        NULL,
+    created_at            DATETIME        NOT NULL DEFAULT GETDATE(),
+    updated_at            DATETIME        NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_GuestAuth_Guest   FOREIGN KEY (guest_id) REFERENCES Guest(guest_id),
+    CONSTRAINT UQ_GuestAuth_Guest   UNIQUE (guest_id),
+    CONSTRAINT UQ_GuestAuth_Email   UNIQUE (login_email),
+    CONSTRAINT CK_GuestAuth_Status  CHECK (account_status IN ('ACTIVE','LOCKED','DISABLED'))
+);
+CREATE INDEX IX_GuestAuth_LoginEmail ON GuestAuth(login_email);
+GO
+
+PRINT '  ✅ GuestAuth';
+GO
+
 -- ████████████████████████████████████████████████████████
 -- DOMAIN 6: SYSTEM USERS & ROLES
 -- ████████████████████████████████████████████████████████
