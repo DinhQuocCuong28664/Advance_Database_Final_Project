@@ -28,9 +28,9 @@ Serves as the integration layer merging both databases in real-time.
 ## 🔥 Advanced Database Concepts Implemented
 
 1. **Pessimistic Locking & Race-Condition Prevention**
-   - Implemented via `sp_ReserveRoom` Stored Procedure.
+   - Implemented in the live booking API by directly locking `RoomAvailability` rows with `UPDLOCK, HOLDLOCK`.
    - Blocks simultaneous attempts to book the same room on the same date.
-   - `InventoryLockLog` tracks successful and failed lock attempts.
+   - Admin inventory updates use version-based optimistic locking on `RoomAvailability.version_no`.
 
 2. **Price Integrity Guard Trigger**
    - `trg_RoomRate_PriceIntegrityGuard` fires `AFTER UPDATE` on `RoomRate`.
@@ -94,6 +94,19 @@ npm run dev
 ```
 
 The API will be running at `http://localhost:3000/api`.
+
+### 4. Start the Frontend MVP
+```bash
+npm run frontend:dev
+```
+
+The Vite frontend runs at `http://localhost:5173` and proxies `/api` requests to the backend on port `3000`.
+
+If you need an explicit API URL for another environment, copy `frontend/.env.example` to `frontend/.env` and set:
+
+```env
+VITE_API_BASE_URL=http://localhost:3000/api
+```
 
 ---
 
