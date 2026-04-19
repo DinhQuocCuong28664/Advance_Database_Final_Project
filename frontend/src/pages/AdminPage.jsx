@@ -1,44 +1,150 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useFlash } from '../context/FlashContext';
-import { useAppData } from '../context/AppDataContext';
-import { useReservation } from '../hooks/useReservation';
-import { useAdmin } from '../hooks/useAdmin';
-import MetricCard from '../components/ui/MetricCard';
-import { ADMIN_NAV_ITEMS } from '../constants';
-import { API_BASE_URL } from '../lib/api';
-import { money, when } from '../utils/formatters';
+
+const INVENTORY_STATUSES = ['OPEN', 'HELD', 'BLOCKED', 'BOOKED'];
+const ACCOUNT_STATUSES = ['ACTIVE', 'LOCKED', 'DISABLED'];
+
+const ADMIN_MODULES = [
+  {
+    title: 'Inventory',
+    description: 'Hotel availability review and record-level status control are now wired into this page.',
+    status: 'Active module',
+  },
+  {
+    title: 'Front desk',
+    description: 'Arrival, check-in, check-out, and walk-in handling will plug in after inventory is stable.',
+    status: 'Next phase',
+  },
+  {
+    title: 'Reservations',
+    description: 'Reservation lookup and exception handling will follow after the inventory board.',
+    status: 'Planned',
+  },
+  {
+    title: 'Operations',
+    description: 'Housekeeping and maintenance workspaces will connect after core admin flows are stable.',
+    status: 'Planned',
+  },
+];
+
+function formatDateLabel(date) {
+  return new Date(date).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+  });
+}
+
+function formatCurrency(value, currency = 'VND') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function todayString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(isoDate, days) {
+  const next = new Date(`${isoDate}T00:00:00`);
+  next.setDate(next.getDate() + days);
+  const year = next.getFullYear();
+  const month = String(next.getMonth() + 1).padStart(2, '0');
+  const day = String(next.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeHotels(payload) {
+  return payload.data || [];
+}
+
+function normalizeInventory(payload) {
+  return payload.data || [];
+}
 
 export default function AdminPage() {
   const navigate = useNavigate();
-  const { isSystemUser, logout, alerts } = useAuth();
-  const { flash, setFlash } = useFlash();
-  const { hotels } = useAppData();
+  const { isSystemUser, authSession, logout } = useAuth();
+  const { setFlash } = useFlash();
+  const [hotels, setHotels] = useState([]);
+  const [inventoryRooms, setInventoryRooms] = useState([]);
+  const [rateAlerts, setRateAlerts] = useState([]);
+  const [accountSnapshot, setAccountSnapshot] = useState({ system_users: [], guest_accounts: [] });
+  const [hotelId, setHotelId] = useState('');
+  const [checkin, setCheckin] = useState(todayString());
+  const [checkout, setCheckout] = useState(addDays(todayString(), 2));
+  const [loadingHotels, setLoadingHotels] = useState(true);
+  const [loadingInventory, setLoadingInventory] = useState(false);
+  const [savingRecordId, setSavingRecordId] = useState('');
+  const [draftStatuses, setDraftStatuses] = useState({});
+  const [accountDrafts, setAccountDrafts] = useState({});
+  const [savingAccountKey, setSavingAccountKey] = useState('');
 
-  const {
-    reservationCode, setReservationCode,
-    reservationBusy, reservationActionBusy,
-    reservationData,
-    invoiceDetail, invoiceBusy,
-    handleReservationLookup,
-    runReservationAction,
-    handleInvoiceIssue,
-  } = useReservation();
-
-  const {
-    adminTab, setAdminTab,
-    opsSearch, setOpsSearch,
-    opsBusy, opsRecordBusy, opsRooms,
-    feedsBusy,
-    housekeeping, maintenance, revenue,
-    handleOpsSearch, handleOpsFeeds,
-    updateAvailability,
-  } = useAdmin();
-
-  // Guard: only system users can access admin
   if (!isSystemUser) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace state={{ nextUrl: '/admin' }} />;
   }
+
+  useEffect(() => {
+    async function loadAdminFoundations() {
+      setLoadingHotels(true);
+      try {
+        const [hotelsPayload, alertsPayload, accountsPayload] = await Promise.all([
+          apiRequest('/hotels'),
+          apiRequest('/admin/rates/alerts').catch(() => ({ data: [] })),
+          apiRequest('/admin/accounts').catch(() => ({ data: { system_users: [], guest_accounts: [] } })),
+        ]);
+
+        const nextHotels = normalizeHotels(hotelsPayload);
+        setHotels(nextHotels);
+        setRateAlerts(alertsPayload.data || []);
+        const nextAccounts = accountsPayload.data || { system_users: [], guest_accounts: [] };
+        setAccountSnapshot(nextAccounts);
+        setAccountDrafts({
+          ...Object.fromEntries(nextAccounts.system_users.map((user) => [`system-${user.user_id}`, user.account_status])),
+          ...Object.fromEntries(nextAccounts.guest_accounts.map((guest) => [`guest-${guest.guest_auth_id}`, guest.account_status])),
+        });
+
+        if (nextHotels.length) {
+          setHotelId(String(nextHotels[0].hotel_id));
+        }
+      } catch (error) {
+        setFlash({ tone: 'error', text: error.message });
+      } finally {
+        setLoadingHotels(false);
+      }
+    }
+
+    loadAdminFoundations();
+  }, [setFlash]);
+
+  const selectedHotel = useMemo(
+    () => hotels.find((hotel) => String(hotel.hotel_id) === String(hotelId)) || null,
+    [hotels, hotelId],
+  );
+
+  const inventorySummary = useMemo(() => {
+    const records = inventoryRooms.flatMap((room) => room.availability_records || []);
+    const byStatus = records.reduce((acc, record) => {
+      acc[record.availability_status] = (acc[record.availability_status] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      roomCount: inventoryRooms.length,
+      openCount: byStatus.OPEN || 0,
+      heldCount: byStatus.HELD || 0,
+      blockedCount: byStatus.BLOCKED || 0,
+      bookedCount: byStatus.BOOKED || 0,
+    };
+  }, [inventoryRooms]);
 
   function handleLogout() {
     logout();
@@ -46,237 +152,450 @@ export default function AdminPage() {
     navigate('/');
   }
 
+  async function handleInventoryLoad(event) {
+    event?.preventDefault?.();
+
+    if (!hotelId) {
+      setFlash({ tone: 'error', text: 'Select a hotel first.' });
+      return;
+    }
+
+    if (!checkin || !checkout || checkout <= checkin) {
+      setFlash({ tone: 'error', text: 'Choose a valid date range for inventory.' });
+      return;
+    }
+
+    setLoadingInventory(true);
+    try {
+      const payload = await apiRequest(
+        `/rooms/availability?hotel_id=${hotelId}&checkin=${checkin}&checkout=${checkout}`,
+      );
+      const rooms = normalizeInventory(payload);
+      setInventoryRooms(rooms);
+      setDraftStatuses(
+        Object.fromEntries(
+          rooms.flatMap((room) =>
+            (room.availability_records || []).map((record) => [record.availability_id, record.availability_status]),
+          ),
+        ),
+      );
+      setFlash({
+        tone: 'success',
+        text: rooms.length
+          ? `Loaded inventory for ${selectedHotel?.hotel_name || 'the selected hotel'}.`
+          : 'No sellable rooms are currently returned for this date range.',
+      });
+    } catch (error) {
+      setInventoryRooms([]);
+      setDraftStatuses({});
+      setFlash({ tone: 'error', text: error.message });
+    } finally {
+      setLoadingInventory(false);
+    }
+  }
+
+  async function handleRecordSave(record) {
+    const nextStatus = draftStatuses[record.availability_id] || record.availability_status;
+    if (nextStatus === record.availability_status) {
+      return;
+    }
+
+    setSavingRecordId(String(record.availability_id));
+    try {
+      const payload = await apiRequest(`/admin/availability/${record.availability_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          availability_status: nextStatus,
+          expected_version: record.version_no,
+        }),
+      });
+
+      setInventoryRooms((current) =>
+        current.map((room) => ({
+          ...room,
+          availability_records: (room.availability_records || []).map((entry) =>
+            entry.availability_id === record.availability_id
+              ? {
+                  ...entry,
+                  availability_status: payload.data.availability_status,
+                  version_no: payload.data.new_version,
+                }
+              : entry,
+          ),
+        })),
+      );
+
+      setDraftStatuses((current) => ({
+        ...current,
+        [record.availability_id]: payload.data.availability_status,
+      }));
+
+      setFlash({
+        tone: 'success',
+        text: `Availability updated for room ${record.room_number || record.room_id} on ${formatDateLabel(record.stay_date)}.`,
+      });
+    } catch (error) {
+      setFlash({ tone: 'error', text: error.message });
+    } finally {
+      setSavingRecordId('');
+    }
+  }
+
+  async function handleAccountSave(kind, account) {
+    const key = `${kind}-${kind === 'system' ? account.user_id : account.guest_auth_id}`;
+    const nextStatus = accountDrafts[key] || account.account_status;
+
+    if (nextStatus === account.account_status) {
+      return;
+    }
+
+    setSavingAccountKey(key);
+    try {
+      const path =
+        kind === 'system'
+          ? `/admin/accounts/system/${account.user_id}`
+          : `/admin/accounts/guest/${account.guest_auth_id}`;
+
+      await apiRequest(path, {
+        method: 'PUT',
+        body: JSON.stringify({ account_status: nextStatus }),
+      });
+
+      setAccountSnapshot((current) => ({
+        system_users:
+          kind === 'system'
+            ? current.system_users.map((user) =>
+                user.user_id === account.user_id ? { ...user, account_status: nextStatus } : user,
+              )
+            : current.system_users,
+        guest_accounts:
+          kind === 'guest'
+            ? current.guest_accounts.map((guest) =>
+                guest.guest_auth_id === account.guest_auth_id ? { ...guest, account_status: nextStatus } : guest,
+              )
+            : current.guest_accounts,
+      }));
+
+      setAccountDrafts((current) => ({ ...current, [key]: nextStatus }));
+      setFlash({
+        tone: 'success',
+        text: `${kind === 'system' ? account.full_name : account.login_email} updated to ${nextStatus}.`,
+      });
+    } catch (error) {
+      setFlash({ tone: 'error', text: error.message });
+    } finally {
+      setSavingAccountKey('');
+    }
+  }
+
   return (
-    <div className="app-shell admin-shell">
-      <div className="ambient ambient-left" />
-      <div className="ambient ambient-right" />
-
-      {/* ── Admin Hero ──────────────────────────────── */}
-      <header className="hero-band admin-hero">
-        <div className="hero-copy">
-          <p className="eyebrow">Admin Portal</p>
-          <h1>LuxeReserve Management Console</h1>
-          <p className="lede">
-            Separate management workspace for front desk, inventory locking, operations feeds, and revenue reporting.
-          </p>
-          <div className="hero-meta">
-            <span>API base: {API_BASE_URL}</span>
-            <span>Backend default: http://localhost:3000/api</span>
+    <div className="app-shell">
+      <main className="page-stack">
+        <section className="admin-hero">
+          <div className="admin-hero-copy">
+            <p className="page-eyebrow">Admin dashboard</p>
+            <h1 className="page-title">Inventory control for LuxeReserve.</h1>
+            <p className="page-text">
+              Welcome back, {authSession?.user?.full_name}. This admin pass starts with room inventory so
+              the team can review sellable rooms, inspect day-level availability records, and change statuses
+              with optimistic locking.
+            </p>
           </div>
-        </div>
-        <aside className="hero-panel">
-          <MetricCard label="Alerts" value={alerts.length} accent="copper" />
-          <MetricCard label="Housekeeping" value={housekeeping.length} accent="teal" />
-          <MetricCard label="Maintenance" value={maintenance.length} accent="gold" />
-          <button className="ghost-button admin-signout" type="button" onClick={handleLogout}>Sign Out</button>
-        </aside>
-      </header>
+          <div className="admin-hero-actions">
+            <button className="primary-button" type="button" onClick={() => navigate('/')}>
+              Back home
+            </button>
+            <button className="ghost-button" type="button" onClick={handleLogout}>
+              Sign out
+            </button>
+          </div>
+        </section>
 
-      {/* ── Admin Navigation ────────────────────────── */}
-      <nav className="view-tabs">
-        {ADMIN_NAV_ITEMS.map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            className={value === adminTab ? 'tab-button active' : 'tab-button'}
-            onClick={() => setAdminTab(value)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
+        <section className="admin-metrics">
+          <article className="admin-metric-card">
+            <span>Selected hotel</span>
+            <strong>{selectedHotel?.hotel_name || (loadingHotels ? 'Loading...' : 'Choose hotel')}</strong>
+          </article>
+          <article className="admin-metric-card">
+            <span>Sellable rooms loaded</span>
+            <strong>{inventorySummary.roomCount}</strong>
+          </article>
+          <article className="admin-metric-card">
+            <span>Open rate alerts</span>
+            <strong>{rateAlerts.length}</strong>
+          </article>
+        </section>
 
-      {flash ? <div className={`message-strip ${flash.tone}`}>{flash.text}</div> : null}
+        <section className="page-card page-card-wide">
+          <div className="admin-section-head">
+            <div>
+              <p className="page-eyebrow">Account management</p>
+              <h2>Admin and guest login snapshot</h2>
+            </div>
+            <span className="admin-status-pill">Live data</span>
+          </div>
 
-      <main className="content-grid">
-        {/* ── Front Desk Tab ──────────────────────── */}
-        {adminTab === 'desk' ? (
-          <>
-            <section className="panel panel-span-2">
-              <p className="section-kicker">Front desk</p>
-              <h2>Reservation control</h2>
-              <form className="lookup-row" onSubmit={handleReservationLookup}>
-                <input
-                  type="text"
-                  placeholder="RES-20260413-ABC123"
-                  value={reservationCode}
-                  onChange={(event) => setReservationCode(event.target.value)}
-                />
-                <button className="primary-button" type="submit" disabled={reservationBusy}>
-                  {reservationBusy ? 'Loading...' : 'Load Reservation'}
-                </button>
-              </form>
-              {reservationData ? (
-                <>
-                  <div className="reservation-profile">
-                    <div><span>Status</span><strong>{reservationData.reservation_status}</strong></div>
-                    <div><span>Guest</span><strong>{reservationData.guest_name}</strong></div>
-                    <div><span>Stay</span><strong>{when(reservationData.checkin_date)} - {when(reservationData.checkout_date)}</strong></div>
-                    <div><span>Balance due</span><strong>{money(reservationData.balance_due, reservationData.currency_code)}</strong></div>
-                  </div>
-                  <div className="action-row">
-                    <button className="ghost-button" type="button" disabled={reservationActionBusy} onClick={() => runReservationAction('checkin')}>
-                      {reservationActionBusy === 'checkin' ? 'Working...' : 'Check In'}
-                    </button>
-                    <button className="ghost-button" type="button" disabled={reservationActionBusy} onClick={() => runReservationAction('checkout')}>
-                      {reservationActionBusy === 'checkout' ? 'Working...' : 'Check Out'}
-                    </button>
-                    <button className="ghost-button warning" type="button" disabled={reservationActionBusy} onClick={() => runReservationAction('hotelCancel')}>
-                      {reservationActionBusy === 'hotelCancel' ? 'Working...' : 'Hotel Cancel'}
-                    </button>
-                  </div>
-                </>
-              ) : <p className="muted-copy">Load a reservation code to manage the stay lifecycle.</p>}
-            </section>
-
-            <section className="panel">
-              <p className="section-kicker">Invoice</p>
-              <h2>Issuance</h2>
-              {invoiceDetail ? (
-                <div className="compact-list">
-                  <div className="compact-item">
-                    <strong>{invoiceDetail.invoice_no}</strong>
-                    <span>{invoiceDetail.status}</span>
-                    <span>{money(invoiceDetail.total_amount, invoiceDetail.currency_code)}</span>
-                  </div>
-                  <button
-                    className="primary-button"
-                    type="button"
-                    disabled={invoiceDetail.status !== 'DRAFT' || invoiceBusy === 'issue'}
-                    onClick={handleInvoiceIssue}
-                  >
-                    {invoiceBusy === 'issue' ? 'Issuing...' : 'Issue Invoice'}
-                  </button>
-                </div>
-              ) : <p className="muted-copy">Invoice data appears here after a reservation lookup loads an invoice.</p>}
-            </section>
-
-            <section className="panel">
-              <p className="section-kicker">Rate alerts</p>
-              <h2>Latest trigger logs</h2>
-              <div className="compact-list">
-                {alerts.slice(0, 6).map((alert) => (
-                  <div key={alert.log_id || `${alert.room_rate_id}-${alert.triggered_at}`} className="compact-item">
-                    <strong>{alert.hotel_name}</strong>
-                    <span>{alert.room_type_name}</span>
-                    <span>{when(alert.triggered_at)}</span>
-                  </div>
-                ))}
-                {!alerts.length ? <p className="muted-copy">No rate alerts returned.</p> : null}
+          <div className="admin-account-grid">
+            <article className="admin-account-card admin-account-card-wide">
+              <div className="admin-card-title">
+                <h3>System users</h3>
+                <span className="admin-status-pill">{accountSnapshot.system_users.length} users</span>
               </div>
-            </section>
-          </>
-        ) : null}
-
-        {/* ── Inventory Tab ──────────────────────── */}
-        {adminTab === 'inventory' ? (
-          <section className="panel panel-span-3">
-            <p className="section-kicker">Inventory</p>
-            <h2>Optimistic locking control surface</h2>
-            <form className="form-grid" onSubmit={handleOpsSearch}>
-              <label>
-                Hotel
-                <select value={opsSearch.hotelId} onChange={(event) => setOpsSearch((current) => ({ ...current, hotelId: event.target.value }))}>
-                  {hotels.map((hotel) => <option key={hotel.hotel_id} value={hotel.hotel_id}>{hotel.hotel_name}</option>)}
-                </select>
-              </label>
-              <label>
-                Date from
-                <input type="date" value={opsSearch.checkin} onChange={(event) => setOpsSearch((current) => ({ ...current, checkin: event.target.value }))} />
-              </label>
-              <label>
-                Date to
-                <input type="date" value={opsSearch.checkout} onChange={(event) => setOpsSearch((current) => ({ ...current, checkout: event.target.value }))} />
-              </label>
-              <button className="primary-button" type="submit" disabled={opsBusy}>
-                {opsBusy ? 'Refreshing...' : 'Load Inventory Records'}
-              </button>
-            </form>
-            <div className="inventory-grid">
-              {opsRooms.flatMap((room) =>
-                (room.availability_records || []).map((record) => (
-                  <article key={record.availability_id} className="inventory-card">
-                    <div className="inventory-card-head">
-                      <strong>Room {room.room_number} | {room.room_type_name}</strong>
-                      <span>v{record.version_no}</span>
+              <div className="admin-account-list">
+                {accountSnapshot.system_users.map((user) => (
+                  <article key={user.user_id} className="admin-account-row">
+                    <div>
+                      <strong>{user.full_name}</strong>
+                      <span>{user.username} - {user.department || 'N/A'}</span>
                     </div>
-                    <p>{when(record.stay_date)}</p>
-                    <div className="status-pill-row">
-                      <span className={`status-pill ${record.availability_status.toLowerCase()}`}>{record.availability_status}</span>
-                      <small>id {record.availability_id}</small>
-                    </div>
-                    <div className="action-row">
-                      <button className="ghost-button" type="button" disabled={opsRecordBusy === record.availability_id} onClick={() => updateAvailability(record, 'OPEN')}>Open</button>
-                      <button className="ghost-button warning" type="button" disabled={opsRecordBusy === record.availability_id} onClick={() => updateAvailability(record, 'BLOCKED')}>Block</button>
+                    <div className="admin-account-controls">
+                      <select
+                        value={accountDrafts[`system-${user.user_id}`] || user.account_status}
+                        onChange={(event) =>
+                          setAccountDrafts((current) => ({
+                            ...current,
+                            [`system-${user.user_id}`]: event.target.value,
+                          }))
+                        }
+                        disabled={savingAccountKey === `system-${user.user_id}`}
+                      >
+                        {ACCOUNT_STATUSES.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        disabled={
+                          savingAccountKey === `system-${user.user_id}` ||
+                          (accountDrafts[`system-${user.user_id}`] || user.account_status) === user.account_status
+                        }
+                        onClick={() => handleAccountSave('system', user)}
+                      >
+                        {savingAccountKey === `system-${user.user_id}` ? 'Saving...' : 'Save'}
+                      </button>
                     </div>
                   </article>
-                ))
-              )}
-              {!opsRooms.length ? <p className="muted-copy">Search inventory to expose availability records and version numbers.</p> : null}
-            </div>
-          </section>
-        ) : null}
+                ))}
+              </div>
+            </article>
 
-        {/* ── Operations Tab ─────────────────────── */}
-        {adminTab === 'operations' ? (
-          <section className="panel panel-span-3">
-            <div className="panel-header-inline">
-              <div>
-                <p className="section-kicker">Operations</p>
-                <h2>Housekeeping and maintenance</h2>
+            <article className="admin-account-card admin-account-card-wide">
+              <div className="admin-card-title">
+                <h3>Guest login accounts</h3>
+                <span className="admin-status-pill">{accountSnapshot.guest_accounts.length} accounts</span>
               </div>
-              <button className="ghost-button" type="button" onClick={handleOpsFeeds} disabled={feedsBusy}>
-                {feedsBusy ? 'Loading...' : 'Refresh Feeds'}
-              </button>
-            </div>
-            <div className="ops-columns">
-              <div>
-                <h3>Housekeeping</h3>
-                <div className="compact-list">
-                  {housekeeping.slice(0, 12).map((task) => (
-                    <div key={task.hk_task_id} className="compact-item">
-                      <strong>Room {task.room_number}</strong>
-                      <span>{task.task_type}</span>
-                      <span>{task.task_status}</span>
+              <div className="admin-account-list">
+                {accountSnapshot.guest_accounts.map((guest) => (
+                  <article key={guest.guest_auth_id} className="admin-account-row">
+                    <div>
+                      <strong>{guest.full_name}</strong>
+                      <span>
+                        {guest.login_email} - {guest.guest_code}
+                        {guest.tier_code ? ` - ${guest.tier_code}` : ' - No loyalty tier'}
+                      </span>
                     </div>
-                  ))}
-                  {!housekeeping.length ? <p className="muted-copy">No housekeeping feed loaded.</p> : null}
-                </div>
-              </div>
-              <div>
-                <h3>Maintenance</h3>
-                <div className="compact-list">
-                  {maintenance.slice(0, 12).map((ticket) => (
-                    <div key={ticket.maintenance_ticket_id} className="compact-item">
-                      <strong>{ticket.issue_category}</strong>
-                      <span>{ticket.room_number ? `Room ${ticket.room_number}` : 'Hotel-level ticket'}</span>
-                      <span>{ticket.status}</span>
+                    <div className="admin-account-controls">
+                      <select
+                        value={accountDrafts[`guest-${guest.guest_auth_id}`] || guest.account_status}
+                        onChange={(event) =>
+                          setAccountDrafts((current) => ({
+                            ...current,
+                            [`guest-${guest.guest_auth_id}`]: event.target.value,
+                          }))
+                        }
+                        disabled={savingAccountKey === `guest-${guest.guest_auth_id}`}
+                      >
+                        {ACCOUNT_STATUSES.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        disabled={
+                          savingAccountKey === `guest-${guest.guest_auth_id}` ||
+                          (accountDrafts[`guest-${guest.guest_auth_id}`] || guest.account_status) === guest.account_status
+                        }
+                        onClick={() => handleAccountSave('guest', guest)}
+                      >
+                        {savingAccountKey === `guest-${guest.guest_auth_id}` ? 'Saving...' : 'Save'}
+                      </button>
                     </div>
-                  ))}
-                  {!maintenance.length ? <p className="muted-copy">No maintenance feed loaded.</p> : null}
-                </div>
+                  </article>
+                ))}
               </div>
-            </div>
-          </section>
-        ) : null}
+            </article>
+          </div>
+        </section>
 
-        {/* ── Reports Tab ────────────────────────── */}
-        {adminTab === 'reports' ? (
-          <section className="panel panel-span-3">
-            <p className="section-kicker">Reports</p>
-            <h2>Revenue snapshot</h2>
-            <div className="compact-list">
-              {revenue.slice(0, 12).map((row, index) => (
-                <div key={`${row.hotel_name}-${row.year}-${row.quarter}-${index}`} className="compact-item">
-                  <strong>{row.hotel_name}</strong>
-                  <span>Q{row.quarter} {row.year}</span>
-                  <span>{money(row.total_revenue, 'VND')}</span>
-                </div>
+        <section className="page-card page-card-wide">
+          <div className="admin-section-head">
+            <div>
+              <p className="page-eyebrow">Inventory</p>
+              <h2>Load hotel inventory by date range</h2>
+            </div>
+            <span className="admin-status-pill">Active module</span>
+          </div>
+
+          <form className="inventory-toolbar" onSubmit={handleInventoryLoad}>
+            <label>
+              Hotel
+              <select value={hotelId} onChange={(event) => setHotelId(event.target.value)} disabled={loadingHotels}>
+                <option value="">Select hotel</option>
+                {hotels.map((hotel) => (
+                  <option key={hotel.hotel_id} value={hotel.hotel_id}>
+                    {hotel.hotel_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Check-in
+              <input type="date" value={checkin} onChange={(event) => setCheckin(event.target.value)} />
+            </label>
+            <label>
+              Check-out
+              <input
+                type="date"
+                value={checkout}
+                min={checkin ? addDays(checkin, 1) : undefined}
+                onChange={(event) => setCheckout(event.target.value)}
+              />
+            </label>
+            <button className="primary-button" type="submit" disabled={loadingHotels || loadingInventory}>
+              {loadingInventory ? 'Loading inventory...' : 'Load inventory'}
+            </button>
+          </form>
+
+          <div className="inventory-summary-grid">
+            <article className="inventory-summary-card">
+              <span>Open records</span>
+              <strong>{inventorySummary.openCount}</strong>
+            </article>
+            <article className="inventory-summary-card">
+              <span>Held records</span>
+              <strong>{inventorySummary.heldCount}</strong>
+            </article>
+            <article className="inventory-summary-card">
+              <span>Blocked records</span>
+              <strong>{inventorySummary.blockedCount}</strong>
+            </article>
+            <article className="inventory-summary-card">
+              <span>Booked records</span>
+              <strong>{inventorySummary.bookedCount}</strong>
+            </article>
+          </div>
+
+          {selectedHotel ? (
+            <div className="inventory-hotel-note">
+              <strong>{selectedHotel.hotel_name}</strong>
+              <span>
+                {selectedHotel.brand_name} - {selectedHotel.city_name} - {selectedHotel.currency_code}
+              </span>
+            </div>
+          ) : null}
+
+          {inventoryRooms.length ? (
+            <div className="inventory-room-list">
+              {inventoryRooms.map((room) => (
+                <article key={room.room_id} className="inventory-room-card">
+                  <div className="inventory-room-head">
+                    <div>
+                      <h3>
+                        Room {room.room_number} - {room.room_type_name}
+                      </h3>
+                      <p>
+                        Floor {room.floor_number} - {room.category} - {room.max_adults} adults -{' '}
+                        {formatCurrency(room.min_nightly_rate, selectedHotel?.currency_code || 'VND')} from
+                      </p>
+                    </div>
+                    <span className="admin-status-pill">{room.availability_records.length} records</span>
+                  </div>
+
+                  <div className="inventory-record-grid">
+                    {room.availability_records.map((record) => {
+                      const currentDraft = draftStatuses[record.availability_id] || record.availability_status;
+                      const isSaving = savingRecordId === String(record.availability_id);
+                      return (
+                        <article key={record.availability_id} className="inventory-record-card">
+                          <div className="inventory-record-top">
+                            <strong>{formatDateLabel(record.stay_date)}</strong>
+                            <span className={`inventory-status-pill ${record.availability_status.toLowerCase()}`}>
+                              {record.availability_status}
+                            </span>
+                          </div>
+                          <label className="inventory-record-field">
+                            Status
+                            <select
+                              value={currentDraft}
+                              onChange={(event) =>
+                                setDraftStatuses((current) => ({
+                                  ...current,
+                                  [record.availability_id]: event.target.value,
+                                }))
+                              }
+                              disabled={isSaving}
+                            >
+                              {INVENTORY_STATUSES.map((status) => (
+                                <option key={status} value={status}>
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <div className="inventory-record-actions">
+                            <span>Version {record.version_no}</span>
+                            <button
+                              type="button"
+                              className="ghost-button"
+                              disabled={isSaving || currentDraft === record.availability_status}
+                              onClick={() => handleRecordSave({ ...record, room_number: room.room_number })}
+                            >
+                              {isSaving ? 'Saving...' : 'Save'}
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </article>
               ))}
-              {!revenue.length ? <p className="muted-copy">Open Ops Feeds or Reports after refreshing data.</p> : null}
             </div>
-          </section>
-        ) : null}
+          ) : (
+            <div className="inventory-empty-state">
+              <strong>No inventory loaded yet.</strong>
+              <span>
+                Choose a hotel and date range to load sellable rooms. Current backend behavior only returns rooms
+                with valid rate data and no blocking records in the selected range.
+              </span>
+            </div>
+          )}
+        </section>
+
+        <section className="page-card page-card-wide">
+          <div className="admin-section-head">
+            <div>
+              <p className="page-eyebrow">Modules</p>
+              <h2>Admin workspace map</h2>
+            </div>
+          </div>
+          <div className="admin-module-grid">
+            {ADMIN_MODULES.map((module) => (
+              <article key={module.title} className="admin-module-card">
+                <div className="admin-module-top">
+                  <h3>{module.title}</h3>
+                  <span className="admin-status-pill">{module.status}</span>
+                </div>
+                <p>{module.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
       </main>
     </div>
   );

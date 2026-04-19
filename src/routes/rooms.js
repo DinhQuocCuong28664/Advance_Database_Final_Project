@@ -42,6 +42,7 @@ router.get('/availability', async (req, res) => {
                  rt.room_type_name, rt.category, rt.bed_type,
                  rt.max_adults, rt.room_size_sqm, rt.view_type,
                  rt.room_type_code
+        HAVING MIN(rr.final_rate) > 0
         ORDER BY rt.category, r.floor_number
       `);
 

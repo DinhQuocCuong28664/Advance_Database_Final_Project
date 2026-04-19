@@ -4,7 +4,7 @@ import { AUTH_STORAGE_KEY } from '../constants';
 
 const AuthContext = createContext();
 
-const readStoredSession = () => {
+function readStoredSession() {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
@@ -12,57 +12,38 @@ const readStoredSession = () => {
   } catch {
     return null;
   }
-};
+}
 
-const writeStoredSession = (session) => {
+function writeStoredSession(session) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-};
+}
 
-const clearStoredSession = () => {
+function clearStoredSession() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
-};
+}
 
 export function AuthProvider({ children }) {
   const [authSession, setAuthSession] = useState(() => readStoredSession());
   const [authBusy, setAuthBusy] = useState('');
-  const [alerts, setAlerts] = useState([]);
-  const [guestPromotions, setGuestPromotions] = useState([]);
 
   const isSystemUser = authSession?.user?.user_type === 'SYSTEM_USER';
   const isGuestUser = authSession?.user?.user_type === 'GUEST';
   const guestAccounts = authSession?.user?.loyalty_accounts || [];
 
-  // Sync session on token change — refresh user profile plus role-specific data
   useEffect(() => {
     async function syncSession() {
-      if (!authSession?.token) {
-        setAlerts([]);
-        setGuestPromotions([]);
-        return;
-      }
+      if (!authSession?.token) return;
 
       try {
         const payload = await apiRequest('/auth/me');
         const nextSession = { token: authSession.token, user: payload.user };
         setAuthSession(nextSession);
         writeStoredSession(nextSession);
-
-        if (payload.user.user_type === 'SYSTEM_USER') {
-          const alertPayload = await apiRequest('/admin/rates/alerts');
-          setAlerts(alertPayload.data || []);
-          setGuestPromotions([]);
-        } else {
-          const promotionPayload = await apiRequest('/promotions');
-          setAlerts([]);
-          setGuestPromotions(promotionPayload.data || []);
-        }
       } catch {
         setAuthSession(null);
         clearStoredSession();
-        setAlerts([]);
-        setGuestPromotions([]);
       }
     }
 
@@ -80,19 +61,6 @@ export function AuthProvider({ children }) {
       const nextSession = { token: payload.token, user: payload.user };
       setAuthSession(nextSession);
       writeStoredSession(nextSession);
-
-      if (payload.user.user_type === 'SYSTEM_USER') {
-        const alertPayload = await apiRequest('/admin/rates/alerts', {
-          headers: { Authorization: `Bearer ${payload.token}` },
-        });
-        setAlerts(alertPayload.data || []);
-      } else {
-        const promoPayload = await apiRequest('/promotions', {
-          headers: { Authorization: `Bearer ${payload.token}` },
-        });
-        setGuestPromotions(promoPayload.data || []);
-      }
-
       return { success: true, user: payload.user };
     } catch (error) {
       return { success: false, error: error.message };
@@ -115,12 +83,41 @@ export function AuthProvider({ children }) {
           phone_number: data.phone_number || null,
         }),
       });
+      return { success: true, ...payload };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      setAuthBusy('');
+    }
+  }
+
+  async function verifyGuestEmail(data) {
+    setAuthBusy('verify-email');
+    try {
+      const payload = await apiRequest('/auth/guest/verify-email', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
 
       const nextSession = { token: payload.token, user: payload.user };
       setAuthSession(nextSession);
       writeStoredSession(nextSession);
-
       return { success: true, user: payload.user };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      setAuthBusy('');
+    }
+  }
+
+  async function resendGuestVerification(data) {
+    setAuthBusy('resend-email');
+    try {
+      const payload = await apiRequest('/auth/guest/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return { success: true, ...payload };
     } catch (error) {
       return { success: false, error: error.message };
     } finally {
@@ -131,23 +128,23 @@ export function AuthProvider({ children }) {
   function logout() {
     setAuthSession(null);
     clearStoredSession();
-    setAlerts([]);
-    setGuestPromotions([]);
   }
 
   return (
-    <AuthContext.Provider value={{
-      authSession,
-      authBusy,
-      isSystemUser,
-      isGuestUser,
-      guestAccounts,
-      alerts,
-      guestPromotions,
-      login,
-      registerGuest,
-      logout,
-    }}>
+    <AuthContext.Provider
+      value={{
+        authSession,
+        authBusy,
+        isSystemUser,
+        isGuestUser,
+        guestAccounts,
+        login,
+        registerGuest,
+        verifyGuestEmail,
+        resendGuestVerification,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

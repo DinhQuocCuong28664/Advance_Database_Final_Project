@@ -1,77 +1,103 @@
 # LuxeReserve — Global Luxury Hotel Reservation Engine
+
 **Advanced Database Systems - Final Project**
 
-LuxeReserve is a sophisticated hotel reservation platform designed with a **Polyglot Persistence Architecture**. It combines the transactional integrity of SQL Server with the rich content management capabilities of MongoDB Atlas.
+LuxeReserve is a full-stack luxury hotel reservation platform built with a **Polyglot Persistence Architecture**. It combines the transactional integrity of SQL Server with the rich content capabilities of MongoDB Atlas, exposed through a Node.js Express REST API and a React/Vite frontend.
 
 ---
 
 ## 🏛️ System Architecture
 
+```
+┌─────────────────────────────────┐
+│       React + Vite Frontend     │  http://localhost:5173
+│  (GuestLayout + AuthLayout)     │
+└────────────┬────────────────────┘
+             │ /api proxy
+┌────────────▼────────────────────┐
+│     Node.js Express API         │  http://localhost:3000
+│   (Hybrid SQL + MongoDB layer)  │
+└────────┬───────────┬────────────┘
+         │           │
+┌────────▼──┐  ┌─────▼──────────┐
+│ SQL Server│  │ MongoDB Atlas  │
+│  (ACID)   │  │ (Rich Content) │
+└───────────┘  └────────────────┘
+```
+
 ### 1. SQL Server (Operational Data)
 Handles core business logic, ACID transactions, and inventory.
-- **Scope**: 30 Normalized Tables
-- **Features**: Pessimistic Locking (`UPDLOCK, HOLDLOCK`), Views, Triggers, Denormalization for performance.
-- **Domains**: Reservations, Room Rates, Inventory, Payment, Roles & Users.
+- **Scope**: 30 Normalized tables
+- **Features**: Pessimistic Locking (`UPDLOCK, HOLDLOCK`), Views, Triggers, Stored Procedures
+- **Domains**: Reservations, Room Rates, Inventory, Payment, Roles & Users
 
 ### 2. MongoDB Atlas (Rich Content Management)
-Handles flexible schemaless data, catalogs, and fast reads.
-- **Scope**: 3 NoSQL Collections (`Hotel_Catalog`, `room_type_catalog`, `amenity_master`)
-- **Features**: Embedded documents, horizontal scalability.
-- **Domains**: Property images, dynamic features, long-form descriptions.
+Handles flexible schemaless data and fast catalog reads.
+- **Collections**: `Hotel_Catalog`, `room_type_catalog`, `amenity_master`
+- **Features**: Embedded documents, horizontal scalability
+- **Domains**: Property images, dynamic features, long-form descriptions
 
-### 3. Node.js Express API (Hybrid Backend)
-Serves as the integration layer merging both databases in real-time.
-- **Dependencies**: `mssql` (via `msnodesqlv8` for Windows Auth), `mongodb`.
+### 3. Node.js + Express API (Hybrid Backend)
+Integration layer merging both databases in real-time.
+- **Port**: `3000`
+- **Key deps**: `mssql` (Windows Auth via `msnodesqlv8`), `mongodb`, `nodemailer`
+
+### 4. React + Vite Frontend
+Full guest-facing and admin UI.
+- **Port**: `5173`
+- **Key deps**: `react-router-dom`, Vite proxy to backend
 
 ---
 
 ## 🔥 Advanced Database Concepts Implemented
 
-1. **Pessimistic Locking & Race-Condition Prevention**
-   - Implemented in the live booking API by directly locking `RoomAvailability` rows with `UPDLOCK, HOLDLOCK`.
-   - Blocks simultaneous attempts to book the same room on the same date.
-   - Admin inventory updates use version-based optimistic locking on `RoomAvailability.version_no`.
-
-2. **Price Integrity Guard Trigger**
-   - `trg_RoomRate_PriceIntegrityGuard` fires `AFTER UPDATE` on `RoomRate`.
-   - Automatically logs any rate change exceeding 50% into `RateChangeLog` as a `CRITICAL` alert.
-
-3. **Window Functions & Revenue Analytics**
-   - `GET /api/admin/reports/revenue` — Revenue per hotel with `DENSE_RANK()` and cumulative `SUM() OVER()`.
-   - `GET /api/admin/reports/revenue-by-brand` — Revenue across the full **HotelChain → Brand → Hotel** hierarchy with multi-level `PARTITION BY brand_id` and `PARTITION BY chain_id`.
-
-4. **Recursive CTE (Hierarchical Data)**
-   - `Location` table stores worldwide regions, countries, cities, and districts.
-   - `GET /api/locations/tree` uses a Common Table Expression to build a dynamic tree structure of any depth.
-
-5. **Computed Columns & Constraints**
-   - `Guest.full_name` is an auto-concatenated `PERSISTED` indexable column.
-   - Cross-table constraint triggers and `CHECK` logic to enforce at least one Foreign Key in junction tables.
+| # | Concept | Where |
+|---|---|---|
+| 1 | **Pessimistic Locking** (`UPDLOCK, HOLDLOCK`) | `POST /api/reservations` — blocks race conditions on same room/date |
+| 2 | **Optimistic Locking** (`version_no`) | Admin inventory `PUT /api/admin/availability/:id` — rejects stale updates (409) |
+| 3 | **Price Integrity Guard Trigger** | `trg_RoomRate_PriceIntegrityGuard` — logs rate changes > 50% as CRITICAL alerts |
+| 4 | **Window Functions + Revenue Analytics** | `GET /api/admin/reports/revenue` — `DENSE_RANK()`, cumulative `SUM() OVER()` |
+| 5 | **Recursive CTE** | `GET /api/locations/tree` — dynamic tree of any depth (Region → Country → City) |
+| 6 | **Computed Persisted Column** | `Guest.full_name` — auto-concatenated, indexable |
+| 7 | **Polyglot Merge** | Hotels API merges SQL rows + MongoDB catalog at runtime |
+| 8 | **Views** | `vw_ReservationTotal` — computes grand total with taxes and deposits |
 
 ---
 
 ## 🚀 Running the Project
 
 ### Prerequisites
-1. **SQL Server 2022 Express** (Running on `localhost\SQLEXPRESS` via Windows Authentication).
-2. **MongoDB Atlas** (Cluster provisioned & URI acquired).
-3. **Node.js** (v18+).
+- **SQL Server 2022 Express** on `localhost\SQLEXPRESS` (Windows Authentication)
+- **MongoDB Atlas** cluster with connection URI
+- **Node.js** v18+
 
 ### 1. Database Setup
-The architecture is set up via automated SQL scripts:
-```bash
-# Order of execution (located in /database/sql/)
-1. 01_create_database.sql
-2. 02_create_tables.sql
-3. 03_create_views.sql
-4. 04_create_triggers.sql
-5. 05_create_procedures.sql
-6. 06_seed_data.sql
+
+Run SQL scripts in order (located in `/database/sql/`):
+
 ```
-*A Node.js seed script (`/database/mongodb/02_seed_data.js`) populates MongoDB Atlas.*
+01_create_database.sql
+02_create_tables.sql
+03_create_views.sql
+04_create_triggers.sql
+05_create_procedures.sql
+06_seed_data.sql
+07_seed_guests.sql
+08_seed_rooms.sql
+09_seed_reservations.sql
+10_reset_accounts.sql
+11_email_verification.sql
+```
+
+Seed MongoDB Atlas:
+```bash
+node database/mongodb/02_seed_data.js
+```
 
 ### 2. Configure Environment
-Create a `.env` file in the root directory:
+
+Create `.env` in the project root:
+
 ```env
 PORT=3000
 NODE_ENV=development
@@ -85,41 +111,174 @@ SQL_TRUSTED_CONNECTION=true
 # MongoDB
 MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/luxereserve?retryWrites=true&w=majority
 MONGODB_DB_NAME=luxereserve
+
+# SMTP (for email notifications)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+SMTP_FROM=LuxeReserve <your_email@gmail.com>
+
+# App base URL (used in email links)
+APP_URL=http://localhost:5173
+
+# VNPay Merchant (sandbox — optional, inactive by default)
+VNPAY_TMN_CODE=YOUR_TMN_CODE
+VNPAY_HASH_SECRET=YOUR_HASH_SECRET
+VNPAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+VNPAY_RETURN_URL=http://localhost:5173/booking/vnpay-return
+VNPAY_IPN_URL=http://localhost:3000/api/vnpay/ipn
 ```
 
-### 3. Start the API Server
+### 3. Install Dependencies
+
 ```bash
+# Root (backend)
 npm install
-npm run dev
+
+# Frontend
+cd frontend && npm install && cd ..
 ```
 
-The API will be running at `http://localhost:3000/api`.
+### 4. Start Development Servers
 
-### Demo Authentication
-
-Admin:
-- username: `admin`
-- password: `admin123`
-
-Guest:
-- login: `quoc.nguyen@gmail.com`
-- password: `guest12345`
-
-Guest:
-- login: `sakura.t@yahoo.co.jp`
-- password: `member12345`
-
-### 4. Start the Frontend MVP
 ```bash
+# Start backend API (port 3000)
+npm run dev
+
+# Start frontend (port 5173) — in a separate terminal
 npm run frontend:dev
 ```
 
-The Vite frontend runs at `http://localhost:5173` and proxies `/api` requests to the backend on port `3000`.
+Frontend is at **http://localhost:5173** — proxies all `/api` requests to the backend.
 
-If you need an explicit API URL for another environment, copy `frontend/.env.example` to `frontend/.env` and set:
+---
 
-```env
-VITE_API_BASE_URL=http://localhost:3000/api
+## 🗺️ Frontend Route Map
+
+| Route | Page | Auth |
+|---|---|---|
+| `/` | Homepage — Hero search, Destinations, Featured Hotels, Promotions | Public |
+| `/search` | Search results with sidebar filters | Public |
+| `/hotel/:id` | Hotel detail — gallery, rooms, amenities | Public |
+| `/booking/:hotelId/:roomId` | 3-step checkout (Details → Confirm → Done) | Public |
+| `/booking/vnpay-return` | VNPay payment result page | Public |
+| `/reservation` | Lookup by code + My Bookings + Cancel | Public / Guest |
+| `/login` | Shared login (guest + admin) | Public |
+| `/register` | Guest registration with OTP email verification | Public |
+| `/account` | Guest account hub — bookings, loyalty | Guest only |
+| `/admin` | Admin dashboard — inventory, accounts, revenue | Admin only |
+
+---
+
+## 🔑 Demo Accounts
+
+| Type | Login | Password |
+|---|---|---|
+| Admin | `admin` | `admin` |
+| Guest (dqc) | `dqc` | `dqc` |
+| Guest | `user` | `user` |
+
+---
+
+## 📬 Email Notifications
+
+The system sends transactional emails via SMTP (Nodemailer):
+
+| Event | Template |
+|---|---|
+| Guest registration | OTP verification code |
+| Booking confirmed | Reservation code, dates, deposit paid |
+| Booking cancelled | Cancellation confirmation |
+| Check-in reminder | Sent before check-in date |
+
+Configure `SMTP_*` variables in `.env` to activate.  
+Uses **fire-and-forget** — email failures never block the main API response.
+
+---
+
+## 💳 Payment
+
+### Current (Mock)
+When booking, a `DEPOSIT` payment (30% of total) is recorded directly in the DB without external gateway.  
+Remaining 70% (`Balance`) is due at check-out.
+
+### VNPay Integration (Ready, Inactive)
+Full VNPay Merchant integration is built but commented out:
+- `src/services/vnpay.js` — HMAC-SHA512 URL signing & return verification
+- `src/routes/vnpay.js` — `create-payment`, `return`, `ipn` endpoints
+
+To activate: uncomment the `TODO: Bật VNPay` block in `frontend/src/pages/BookingPage.jsx`.
+
+---
+
+## 📡 Key API Endpoints
+
+```
+GET  /api/hotels                        List hotels (SQL + MongoDB merge)
+GET  /api/hotels/:id                    Hotel detail with rooms & amenities
+GET  /api/rooms/availability            Available rooms by date range
+GET  /api/locations/tree                Location hierarchy (Recursive CTE)
+GET  /api/promotions                    Active promotions
+
+POST /api/auth/login                    Unified login (guest + admin)
+POST /api/auth/guest/register           Guest registration
+POST /api/auth/guest/verify-email       OTP verification
+
+GET  /api/reservations/:code            Lookup by reservation code
+GET  /api/reservations/by-guest/:code   All reservations for a guest
+POST /api/reservations                  Create reservation (pessimistic lock)
+POST /api/reservations/:id/guest-cancel Cancel reservation (auth required)
+
+POST /api/payments                      Record payment
+POST /api/vnpay/create-payment          Create VNPay payment URL
+GET  /api/vnpay/return                  VNPay browser redirect handler
+GET  /api/vnpay/ipn                     VNPay server-to-server callback
+
+GET  /api/admin/accounts                List system + guest accounts
+PUT  /api/admin/availability/:id        Update room availability (optimistic lock)
+GET  /api/admin/reports/revenue         Revenue analytics (window functions)
+```
+
+---
+
+## 📁 Project Structure
+
+```
+HCSDLNC/
+├── src/
+│   ├── app.js                  Express app entry point
+│   ├── config/
+│   │   └── database.js         SQL + MongoDB connection pool
+│   ├── middleware/
+│   │   └── auth.js             JWT auth middleware (requireAuth, requireAdmin)
+│   ├── routes/
+│   │   ├── hotels.js
+│   │   ├── rooms.js
+│   │   ├── reservations.js
+│   │   ├── payments.js
+│   │   ├── guests.js
+│   │   ├── auth.js
+│   │   ├── admin.js
+│   │   ├── promotions.js
+│   │   ├── locations.js
+│   │   ├── invoices.js
+│   │   └── vnpay.js            VNPay integration (inactive)
+│   └── services/
+│       ├── mail.js             Nodemailer email templates
+│       └── vnpay.js            VNPay HMAC signing & verification
+├── frontend/
+│   └── src/
+│       ├── pages/              All page components
+│       ├── components/
+│       │   └── layout/         GuestLayout, AuthLayout, SiteHeader, SiteFooter
+│       ├── context/            AuthContext, FlashContext (toast system)
+│       └── lib/api.js          Fetch wrapper with auth headers
+├── database/
+│   ├── sql/                    SQL setup scripts (01–11)
+│   └── mongodb/                MongoDB seed scripts
+├── .env                        Environment variables (not committed)
+└── NOTE.md                     Developer session notes
 ```
 
 ---

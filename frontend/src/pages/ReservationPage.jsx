@@ -1,263 +1,241 @@
-import { useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useReservation } from '../hooks/useReservation';
-import { money, when } from '../utils/formatters';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { apiRequest } from '../lib/api';
 
-export default function ReservationPage() {
-  const [searchParams] = useSearchParams();
+const STATUS_META = {
+  CONFIRMED:    { label: 'Confirmed',    color: '#2d6a4f', bg: 'rgba(45,106,79,0.1)'  },
+  CHECKED_IN:   { label: 'Checked in',  color: '#1a6a9a', bg: 'rgba(26,106,154,0.1)' },
+  CHECKED_OUT:  { label: 'Checked out', color: '#6b6b6b', bg: 'rgba(107,107,107,0.1)'},
+  CANCELLED:    { label: 'Cancelled',   color: '#c0392b', bg: 'rgba(192,57,43,0.1)'  },
+  NO_SHOW:      { label: 'No-show',     color: '#d35400', bg: 'rgba(211,84,0,0.1)'   },
+};
 
-  const {
-    reservationCode, setReservationCode,
-    reservationBusy, reservationActionBusy,
-    reservationData, reservationPayments,
-    paymentDraft, setPaymentDraft,
-    serviceCatalog, serviceOrders, serviceBusy, serviceDraft, setServiceDraft,
-    invoiceList, invoiceDetail, invoiceBusy, invoiceDraft, setInvoiceDraft,
-    loadReservation,
-    handleReservationLookup,
-    runReservationAction,
-    handlePaymentSubmit,
-    handleServiceOrder, handleServicePay,
-    handleInvoiceCreate, handleInvoiceSelect, handleInvoiceIssue,
-  } = useReservation();
+function StatusBadge({ status }) {
+  const m = STATUS_META[status] || { label: status, color: '#555', bg: '#eee' };
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '3px 10px',
+      borderRadius: '999px',
+      fontSize: '0.8rem',
+      fontWeight: 600,
+      color: m.color,
+      background: m.bg,
+      letterSpacing: '0.04em',
+    }}>
+      {m.label}
+    </span>
+  );
+}
 
-  // Auto-load reservation from URL param (e.g. after booking redirect)
-  useEffect(() => {
-    const codeParam = searchParams.get('code');
-    if (codeParam && codeParam !== reservationCode) {
-      setReservationCode(codeParam);
-      loadReservation(codeParam).catch(() => {});
-    }
-  }, [searchParams]);
+function ReservationCard({ r, onCancel }) {
+  const nights = r.nights || 1;
+  // backend view uses 'grand_total'; table uses 'grand_total_amount' — handle both
+  const rawTotal = r.grand_total_amount ?? r.grand_total ?? 0;
+  const total = Number(rawTotal).toLocaleString('en-US');
+  const checkin = new Date(r.checkin_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const checkout = new Date(r.checkout_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const canCancel = r.reservation_status === 'CONFIRMED';
 
   return (
-    <>
-      {/* ── Reservation Lookup ──────────────────────── */}
-      <section className="panel">
-        <p className="section-kicker">Lookup</p>
-        <h2>Reservation lifecycle</h2>
-        <form className="lookup-row" onSubmit={handleReservationLookup}>
+    <article className="resv-card">
+      <div className="resv-card-top">
+        <div>
+          <p className="resv-card-code">{r.reservation_code}</p>
+          <h3 className="resv-card-hotel">{r.hotel_name}</h3>
+          {r.room_type_name && (
+            <p className="resv-card-room">
+              {r.room_type_name}{r.room_number ? ` · Room ${r.room_number}` : ''}
+            </p>
+          )}
+        </div>
+        <StatusBadge status={r.reservation_status} />
+      </div>
+
+      <div className="resv-card-dates">
+        <div className="resv-date-block">
+          <span>CHECK-IN</span>
+          <strong>{checkin}</strong>
+        </div>
+        <div className="resv-date-sep">{nights} night{nights > 1 ? 's' : ''}</div>
+        <div className="resv-date-block">
+          <span>CHECK-OUT</span>
+          <strong>{checkout}</strong>
+        </div>
+        <div className="resv-date-block">
+          <span>TOTAL</span>
+          <strong>{total} {r.currency_code || 'VND'}</strong>
+        </div>
+      </div>
+
+      {canCancel && (
+        <div className="resv-card-actions">
+          <button
+            className="ghost-button"
+            type="button"
+            style={{ color: '#c0392b', borderColor: 'rgba(192,57,43,0.3)' }}
+            onClick={() => onCancel(r)}
+          >
+            Cancel reservation
+          </button>
+        </div>
+      )}
+    </article>
+  );
+}
+
+export default function ReservationPage() {
+  const navigate = useNavigate();
+  const { authSession, isGuestUser } = useAuth();
+
+  const [reservations, setReservations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Lookup by code (for guests not logged in)
+  const [lookupCode, setLookupCode] = useState('');
+  const [lookupResult, setLookupResult] = useState(null);
+  const [lookupError, setLookupError] = useState(null);
+  const [lookupBusy, setLookupBusy] = useState(false);
+
+  // Cancel state
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+
+  // Auto-load reservations if logged in
+  useEffect(() => {
+    if (!authSession || !isGuestUser) return;
+    const guestCode = authSession.user?.guest_code;
+    if (!guestCode) return;
+
+    setLoading(true);
+    apiRequest(`/reservations/by-guest/${guestCode}`)
+      .then((r) => setReservations(r.data || []))
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [authSession, isGuestUser]);
+
+  async function handleLookup(e) {
+    e.preventDefault();
+    if (!lookupCode.trim()) return;
+    setLookupBusy(true);
+    setLookupError(null);
+    setLookupResult(null);
+    try {
+      const r = await apiRequest(`/reservations/${lookupCode.trim().toUpperCase()}`);
+      setLookupResult(r.data || r);
+    } catch (err) {
+      setLookupError('Reservation not found. Check your code and try again.');
+    } finally {
+      setLookupBusy(false);
+    }
+  }
+
+  async function handleCancel(reservation) {
+    if (!window.confirm(`Cancel reservation ${reservation.reservation_code}? This cannot be undone.`)) return;
+    setCancelBusy(true);
+    try {
+      await apiRequest(`/reservations/${reservation.reservation_id}/guest-cancel`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: 'Guest self-cancelled via portal' }),
+      });
+      // Refresh list
+      setReservations((prev) =>
+        prev.map((r) =>
+          r.reservation_id === reservation.reservation_id
+            ? { ...r, reservation_status: 'CANCELLED' }
+            : r
+        )
+      );
+      setCancelTarget(null);
+    } catch (err) {
+      alert('Cancellation failed: ' + err.message);
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
+  const loggedIn = authSession && isGuestUser;
+
+  return (
+    <div className="resv-page">
+      {/* ── Header ── */}
+      <div className="resv-header">
+        <div>
+          <p className="page-eyebrow">LuxeReserve</p>
+          <h1 className="resv-title">Your reservations</h1>
+          <p style={{ color: 'var(--text-soft)', marginTop: 6 }}>
+            {loggedIn
+              ? 'All bookings linked to your account appear below.'
+              : 'Sign in to see your bookings, or look up a reservation by code.'}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Lookup box (always visible) ── */}
+      <section className="page-card resv-lookup-card">
+        <p className="page-eyebrow">Lookup</p>
+        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Find by reservation code</h2>
+        <form className="resv-lookup-form" onSubmit={handleLookup}>
           <input
-            type="text"
-            placeholder="RES-20260413-ABC123"
-            value={reservationCode}
-            onChange={(event) => setReservationCode(event.target.value)}
+            className="resv-lookup-input"
+            placeholder="e.g. RES-20260418-2KU7Q9"
+            value={lookupCode}
+            onChange={(e) => setLookupCode(e.target.value)}
+            required
           />
-          <button className="primary-button" type="submit" disabled={reservationBusy}>
-            {reservationBusy ? 'Loading...' : 'Load Reservation'}
+          <button className="primary-button" type="submit" disabled={lookupBusy}>
+            {lookupBusy ? 'Searching…' : 'Look up'}
           </button>
         </form>
-        {reservationData ? (
-          <>
-            <div className="reservation-profile">
-              <div><span>Status</span><strong>{reservationData.reservation_status}</strong></div>
-              <div><span>Guest</span><strong>{reservationData.guest_name}</strong></div>
-              <div><span>Stay</span><strong>{when(reservationData.checkin_date)} - {when(reservationData.checkout_date)}</strong></div>
-              <div><span>Balance due</span><strong>{money(reservationData.balance_due, reservationData.currency_code)}</strong></div>
-            </div>
-            <div className="stats-grid">
-              <article className="compact-item"><strong>Grand total</strong><span>{money(reservationData.grand_total, reservationData.currency_code)}</span></article>
-              <article className="compact-item"><strong>Paid</strong><span>{money(reservationData.total_paid, reservationData.currency_code)}</span></article>
-              <article className="compact-item"><strong>Deposit target</strong><span>{money(reservationData.deposit_amount, reservationData.currency_code)}</span></article>
-            </div>
-          </>
-        ) : <p className="muted-copy">Load a confirmation code to unlock payment and lifecycle actions.</p>}
-        <div className="action-row">
-          <button className="ghost-button warning" type="button" disabled={!reservationData || reservationActionBusy} onClick={() => runReservationAction('guestCancel')}>
-            {reservationActionBusy === 'guestCancel' ? 'Working...' : 'Guest Cancel'}
-          </button>
-          <span className="muted-copy">Front desk actions are available in the separate admin portal.</span>
-        </div>
+        {lookupError && <p style={{ color: '#c0392b', marginTop: 8 }}>{lookupError}</p>}
+        {lookupResult && (
+          <div className="resv-lookup-result">
+            {/* No cancel button for anonymous lookup — must be logged in */}
+            <ReservationCard r={lookupResult} onCancel={null} />
+            {!loggedIn && lookupResult.reservation_status === 'CONFIRMED' && (
+              <p style={{ marginTop: 8, fontSize: '0.88rem', color: 'var(--text-soft)' }}>
+                Want to cancel this reservation?{' '}
+                <button
+                  type="button"
+                  className="shell-link"
+                  style={{ fontWeight: 600 }}
+                  onClick={() => navigate('/login')}
+                >
+                  Sign in
+                </button>{' '}to manage your booking.
+              </p>
+            )}
+          </div>
+        )}
       </section>
 
-      {/* ── Payments ────────────────────────────────── */}
-      <section className="panel">
-        <p className="section-kicker">Payments</p>
-        <h2>Capture and review</h2>
-        <form className="form-grid" onSubmit={handlePaymentSubmit}>
-          <label>
-            Payment type
-            <select
-              value={paymentDraft.payment_type}
-              onChange={(event) => setPaymentDraft((current) => ({
-                ...current,
-                payment_type: event.target.value,
-                amount: event.target.value === 'FULL_PAYMENT' && reservationData
-                  ? String(Number(reservationData.balance_due || 0))
-                  : current.amount,
-              }))}
-            >
-              <option value="DEPOSIT">DEPOSIT</option>
-              <option value="PREPAYMENT">PREPAYMENT</option>
-              <option value="FULL_PAYMENT">FULL_PAYMENT</option>
-            </select>
-          </label>
-          <label>
-            Method
-            <select value={paymentDraft.payment_method} onChange={(event) => setPaymentDraft((current) => ({ ...current, payment_method: event.target.value }))}>
-              <option value="CREDIT_CARD">CREDIT_CARD</option>
-              <option value="BANK_TRANSFER">BANK_TRANSFER</option>
-              <option value="WALLET">WALLET</option>
-              <option value="CASH">CASH</option>
-            </select>
-          </label>
-          <label>
-            Amount
-            <input type="number" min="0" step="0.01" value={paymentDraft.amount} onChange={(event) => setPaymentDraft((current) => ({ ...current, amount: event.target.value }))} />
-          </label>
-          <button className="primary-button" type="submit" disabled={!reservationData || reservationActionBusy}>
-            {reservationActionBusy === 'payment' ? 'Capturing...' : 'Capture Payment'}
-          </button>
-        </form>
-        <div className="payments-list">
-          {reservationPayments.map((payment) => (
-            <div key={payment.payment_id || payment.payment_reference} className="payment-row">
-              <div><strong>{payment.payment_type}</strong><p>{payment.payment_method}</p></div>
-              <div><strong>{money(payment.amount, payment.currency_code || reservationData?.currency_code)}</strong><p>{payment.payment_status}</p></div>
-            </div>
-          ))}
-          {!reservationPayments.length ? <p className="muted-copy">No payments loaded yet.</p> : null}
-        </div>
-      </section>
-
-      {/* ── Services ────────────────────────────────── */}
-      <section className="panel panel-span-2">
-        <p className="section-kicker">Services</p>
-        <h2>Ancillary order workspace</h2>
-        <form className="form-grid" onSubmit={handleServiceOrder}>
-          <label>
-            Service
-            <select value={serviceDraft.serviceId} onChange={(event) => setServiceDraft((current) => ({ ...current, serviceId: event.target.value }))}>
-              {serviceCatalog.map((service) => (
-                <option key={service.service_id} value={service.service_id}>
-                  {service.service_name} - {money(service.base_price, service.currency_code || reservationData?.currency_code)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Quantity
-            <input type="number" min="1" value={serviceDraft.quantity} onChange={(event) => setServiceDraft((current) => ({ ...current, quantity: event.target.value }))} />
-          </label>
-          <label>
-            Scheduled at
-            <input type="datetime-local" value={serviceDraft.scheduledAt} onChange={(event) => setServiceDraft((current) => ({ ...current, scheduledAt: event.target.value }))} />
-          </label>
-          <label>
-            Pay with
-            <select value={serviceDraft.paymentMethod} onChange={(event) => setServiceDraft((current) => ({ ...current, paymentMethod: event.target.value }))}>
-              <option value="CREDIT_CARD">CREDIT_CARD</option>
-              <option value="BANK_TRANSFER">BANK_TRANSFER</option>
-              <option value="WALLET">WALLET</option>
-              <option value="CASH">CASH</option>
-            </select>
-          </label>
-          <label className="full-span">
-            Special instruction
-            <textarea rows="3" value={serviceDraft.specialInstruction} onChange={(event) => setServiceDraft((current) => ({ ...current, specialInstruction: event.target.value }))} />
-          </label>
-          <button className="primary-button" type="submit" disabled={!reservationData || !serviceDraft.serviceId || serviceBusy === 'order'}>
-            {serviceBusy === 'order' ? 'Submitting...' : 'Order Service'}
-          </button>
-        </form>
-        <div className="service-grid">
-          {serviceOrders.map((order) => (
-            <article key={order.reservation_service_id} className="result-card">
-              <strong>{order.service_name}</strong>
-              <span>{order.service_category}</span>
-              <p>{order.quantity} unit(s) | {money(order.final_amount, reservationData?.currency_code)}</p>
-              <p>Status: {order.service_status}</p>
-              <button
-                className="ghost-button"
-                type="button"
-                disabled={serviceBusy === `pay-${order.reservation_service_id}` || order.service_status === 'CANCELLED'}
-                onClick={() => handleServicePay(order.reservation_service_id)}
-              >
-                {serviceBusy === `pay-${order.reservation_service_id}` ? 'Processing...' : 'Capture Service Payment'}
+      {/* ── My Bookings (logged-in only) ── */}
+      {loggedIn && (
+        <section className="resv-list-section">
+          <h2 className="resv-section-title">My bookings</h2>
+          {loading && <p style={{ color: 'var(--text-soft)' }}>Loading your reservations…</p>}
+          {error && <p style={{ color: '#c0392b' }}>{error}</p>}
+          {!loading && !error && reservations.length === 0 && (
+            <div className="resv-empty">
+              <p>No reservations found on your account yet.</p>
+              <button className="primary-button" type="button" onClick={() => navigate('/search?destination=&checkin=&checkout=&guests=1')}>
+                Browse hotels
               </button>
-            </article>
-          ))}
-          {!serviceOrders.length ? <p className="muted-copy">No service orders on this reservation yet.</p> : null}
-        </div>
-      </section>
-
-      {/* ── Invoice Generate ────────────────────────── */}
-      <section className="panel">
-        <p className="section-kicker">Invoice</p>
-        <h2>Generate</h2>
-        <form className="form-grid" onSubmit={handleInvoiceCreate}>
-          <label>
-            Invoice type
-            <select value={invoiceDraft.invoice_type} onChange={(event) => setInvoiceDraft((current) => ({ ...current, invoice_type: event.target.value }))}>
-              <option value="FINAL">FINAL</option>
-              <option value="INTERIM">INTERIM</option>
-            </select>
-          </label>
-          <label>
-            Billing name
-            <input type="text" value={invoiceDraft.billing_name} onChange={(event) => setInvoiceDraft((current) => ({ ...current, billing_name: event.target.value }))} />
-          </label>
-          <label>
-            Tax number
-            <input type="text" value={invoiceDraft.billing_tax_no} onChange={(event) => setInvoiceDraft((current) => ({ ...current, billing_tax_no: event.target.value }))} />
-          </label>
-          <label className="full-span">
-            Billing address
-            <textarea rows="3" value={invoiceDraft.billing_address} onChange={(event) => setInvoiceDraft((current) => ({ ...current, billing_address: event.target.value }))} />
-          </label>
-          <button className="primary-button" type="submit" disabled={!reservationData || invoiceBusy === 'create'}>
-            {invoiceBusy === 'create' ? 'Generating...' : 'Generate Invoice'}
-          </button>
-        </form>
-        <div className="compact-list">
-          {invoiceList.map((invoice) => (
-            <button key={invoice.invoice_id} type="button" className="compact-item button-reset" onClick={() => handleInvoiceSelect(invoice.invoice_id)}>
-              <strong>{invoice.invoice_no}</strong>
-              <span>{invoice.invoice_type}</span>
-              <span>{invoice.status}</span>
-            </button>
-          ))}
-          {!invoiceList.length ? <p className="muted-copy">No invoice has been generated for this reservation yet.</p> : null}
-        </div>
-      </section>
-
-      {/* ── Invoice Detail ──────────────────────────── */}
-      <section className="panel panel-span-2">
-        <p className="section-kicker">Invoice detail</p>
-        <h2>Line items</h2>
-        {invoiceDetail ? (
-          <>
-            <div className="stats-grid">
-              <article className="compact-item"><strong>{invoiceDetail.invoice_no}</strong><span>{invoiceDetail.status}</span></article>
-              <article className="compact-item"><strong>Total</strong><span>{money(invoiceDetail.total_amount, invoiceDetail.currency_code)}</span></article>
-              <article className="compact-item"><strong>Guest</strong><span>{invoiceDetail.guest_name}</span></article>
             </div>
-            <div className="ops-columns">
-              <div className="compact-list">
-                <h3>Room line items</h3>
-                {invoiceDetail.line_items.rooms.map((room, index) => (
-                  <div key={`${room.room_number || 'room'}-${index}`} className="compact-item">
-                    <strong>{room.room_type_name}</strong>
-                    <span>{room.room_number ? `Room ${room.room_number}` : 'Unassigned room'}</span>
-                    <span>{money(room.final_amount, invoiceDetail.currency_code)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="compact-list">
-                <h3>Service line items</h3>
-                {invoiceDetail.line_items.services.map((service, index) => (
-                  <div key={`${service.service_name}-${index}`} className="compact-item">
-                    <strong>{service.service_name}</strong>
-                    <span>{service.quantity} unit(s)</span>
-                    <span>{money(service.final_amount, invoiceDetail.currency_code)}</span>
-                  </div>
-                ))}
-                {!invoiceDetail.line_items.services.length ? <p className="muted-copy">No service line items on this invoice.</p> : null}
-              </div>
-            </div>
-          </>
-        ) : <p className="muted-copy">Generate or select an invoice to inspect its line items.</p>}
-      </section>
-    </>
+          )}
+          <div className="resv-list">
+            {reservations.map((r) => (
+              <ReservationCard
+                key={r.reservation_id}
+                r={r}
+                onCancel={handleCancel}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }

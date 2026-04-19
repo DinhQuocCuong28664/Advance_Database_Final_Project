@@ -1,160 +1,321 @@
-import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useBooking } from '../hooks/useBooking';
-import { useAppData } from '../context/AppDataContext';
+import { useState } from 'react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import PromotionCard from '../components/ui/PromotionCard';
-import { money } from '../utils/formatters';
+import { apiRequest } from '../lib/api';
+
+const DEPOSIT_RATE = 0.30; // 30% bắt buộc
+
+function nightsBetween(a, b) {
+  const ms = new Date(b) - new Date(a);
+  return Math.max(1, Math.round(ms / 86400000));
+}
+
+function fmt(n) {
+  return Number(n || 0).toLocaleString('en-US');
+}
 
 export default function BookingPage() {
-  const navigate = useNavigate();
+  const { hotelId, roomId } = useParams();
   const [searchParams] = useSearchParams();
-  const { hotels } = useAppData();
-  const { isGuestUser } = useAuth();
+  const navigate = useNavigate();
+  const { authSession, isGuestUser } = useAuth();
 
-  const {
-    bookingSearch, setBookingSearch,
-    bookingRooms, bookingBusy,
-    selectedRoomId, setSelectedRoomId,
-    bookingDraft, setBookingDraft,
-    bookingResult,
-    hotelPromotions,
-    selectedHotel, selectedRoom,
-    bookingGuestOptions,
-    handleAvailabilitySearch,
-    handleReservationCreate,
-  } = useBooking();
+  const checkin     = searchParams.get('checkin')    || '';
+  const checkout    = searchParams.get('checkout')   || '';
+  const guests      = Number(searchParams.get('guests')) || 1;
+  const nightlyRate = Number(searchParams.get('rate'))   || 0;
+  const roomName    = searchParams.get('room_name')  || 'Selected room';
 
-  // Handle hotel param from URL (e.g. from city "Khám phá" button)
-  useEffect(() => {
-    const hotelParam = searchParams.get('hotel');
-    if (hotelParam) {
-      setBookingSearch((current) => ({ ...current, hotelId: hotelParam }));
-    }
-  }, [searchParams, setBookingSearch]);
+  const nights       = checkin && checkout ? nightsBetween(checkin, checkout) : 1;
+  const subtotal     = nightlyRate * nights;
+  const depositDue   = Math.round(subtotal * DEPOSIT_RATE);
+  const balanceDue   = subtotal - depositDue;
 
-  async function onReservationCreate(event) {
-    const result = await handleReservationCreate(event);
-    if (result) {
-      navigate(`/reservation?code=${encodeURIComponent(result.reservation_code)}`);
+  const [form, setForm] = useState({
+    first_name:     authSession?.user?.first_name || '',
+    last_name:      authSession?.user?.last_name  || '',
+    email:          authSession?.user?.login_email || authSession?.user?.email || '',
+    phone:          '',
+    special_requests: '',
+    payment_method: 'CREDIT_CARD',
+  });
+  const [step, setStep]           = useState('details'); // details | confirm | done
+  const [busy, setBusy]           = useState(false);
+  const [error, setError]         = useState(null);
+  const [reservation, setReservation] = useState(null);
+
+  function setField(key, val) {
+    setForm((s) => ({ ...s, [key]: val }));
+  }
+
+  async function handleConfirm(e) {
+    e.preventDefault();
+    if (step === 'details') { setStep('confirm'); return; }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const guestId     = isGuestUser ? authSession?.user?.guest_id : null;
+      const guestProfile = {
+        first_name:   form.first_name,
+        last_name:    form.last_name,
+        email:        form.email,
+        phone_number: form.phone || null,
+      };
+
+      // ── Step 1: Create reservation ────────────────────────────
+      const resPayload = await apiRequest('/reservations', {
+        method: 'POST',
+        body: JSON.stringify({
+          hotel_id:             Number(hotelId),
+          room_id:              Number(roomId),
+          checkin_date:         checkin,
+          checkout_date:        checkout,
+          adult_count:          guests,
+          nightly_rate:         nightlyRate,
+          currency_code:        'VND',
+          guest_id:             guestId || undefined,
+          guest_profile:        guestProfile,
+          special_request_text: form.special_requests || null,
+          guarantee_type:       'DEPOSIT',
+          purpose_of_stay:      'LEISURE',
+          booking_source:       'DIRECT_WEB',
+        }),
+      });
+
+      const res = resPayload.data || resPayload.reservation || resPayload;
+      const serverDepositAmt = res.deposit_amount ?? depositDue;
+
+      // ── TODO: Bật VNPay khi sẵn sàng ─────────────────────────
+      // const vnpPayload = await apiRequest('/vnpay/create-payment', {
+      //   method: 'POST',
+      //   body: JSON.stringify({
+      //     reservation_id: res.reservation_id,
+      //     amount:         serverDepositAmt,
+      //     order_info:     `Dat coc dat phong ${res.reservation_code}`,
+      //     locale:         'vn',
+      //   }),
+      // });
+      // sessionStorage.setItem('pendingReservation', JSON.stringify({
+      //   ...res, deposit_amount: serverDepositAmt,
+      //   room_name: roomName, checkin, checkout, nights, subtotal, guests,
+      // }));
+      // window.location.href = vnpPayload.paymentUrl;
+      // ─────────────────────────────────────────────────────────
+
+      // ── Step 2: Mock payment — ghi thẳng DEPOSIT vào DB ──────
+      await apiRequest('/payments', {
+        method: 'POST',
+        body: JSON.stringify({
+          reservation_id: res.reservation_id,
+          amount:         serverDepositAmt,
+          payment_method: form.payment_method,
+          currency_code:  'VND',
+          payment_type:   'DEPOSIT',
+        }),
+      }).catch(() => null); // non-blocking
+
+      setReservation({ ...res, deposit_amount: serverDepositAmt });
+      setStep('done');
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
     }
   }
 
+  // ── DONE ────────────────────────────────────────────────────────
+  if (step === 'done' && reservation) {
+    const paidDeposit  = reservation.deposit_amount ?? depositDue;
+    const grandTotal   = reservation.total ?? reservation.grand_total_amount ?? subtotal;
+    const remaining    = grandTotal - paidDeposit;
+
+    return (
+      <div className="booking-done">
+        <div className="booking-done-icon">🎉</div>
+        <p className="page-eyebrow">Booking confirmed</p>
+        <h1 className="booking-done-title">You're all set!</h1>
+        <p className="booking-done-sub">
+          Your reservation code is{' '}
+          <strong className="booking-res-code">
+            {reservation.reservation_code || reservation.reservation_id}
+          </strong>.
+          Save it to look up or manage your booking.
+        </p>
+
+        <div className="booking-done-summary">
+          <div><span>Check-in</span><strong>{checkin}</strong></div>
+          <div><span>Check-out</span><strong>{checkout}</strong></div>
+          <div><span>Nights</span><strong>{nights}</strong></div>
+          <div><span>Total stay</span><strong>{fmt(grandTotal)} VND</strong></div>
+          <div className="booking-done-deposit">
+            <span>Deposit paid (30%)</span>
+            <strong className="done-deposit-val">−{fmt(paidDeposit)} VND</strong>
+          </div>
+          <div className="booking-done-balance">
+            <span>Balance due at check-out</span>
+            <strong>{fmt(remaining)} VND</strong>
+          </div>
+        </div>
+
+        <div className="booking-done-actions">
+          <button className="primary-button" type="button" onClick={() => navigate('/reservation')}>
+            View reservation
+          </button>
+          <button className="ghost-button" type="button" onClick={() => navigate('/')}>
+            Back to home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── FORM ────────────────────────────────────────────────────────
   return (
-    <>
-      {/* ── Step 1: Search Inventory ────────────────── */}
-      <section className="panel">
-        <p className="section-kicker">Step 1</p>
-        <h2>Search inventory</h2>
-        <form className="form-grid" onSubmit={handleAvailabilitySearch}>
-          <label>
-            Hotel
-            <select value={bookingSearch.hotelId} onChange={(event) => setBookingSearch((current) => ({ ...current, hotelId: event.target.value }))}>
-              {hotels.map((hotel) => <option key={hotel.hotel_id} value={hotel.hotel_id}>{hotel.hotel_name}</option>)}
-            </select>
-          </label>
-          <label>
-            Check-in
-            <input type="date" value={bookingSearch.checkin} onChange={(event) => setBookingSearch((current) => ({ ...current, checkin: event.target.value }))} />
-          </label>
-          <label>
-            Check-out
-            <input type="date" value={bookingSearch.checkout} onChange={(event) => setBookingSearch((current) => ({ ...current, checkout: event.target.value }))} />
-          </label>
-          <button className="primary-button" type="submit" disabled={bookingBusy}>
-            {bookingBusy ? 'Searching...' : 'Load Available Rooms'}
-          </button>
-        </form>
-        <div className="room-stack">
-          {bookingRooms.map((room) => (
-            <button
-              key={room.room_id}
-              type="button"
-              className={room.room_id === selectedRoomId ? 'room-card active' : 'room-card'}
-              onClick={() => setSelectedRoomId(room.room_id)}
-            >
-              <div className="room-card-head">
-                <strong>Room {room.room_number}</strong>
-                <span>{money(room.min_nightly_rate, selectedHotel?.currency_code)}</span>
-              </div>
-              <p>{room.room_type_name}</p>
-              <div className="room-card-meta">
-                <span>{room.category}</span>
-                <span>{room.view_type}</span>
-                <span>{room.max_adults} adults</span>
-              </div>
-            </button>
-          ))}
-          {!bookingRooms.length ? <p className="muted-copy">Search to populate the inventory grid.</p> : null}
-        </div>
-      </section>
+    <div className="booking-page">
+      {/* ── PROGRESS BAR ── */}
+      <div className="booking-stepper">
+        {['Your details', 'Confirm', 'Done'].map((s, i) => {
+          const active = step === ['details', 'confirm', 'done'][i];
+          const done   = (step === 'confirm' && i === 0) || step === 'done';
+          return (
+            <div key={s} className={`booking-step ${active ? 'active' : ''} ${done ? 'done' : ''}`}>
+              <span className="booking-step-num">{i + 1}</span>
+              <span className="booking-step-label">{s}</span>
+            </div>
+          );
+        })}
+      </div>
 
-      {/* ── Step 2: Create Reservation ──────────────── */}
-      <section className="panel">
-        <p className="section-kicker">Step 2</p>
-        <h2>Create reservation</h2>
-        {selectedRoom ? (
-          <div className="selected-room-banner">
-            <span>Selected room</span>
-            <strong>{selectedRoom.room_type_name}</strong>
-            <small>Room {selectedRoom.room_number} | {selectedRoom.view_type} | {money(selectedRoom.min_nightly_rate, selectedHotel?.currency_code)}</small>
-          </div>
-        ) : <p className="muted-copy">Choose a room card from the left.</p>}
-        <form className="form-grid" onSubmit={onReservationCreate}>
-          <label>
-            Guest
-            <select value={bookingDraft.guestId} disabled={isGuestUser} onChange={(event) => setBookingDraft((current) => ({ ...current, guestId: event.target.value }))}>
-              {bookingGuestOptions.map((guest) => <option key={guest.guest_id} value={guest.guest_id}>{guest.full_name}</option>)}
-            </select>
-          </label>
-          <label>
-            Adults
-            <input type="number" min="1" value={bookingDraft.adultCount} onChange={(event) => setBookingDraft((current) => ({ ...current, adultCount: event.target.value }))} />
-          </label>
-          <label>
-            Children
-            <input type="number" min="0" value={bookingDraft.childCount} onChange={(event) => setBookingDraft((current) => ({ ...current, childCount: event.target.value }))} />
-          </label>
-          <label>
-            Guarantee
-            <select value={bookingDraft.guaranteeType} onChange={(event) => setBookingDraft((current) => ({ ...current, guaranteeType: event.target.value }))}>
-              <option value="DEPOSIT">DEPOSIT</option>
-              <option value="CARD">CARD</option>
-            </select>
-          </label>
-          <label>
-            Purpose
-            <select value={bookingDraft.purposeOfStay} onChange={(event) => setBookingDraft((current) => ({ ...current, purposeOfStay: event.target.value }))}>
-              <option value="LEISURE">LEISURE</option>
-              <option value="BUSINESS">BUSINESS</option>
-            </select>
-          </label>
-          <label className="full-span">
-            Special request
-            <textarea rows="4" value={bookingDraft.specialRequestText} onChange={(event) => setBookingDraft((current) => ({ ...current, specialRequestText: event.target.value }))} />
-          </label>
-          <button className="primary-button" type="submit" disabled={bookingBusy || !selectedRoom}>
-            {bookingBusy ? 'Processing...' : 'Create Reservation'}
-          </button>
-        </form>
-        {bookingResult ? (
-          <div className="result-card success-card">
-            <h3>{bookingResult.reservation_code}</h3>
-            <p>{bookingResult.nights} night(s) | total {money(bookingResult.total, selectedHotel?.currency_code)}</p>
-            <p>Deposit: {bookingResult.deposit_required ? money(bookingResult.deposit_amount, selectedHotel?.currency_code) : 'No deposit required'}</p>
-          </div>
-        ) : null}
-      </section>
+      <div className="booking-layout">
+        {/* ── MAIN FORM ── */}
+        <form className="booking-form" onSubmit={handleConfirm}>
+          {step === 'details' && (
+            <>
+              <h2 className="booking-section-title">Your details</h2>
+              {isGuestUser && (
+                <p className="booking-member-note">
+                  🎖 You're booking as a loyalty member. Your details are pre-filled.
+                </p>
+              )}
+              <div className="booking-form-grid">
+                <label>
+                  First name
+                  <input required value={form.first_name} onChange={(e) => setField('first_name', e.target.value)} />
+                </label>
+                <label>
+                  Last name
+                  <input required value={form.last_name} onChange={(e) => setField('last_name', e.target.value)} />
+                </label>
+                <label className="field-span-2">
+                  Email
+                  <input type="email" required value={form.email} onChange={(e) => setField('email', e.target.value)} />
+                </label>
+                <label className="field-span-2">
+                  Phone (optional)
+                  <input type="tel" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
+                </label>
+                <label className="field-span-2">
+                  Special requests (optional)
+                  <textarea rows={3} value={form.special_requests} onChange={(e) => setField('special_requests', e.target.value)} placeholder="E.g. high floor, late check-in…" />
+                </label>
+                <label className="field-span-2">
+                  Payment method
+                  <select value={form.payment_method} onChange={(e) => setField('payment_method', e.target.value)}>
+                    <option value="CREDIT_CARD">Credit card</option>
+                    <option value="DEBIT_CARD">Debit card</option>
+                    <option value="BANK_TRANSFER">Bank transfer</option>
+                    <option value="LOYALTY_POINTS">Loyalty points</option>
+                  </select>
+                </label>
+              </div>
 
-      {/* ── Hotel Promotions ────────────────────────── */}
-      <section className="panel panel-span-2">
-        <p className="section-kicker">Offers</p>
-        <h2>Hotel-level promotions</h2>
-        <div className="promo-grid">
-          {hotelPromotions.map((promotion) => <PromotionCard key={promotion.promotion_id} promotion={promotion} />)}
-          {!hotelPromotions.length ? <p className="muted-copy">No active promotions returned for the selected hotel.</p> : null}
-        </div>
-      </section>
-    </>
+              {/* Deposit notice */}
+              <div className="booking-deposit-notice">
+                <span className="deposit-notice-icon">ℹ</span>
+                <span>
+                  A non-refundable deposit of{' '}
+                  <strong>{fmt(depositDue)} VND</strong>{' '}
+                  (30% of total) is charged at booking. The remaining{' '}
+                  <strong>{fmt(balanceDue)} VND</strong> is due at check-out.
+                </span>
+              </div>
+
+              <button className="primary-button booking-next-btn" type="submit">
+                Continue to confirm →
+              </button>
+            </>
+          )}
+
+          {step === 'confirm' && (
+            <>
+              <h2 className="booking-section-title">Review your booking</h2>
+              <div className="booking-review">
+                <div><span>Name</span><strong>{form.first_name} {form.last_name}</strong></div>
+                <div><span>Email</span><strong>{form.email}</strong></div>
+                {form.phone && <div><span>Phone</span><strong>{form.phone}</strong></div>}
+                {form.special_requests && <div><span>Requests</span><strong>{form.special_requests}</strong></div>}
+                <div><span>Payment</span><strong>{form.payment_method.replace('_', ' ')}</strong></div>
+              </div>
+
+              <div className="booking-deposit-notice">
+                <span className="deposit-notice-icon">💳</span>
+                <span>
+                  By confirming, you authorise a deposit charge of{' '}
+                  <strong>{fmt(depositDue)} VND</strong>.
+                  This deposit is <strong>non-refundable</strong> upon cancellation.
+                </span>
+              </div>
+
+              {error && <p className="booking-error">{error}</p>}
+              <div className="booking-confirm-actions">
+                <button type="button" className="ghost-button" onClick={() => setStep('details')}>← Edit details</button>
+                <button className="primary-button" type="submit" disabled={busy}>
+                  {busy ? 'Confirming…' : `Pay deposit ${fmt(depositDue)} VND`}
+                </button>
+              </div>
+            </>
+          )}
+        </form>
+
+        {/* ── SUMMARY SIDEBAR ── */}
+        <aside className="booking-summary">
+          <h3 className="booking-summary-title">Booking summary</h3>
+          <div className="booking-summary-body">
+            <div className="booking-summary-row">
+              <span>Room</span><strong>{roomName}</strong>
+            </div>
+            <div className="booking-summary-row">
+              <span>Check-in</span><strong>{checkin}</strong>
+            </div>
+            <div className="booking-summary-row">
+              <span>Check-out</span><strong>{checkout}</strong>
+            </div>
+            <div className="booking-summary-row">
+              <span>{nights} night{nights > 1 ? 's' : ''} × {fmt(nightlyRate)} VND</span>
+              <strong>{fmt(subtotal)} VND</strong>
+            </div>
+            <div className="booking-summary-row">
+              <span>Guests</span><strong>{guests}</strong>
+            </div>
+            <hr className="booking-summary-divider" />
+            <div className="booking-summary-total">
+              <span>Total stay</span>
+              <strong>{fmt(subtotal)} VND</strong>
+            </div>
+            <hr className="booking-summary-divider" />
+            <div className="booking-summary-row booking-deposit-row">
+              <span>Deposit now (30%)</span>
+              <strong className="deposit-highlight">{fmt(depositDue)} VND</strong>
+            </div>
+            <div className="booking-summary-row">
+              <span>Balance at check-out</span>
+              <strong>{fmt(balanceDue)} VND</strong>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
   );
 }

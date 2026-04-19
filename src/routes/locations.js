@@ -1,13 +1,13 @@
 /**
- * LuxeReserve — Location Routes
- * Recursive CTE — Hierarchy query
+ * LuxeReserve - Location Routes
+ * Recursive CTE - Hierarchy query
  */
 
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 
-// GET /api/locations/tree?root=Châu+Á (or root_id=1)
+// GET /api/locations/tree?root=Asia (or root_id=1)
 router.get('/tree', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -18,7 +18,7 @@ router.get('/tree', async (req, res) => {
 
     if (root_id) {
       whereClause = 'WHERE location_id = @rootId';
-      request.input('rootId', sql.BigInt, parseInt(root_id));
+      request.input('rootId', sql.BigInt, parseInt(root_id, 10));
     } else if (root) {
       whereClause = 'WHERE location_name = @rootName';
       request.input('rootName', sql.NVarChar(150), root);
@@ -61,7 +61,7 @@ router.get('/tree', async (req, res) => {
   }
 });
 
-// GET /api/locations — Flat list
+// GET /api/locations - Flat list
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();

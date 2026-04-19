@@ -10,13 +10,20 @@
     "frontend:build": "npm --prefix frontend run build",
     "db:init": "sqlcmd -S localhost\\SQLEXPRESS -i database/sql/01_create_database.sql -C && sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/02_create_tables.sql -C",
     "db:seed": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/06_seed_data.sql -C && node database/mongodb/02_seed_data.js",
+    "db:network": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/09_expand_network_seed.sql -C && node database/mongodb/03_expand_catalog.js",
+    "db:email": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/11_email_verification.sql -C",
     "db:views": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/03_create_views.sql -C",
     "db:triggers": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/04_create_triggers.sql -C",
     "db:procedures": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/05_create_procedures.sql -C",
     "db:auth": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/07_auth_extension.sql -C",
     "db:all": "npm run db:init && npm run db:views && npm run db:triggers && npm run db:procedures && npm run db:seed",
     "mongo:init": "node database/mongodb/02_seed_data.js",
-    "mongo:seed": "node database/mongodb/02_seed_data.js"
+    "mongo:seed": "node database/mongodb/02_seed_data.js",
+    "mongo:catalog:expand": "node database/mongodb/03_expand_catalog.js",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report",
+    "test:headed": "playwright test --reporter=list"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -27,9 +34,11 @@
     "mongodb": "^6.12.0",
     "morgan": "^1.10.0",
     "msnodesqlv8": "^5.1.7",
-    "mssql": "^11.0.1"
+    "mssql": "^11.0.1",
+    "nodemailer": "^7.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "nodemon": "^3.1.9"
   }
 }

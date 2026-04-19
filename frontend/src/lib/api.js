@@ -5,8 +5,12 @@ function resolveBaseUrl() {
     return explicitBase.replace(/\/$/, '');
   }
 
-  if (typeof window !== 'undefined' && window.location.port === '3000') {
-    return `${window.location.origin}/api`;
+  if (typeof window !== 'undefined') {
+    if (window.location.port === '3000') {
+      return `${window.location.origin}/api`;
+    }
+
+    return '/api';
   }
 
   return 'http://localhost:3000/api';

@@ -179,7 +179,32 @@ Validation:
 
 ## 4. Authentication
 
-### 4.1 Admin Login
+### 4.1 Universal Login
+
+- Method: `POST`
+- Endpoint: `/auth/login`
+- Description: Unified login endpoint that tries system user authentication first, then falls back to guest authentication. Returns the same token/user shape as the dedicated endpoints.
+
+Body:
+
+```json
+{
+  "login": "admin",
+  "password": "admin123"
+}
+```
+
+- `login` can be a `username` (for system users), `login_email`, or `guest_code` (for guests).
+
+Response is identical to either admin or guest login depending on which account matches first.
+
+Validation:
+- Missing `login` or `password` -> `400`
+- Account found but password wrong -> `401`
+- Account suspended or inactive -> `403`
+- No matching account -> `401`
+
+### 4.2 Admin Login
 
 - Method: `POST`
 - Endpoint: `/auth/admin/login`
@@ -198,7 +223,7 @@ Response returns:
 - `user` with `user_type = SYSTEM_USER`
 - `roles`
 
-### 4.2 Guest Register
+### 4.3 Guest Register
 
 - Method: `POST`
 - Endpoint: `/auth/guest/register`
@@ -217,7 +242,7 @@ Notes:
 - Creates login credentials for an existing guest profile
 - Does not replace anonymous booking flow
 
-### 4.3 Guest Login
+### 4.4 Guest Login
 
 - Method: `POST`
 - Endpoint: `/auth/guest/login`
@@ -240,7 +265,7 @@ Response returns:
 - `user` with `user_type = GUEST`
 - `loyalty_accounts`
 
-### 4.4 Current Authenticated User
+### 4.5 Current Authenticated User
 
 - Method: `GET`
 - Endpoint: `/auth/me`
@@ -1000,7 +1025,36 @@ Validation:
 
 ## 12. Invoices
 
-### 11.1 Create Invoice
+### 11.1 List Invoices
+
+- Method: `GET`
+- Endpoint: `/invoices`
+- Query params:
+  - `reservation_id` (number, optional)
+
+Behavior:
+- If `reservation_id` is provided, returns only invoices for that reservation.
+- Otherwise returns all invoices across all reservations, ordered by newest first.
+
+Example response item:
+
+```json
+{
+  "invoice_id": 5,
+  "reservation_id": 123,
+  "invoice_no": "INV-RES-20260413-ABC123-F",
+  "invoice_type": "FINAL",
+  "total_amount": 17000000,
+  "currency_code": "VND",
+  "status": "ISSUED",
+  "issued_at": "2026-04-15T10:00:00.000Z",
+  "reservation_code": "RES-20260413-ABC123",
+  "hotel_name": "LuxeReserve Saigon",
+  "guest_name": "Quoc Anh Nguyen"
+}
+```
+
+### 11.2 Create Invoice
 
 - Method: `POST`
 - Endpoint: `/invoices`
@@ -1036,7 +1090,7 @@ Validation:
 - Reservation not found -> `404`
 - Existing non-cancelled invoice of same type -> `409`
 
-### 11.2 Get Invoice
+### 11.3 Get Invoice
 
 - Method: `GET`
 - Endpoint: `/invoices/:id`
@@ -1054,7 +1108,7 @@ Validation:
 - Invalid invoice ID -> `400`
 - Invoice not found -> `404`
 
-### 11.3 Issue Invoice
+### 11.4 Issue Invoice
 
 - Method: `POST`
 - Endpoint: `/invoices/:id/issue`
@@ -1073,12 +1127,61 @@ Validation:
 
 ---
 
+## 13. Promotions
+
+### 12.1 List Promotions
+
+- Method: `GET`
+- Endpoint: `/promotions`
+- Query params:
+  - `hotel_id` (number, optional) — filters to promotions that apply to this hotel (hotel-specific or brand-level)
+  - `guest_id` (number, optional) — if provided, adds `eligible_for_guest` flag per promotion
+  - `member_only` (boolean string, optional) — `true` or `false`, filters by `member_only_flag`
+
+Description:
+- Returns all currently `ACTIVE` promotions where today falls within `booking_start_date` and `booking_end_date`.
+- If the authenticated user is a `GUEST`, `guest_id` is auto-resolved from the JWT token even if not passed in the query.
+- Promotions can be scoped at `HOTEL`, `BRAND`, or `GLOBAL` level. The `scope_type` field indicates which.
+
+Example response item:
+
+```json
+{
+  "promotion_id": 3,
+  "promotion_code": "SUMMER2026",
+  "promotion_name": "Summer Early Bird",
+  "promotion_type": "PERCENTAGE",
+  "discount_value": 15.00,
+  "currency_code": "VND",
+  "applies_to": "ROOM",
+  "booking_start_date": "2026-04-01",
+  "booking_end_date": "2026-06-30",
+  "stay_start_date": "2026-05-01",
+  "stay_end_date": "2026-08-31",
+  "member_only_flag": false,
+  "min_nights": 2,
+  "status": "ACTIVE",
+  "scope_type": "BRAND",
+  "brand_name": "LuxeReserve Collection",
+  "eligible_for_guest": true
+}
+```
+
+Response includes:
+- `count`: total number of matching promotions
+- `data`: array of promotion objects
+
+---
+
 ## Notes on Current Implementation
 
 - `POST /api/reservations` now documents the actual runtime behavior: direct pessimistic locking on `RoomAvailability`, not a stored procedure call.
 - `GET /api/rooms/availability` now exposes `availability_records`, which the admin optimistic locking flow depends on.
 - `POST /api/payments` currently blocks payments for reservations in `CANCELLED`, `CHECKED_OUT`, and `NO_SHOW`.
-- `/api/auth/*` now provides admin login, guest login, guest registration, and `/api/auth/me`.
+- `/api/auth/*` now provides universal login, admin login, guest login, guest registration, and `/api/auth/me`.
+- `POST /api/auth/login` is the universal login: tries system user first, then guest. Dedicated `/admin/login` and `/guest/login` endpoints also exist.
 - `/api/admin/*` now requires a system-user bearer token.
 - `POST /api/reservations/:id/transfer` still depends on `sp_TransferRoom`.
 - `POST /api/invoices` uses `vw_ReservationTotal` as the financial source of truth.
+- `GET /api/invoices` lists all invoices; filter by `reservation_id` to scope results.
+- `GET /api/promotions` resolves guest eligibility from JWT automatically when called by an authenticated guest.

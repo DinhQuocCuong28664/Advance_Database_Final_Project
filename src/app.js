@@ -23,6 +23,7 @@ const serviceRoutes = require('./routes/services');
 const housekeepingRoutes = require('./routes/housekeeping');
 const maintenanceRoutes = require('./routes/maintenance');
 const invoiceRoutes = require('./routes/invoices');
+const vnpayRoutes  = require('./routes/vnpay');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -70,8 +71,10 @@ app.get('/api', (req, res) => {
         'GET /api/promotions?hotel_id=&guest_id=': 'List active promotions, with guest eligibility when a guest context is present',
       },
       reservations: {
-        'POST /api/reservations': 'Create reservation with direct pessimistic locking on RoomAvailability (body: hotel_id, guest_id, room_id, checkin_date, checkout_date, nightly_rate, ...)',
+        'GET /api/reservations': 'List reservations — filter by guest_id, email, status, limit',
+        'GET /api/reservations/by-guest/:guestCode': 'List all reservations for a guest code (e.g. G-DQC)',
         'GET /api/reservations/:code': 'Get reservation by confirmation code',
+        'POST /api/reservations': 'Create reservation with direct pessimistic locking on RoomAvailability (body: hotel_id, guest_id, room_id, checkin_date, checkout_date, nightly_rate, ...)',
         'POST /api/reservations/:id/checkin': 'Check-in process (body: agent_id)',
         'POST /api/reservations/:id/checkout': 'Check-out process (body: agent_id)',
         'POST /api/reservations/:id/guest-cancel': 'Guest cancellation — forfeit deposit, no refund (body: reason)',
@@ -113,6 +116,11 @@ app.get('/api', (req, res) => {
         'GET /api/invoices/:id': 'Get invoice with line items (rooms + services + payments)',
         'POST /api/invoices/:id/issue': 'Issue invoice: DRAFT → ISSUED',
       },
+      vnpay: {
+        'POST /api/vnpay/create-payment': 'Create VNPay payment URL (body: reservation_id, amount, order_info)',
+        'GET /api/vnpay/return': 'VNPay return URL — verifies signature and redirects to frontend',
+        'GET /api/vnpay/ipn': 'VNPay IPN server callback — records payment status',
+      },
       locations: {
         'GET /api/locations': 'List all locations (flat)',
         'GET /api/locations/tree?root=&root_id=': 'Location hierarchy tree (Recursive CTE)',
@@ -134,6 +142,7 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/housekeeping', housekeepingRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/vnpay',   vnpayRoutes);
 
 // ═══════════════════════════════════
 // Error Handler

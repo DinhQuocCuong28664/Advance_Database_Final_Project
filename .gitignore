@@ -1,22 +1,44 @@
-# Dependencies
+# ─── Dependencies ─────────────────────────────────────────────
 node_modules/
+frontend/node_modules/
 
-# Environment Variables
+# ─── Environment Variables ────────────────────────────────────
 .env
 .env.local
+.env.*.local
+frontend/.env
+frontend/.env.local
 
-# Logs
-logs
+# ─── Build Outputs ────────────────────────────────────────────
+dist/
+frontend/dist/
+build/
+
+# ─── Logs ─────────────────────────────────────────────────────
+logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# OS Files
+# ─── OS Files ─────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# IDE / Editor
+# ─── IDE / Editor ─────────────────────────────────────────────
 .vscode/
 .idea/
+*.suo
+*.user
 
-# MongoDB data if running locally
+# ─── MongoDB local data ───────────────────────────────────────
 /data/db
+
+# ─── Vite cache ───────────────────────────────────────────────
+frontend/.vite/
+.vite/
+
+# ─── Misc ─────────────────────────────────────────────────────
+*.pem
+*.key

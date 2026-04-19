@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 const { attachAuthContext, requireAuth, issueAuthToken } = require('../middleware/auth');
+const { isMailConfigured, sendGuestVerificationOtp } = require('../services/mail');
 
 function buildAuthResponse(token, user) {
   return {
@@ -89,6 +90,22 @@ async function authenticateGuest(pool, login, password) {
   }
 
   if (account.account_status !== 'ACTIVE') {
+    if (account.account_status === 'LOCKED') {
+      const verificationPending = await pool.request()
+        .input('id', sql.BigInt, account.guest_auth_id)
+        .query(`
+          SELECT guest_auth_id
+          FROM GuestAuth
+          WHERE guest_auth_id = @id
+            AND email_verified_at IS NULL
+            AND account_status = 'LOCKED'
+        `);
+
+      if (verificationPending.recordset.length > 0) {
+        throw new Error('Email verification required');
+      }
+    }
+
     throw new Error(`Guest account is ${account.account_status}`);
   }
 
@@ -142,9 +159,11 @@ async function loadGuestUser(pool, guestId) {
   const guestResult = await pool.request()
     .input('id', sql.BigInt, guestId)
     .query(`
-      SELECT guest_id, guest_code, full_name, email, vip_flag, marketing_opt_in_flag
-      FROM Guest
-      WHERE guest_id = @id
+      SELECT g.guest_id, g.guest_code, g.full_name, g.email, g.vip_flag,
+             g.marketing_opt_in_flag, ga.email_verified_at, ga.account_status
+      FROM Guest g
+      LEFT JOIN GuestAuth ga ON g.guest_id = ga.guest_id
+      WHERE g.guest_id = @id
     `);
 
   if (guestResult.recordset.length === 0) {
@@ -167,6 +186,61 @@ async function loadGuestUser(pool, guestId) {
     ...guestResult.recordset[0],
     loyalty_accounts: loyaltyResult.recordset,
   };
+}
+
+function generateOtpCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+async function createVerificationOtp(pool, guestAuthId) {
+  const otpCode = generateOtpCode();
+  await pool.request()
+    .input('guestAuthId', sql.BigInt, guestAuthId)
+    .query(`
+      UPDATE EmailVerificationOtp
+      SET consumed_at = GETDATE()
+      WHERE guest_auth_id = @guestAuthId
+        AND consumed_at IS NULL
+    `);
+
+  await pool.request()
+    .input('guestAuthId', sql.BigInt, guestAuthId)
+    .input('otpCode', sql.VarChar(10), otpCode)
+    .query(`
+      INSERT INTO EmailVerificationOtp (guest_auth_id, otp_code, purpose, expires_at)
+      VALUES (@guestAuthId, @otpCode, 'ACTIVATE', DATEADD(MINUTE, 10, GETDATE()))
+    `);
+
+  return otpCode;
+}
+
+async function sendVerificationForGuestAuth(pool, guestAuthId) {
+  if (!isMailConfigured()) {
+    throw new Error('Mail service is not configured');
+  }
+
+  const result = await pool.request()
+    .input('guestAuthId', sql.BigInt, guestAuthId)
+    .query(`
+      SELECT ga.guest_auth_id, ga.login_email, g.full_name
+      FROM GuestAuth ga
+      JOIN Guest g ON ga.guest_id = g.guest_id
+      WHERE ga.guest_auth_id = @guestAuthId
+    `);
+
+  if (result.recordset.length === 0) {
+    throw new Error('Guest account not found for verification');
+  }
+
+  const account = result.recordset[0];
+  const otpCode = await createVerificationOtp(pool, guestAuthId);
+  await sendGuestVerificationOtp({
+    to: account.login_email,
+    fullName: account.full_name,
+    otpCode,
+  });
+
+  return account;
 }
 
 router.use(attachAuthContext);
@@ -327,17 +401,129 @@ router.post('/guest/register', async (req, res) => {
         resolvedGuestId = createdGuest.recordset[0].guest_id;
       }
 
-      await new sql.Request(transaction)
+      const createdAuth = await new sql.Request(transaction)
         .input('guestId', sql.BigInt, resolvedGuestId)
         .input('loginEmail', sql.VarChar(150), login_email)
         .input('passwordHash', sql.VarChar(255), passwordHash)
         .query(`
           INSERT INTO GuestAuth (guest_id, login_email, password_hash, account_status)
-          VALUES (@guestId, @loginEmail, @passwordHash, 'ACTIVE')
+          OUTPUT INSERTED.guest_auth_id
+          VALUES (@guestId, @loginEmail, @passwordHash, 'LOCKED')
         `);
 
       await transaction.commit();
-      const guestUser = await loadGuestUser(pool, resolvedGuestId);
+      await sendVerificationForGuestAuth(pool, createdAuth.recordset[0].guest_auth_id);
+
+      res.status(201).json({
+        success: true,
+        verification_required: true,
+        login_email,
+        message: 'Account created. Check your email for the verification code.',
+      });
+    } catch (innerErr) {
+      try { await transaction.rollback(); } catch (_) { /* ignore */ }
+      throw innerErr;
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/guest/resend-verification', async (req, res) => {
+  try {
+    const { login_email } = req.body;
+    if (!login_email) {
+      return res.status(400).json({ success: false, error: 'login_email is required' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('loginEmail', sql.VarChar(150), login_email)
+      .query(`
+        SELECT guest_auth_id, email_verified_at, account_status
+        FROM GuestAuth
+        WHERE login_email = @loginEmail
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Guest account not found' });
+    }
+
+    const account = result.recordset[0];
+    if (account.email_verified_at) {
+      return res.status(400).json({ success: false, error: 'Email is already verified' });
+    }
+
+    await sendVerificationForGuestAuth(pool, account.guest_auth_id);
+
+    res.json({
+      success: true,
+      message: 'A new verification code has been sent.',
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/guest/verify-email', async (req, res) => {
+  try {
+    const { login_email, otp_code } = req.body;
+
+    if (!login_email || !otp_code) {
+      return res.status(400).json({ success: false, error: 'login_email and otp_code are required' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('loginEmail', sql.VarChar(150), login_email)
+      .input('otpCode', sql.VarChar(10), String(otp_code).trim())
+      .query(`
+        SELECT TOP 1 ga.guest_auth_id, ga.guest_id, ga.login_email, evo.email_otp_id
+        FROM GuestAuth ga
+        JOIN EmailVerificationOtp evo ON ga.guest_auth_id = evo.guest_auth_id
+        WHERE ga.login_email = @loginEmail
+          AND evo.otp_code = @otpCode
+          AND evo.purpose = 'ACTIVATE'
+          AND evo.consumed_at IS NULL
+          AND evo.expires_at >= GETDATE()
+          AND ga.email_verified_at IS NULL
+        ORDER BY evo.created_at DESC
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired verification code' });
+    }
+
+    const account = result.recordset[0];
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      await new sql.Request(transaction)
+        .input('otpId', sql.BigInt, account.email_otp_id)
+        .query(`
+          UPDATE EmailVerificationOtp
+          SET consumed_at = GETDATE()
+          WHERE email_otp_id = @otpId
+        `);
+
+      await new sql.Request(transaction)
+        .input('guestAuthId', sql.BigInt, account.guest_auth_id)
+        .query(`
+          UPDATE GuestAuth
+          SET email_verified_at = GETDATE(),
+              account_status = 'ACTIVE',
+              updated_at = GETDATE()
+          WHERE guest_auth_id = @guestAuthId
+        `);
+
+      await transaction.commit();
+    } catch (innerErr) {
+      try { await transaction.rollback(); } catch (_) { /* ignore */ }
+      throw innerErr;
+    }
+
+    const guestUser = await loadGuestUser(pool, account.guest_id);
     const token = issueAuthToken({
       sub: String(guestUser.guest_id),
       user_type: 'GUEST',
@@ -345,11 +531,7 @@ router.post('/guest/register', async (req, res) => {
       login_email,
     });
 
-      res.status(201).json(buildAuthResponse(token, guestUser));
-    } catch (innerErr) {
-      try { await transaction.rollback(); } catch (_) { /* ignore */ }
-      throw innerErr;
-    }
+    res.json(buildAuthResponse(token, guestUser));
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

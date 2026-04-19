@@ -6,12 +6,29 @@
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
+const { sendBookingConfirmation, sendCancellationNotice, sendCheckinReminder } = require('../services/mail');
+const { requireAuth } = require('../middleware/auth');
+
+async function generateGuestCode(pool) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = `G-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const exists = await pool.request()
+      .input('guestCode', sql.VarChar(50), candidate)
+      .query('SELECT guest_id FROM Guest WHERE guest_code = @guestCode');
+
+    if (exists.recordset.length === 0) {
+      return candidate;
+    }
+  }
+
+  throw new Error('Unable to generate unique guest code');
+}
 
 // POST /api/reservations — Create Reservation (calls sp_ReserveRoom)
 router.post('/', async (req, res) => {
   try {
     const {
-      hotel_id, guest_id, room_id, room_type_id, rate_plan_id,
+      hotel_id, guest_id, guest_profile, room_id, room_type_id, rate_plan_id,
       booking_channel_id, booking_source,
       checkin_date, checkout_date, nights,
       adult_count, child_count, nightly_rate,
@@ -20,8 +37,20 @@ router.post('/', async (req, res) => {
     } = req.body;
 
     // Validation
-    if (!hotel_id || !guest_id || !room_id || !checkin_date || !checkout_date) {
-      return res.status(400).json({ success: false, error: 'Missing required fields: hotel_id, guest_id, room_id, checkin_date, checkout_date' });
+    if (!hotel_id || !room_id || !checkin_date || !checkout_date) {
+      return res.status(400).json({ success: false, error: 'Missing required fields: hotel_id, room_id, checkin_date, checkout_date' });
+    }
+
+    if (!guest_id) {
+      const firstName = String(guest_profile?.first_name || '').trim();
+      const lastName = String(guest_profile?.last_name || '').trim();
+      const email = String(guest_profile?.email || '').trim();
+      if (!firstName || !lastName || !email) {
+        return res.status(400).json({
+          success: false,
+          error: 'Provide guest_id or guest_profile with first_name, last_name, and email',
+        });
+      }
     }
 
     // [FIX] LOGIC-2: Validate nightly_rate is positive
@@ -51,6 +80,7 @@ router.post('/', async (req, res) => {
     await transaction.begin();
 
     try {
+      let resolvedGuestId = guest_id ? Number(guest_id) : null;
       const reservationCode = `RES-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
       // ═══════════════════════════════════
@@ -61,6 +91,57 @@ router.post('/', async (req, res) => {
       if (nightCount <= 0 || nightCount > MAX_NIGHTS) {
         await transaction.rollback();
         return res.status(400).json({ success: false, error: `Invalid stay duration. Must be 1-${MAX_NIGHTS} nights. Got: ${nightCount}` });
+      }
+
+      if (resolvedGuestId) {
+        const existingGuest = await new sql.Request(transaction)
+          .input('guestId', sql.BigInt, resolvedGuestId)
+          .query('SELECT guest_id FROM Guest WHERE guest_id = @guestId');
+
+        if (existingGuest.recordset.length === 0) {
+          await transaction.rollback();
+          return res.status(404).json({ success: false, error: 'Guest not found' });
+        }
+
+        if (guest_profile) {
+          await new sql.Request(transaction)
+            .input('guestId', sql.BigInt, resolvedGuestId)
+            .input('firstName', sql.NVarChar(100), String(guest_profile.first_name || '').trim() || null)
+            .input('lastName', sql.NVarChar(100), String(guest_profile.last_name || '').trim() || null)
+            .input('email', sql.VarChar(150), String(guest_profile.email || '').trim() || null)
+            .input('phoneCountryCode', sql.VarChar(10), guest_profile.phone_country_code || null)
+            .input('phoneNumber', sql.VarChar(30), guest_profile.phone_number || null)
+            .query(`
+              UPDATE Guest
+              SET first_name = COALESCE(@firstName, first_name),
+                  last_name = COALESCE(@lastName, last_name),
+                  email = COALESCE(@email, email),
+                  phone_country_code = @phoneCountryCode,
+                  phone_number = @phoneNumber,
+                  updated_at = GETDATE()
+              WHERE guest_id = @guestId
+            `);
+        }
+      } else {
+        const guestCode = await generateGuestCode(pool);
+        const createdGuest = await new sql.Request(transaction)
+          .input('guestCode', sql.VarChar(50), guestCode)
+          .input('firstName', sql.NVarChar(100), String(guest_profile.first_name).trim())
+          .input('lastName', sql.NVarChar(100), String(guest_profile.last_name).trim())
+          .input('email', sql.VarChar(150), String(guest_profile.email).trim())
+          .input('phoneCountryCode', sql.VarChar(10), guest_profile.phone_country_code || null)
+          .input('phoneNumber', sql.VarChar(30), guest_profile.phone_number || null)
+          .query(`
+            INSERT INTO Guest (
+              guest_code, first_name, last_name, email, phone_country_code, phone_number
+            )
+            OUTPUT INSERTED.guest_id
+            VALUES (
+              @guestCode, @firstName, @lastName, @email, @phoneCountryCode, @phoneNumber
+            )
+          `);
+
+        resolvedGuestId = createdGuest.recordset[0].guest_id;
       }
 
       for (let i = 0; i < nightCount; i++) {
@@ -119,7 +200,7 @@ router.post('/', async (req, res) => {
       const resvResult = await resvRequest
         .input('code', sql.VarChar(50), reservationCode)
         .input('hotel_id', sql.BigInt, hotel_id)
-        .input('guest_id', sql.BigInt, guest_id)
+        .input('guest_id', sql.BigInt, resolvedGuestId)
         .input('channel_id', sql.BigInt, booking_channel_id || 1)
         .input('source', sql.VarChar(20), booking_source || 'DIRECT_WEB')
         .input('checkin', sql.VarChar(10), checkin_date)
@@ -197,26 +278,155 @@ router.post('/', async (req, res) => {
 
       await transaction.commit();
 
-      res.status(201).json({
-        success: true,
-        data: {
-          reservation_id: reservation.reservation_id,
-          reservation_code: reservation.reservation_code,
-          status: 'CONFIRMED',
-          hotel_id,
-          room_id,
-          checkin_date,
-          checkout_date,
-          nights: nightCount,
-          total: reservationTotal,
-          deposit_required: requiresDeposit,
-          deposit_amount: depositAmount,
-        },
-      });
+      const responseData = {
+        reservation_id: reservation.reservation_id,
+        reservation_code: reservation.reservation_code,
+        status: 'CONFIRMED',
+        hotel_id,
+        room_id,
+        checkin_date,
+        checkout_date,
+        nights: nightCount,
+        total: reservationTotal,
+        grand_total_amount: reservationTotal,
+        deposit_required: requiresDeposit,
+        deposit_amount: depositAmount,
+        guest_id: resolvedGuestId,
+      };
+
+      res.status(201).json({ success: true, data: responseData });
+
+      // ── Fire-and-forget: booking confirmation email ──────────
+      try {
+        const guestEmail = guest_profile?.email ||
+          (resolvedGuestId
+            ? (await getSqlPool().request()
+                .input('gid', sql.BigInt, resolvedGuestId)
+                .query('SELECT email, first_name, last_name FROM Guest WHERE guest_id = @gid')
+              ).recordset[0]?.email
+            : null);
+
+        const guestName = [
+          guest_profile?.first_name,
+          guest_profile?.last_name,
+        ].filter(Boolean).join(' ') || 'Guest';
+
+        // Fetch hotel name for email
+        const hotelRow = await getSqlPool().request()
+          .input('hid', sql.BigInt, hotel_id)
+          .query('SELECT hotel_name FROM Hotel WHERE hotel_id = @hid');
+        const hotelName = hotelRow.recordset[0]?.hotel_name || 'Your Hotel';
+
+        if (guestEmail) {
+          sendBookingConfirmation({
+            to: guestEmail,
+            fullName: guestName,
+            reservation: {
+              ...responseData,
+              hotel_name: hotelName,
+              currency_code: currency_code || 'VND',
+              special_request_text,
+            },
+          });
+        }
+      } catch (mailErr) {
+        console.error('[Mail] Booking confirmation error:', mailErr.message);
+      }
+
     } catch (innerErr) {
       try { await transaction.rollback(); } catch (_) { /* transaction already aborted by SQL Server */ }
       throw innerErr;
     }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// GET /api/reservations — List reservations
+// Query params: guest_id, email, status, limit (default 20)
+// ═══════════════════════════════════════════════════════════
+router.get('/', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const { guest_id, email, status, limit = 20 } = req.query;
+
+    let where = [];
+    const request = pool.request();
+
+    if (guest_id) {
+      where.push('r.guest_id = @guestId');
+      request.input('guestId', sql.BigInt, parseInt(guest_id));
+    }
+    if (email) {
+      where.push('g.email = @email');
+      request.input('email', sql.VarChar(150), email.toLowerCase());
+    }
+    if (status) {
+      where.push('r.reservation_status = @status');
+      request.input('status', sql.VarChar(20), status.toUpperCase());
+    }
+
+    const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+    const result = await request.query(`
+      SELECT TOP (${Math.min(parseInt(limit) || 20, 100)})
+        r.reservation_id, r.reservation_code, r.reservation_status,
+        r.checkin_date, r.checkout_date, r.nights,
+        r.adult_count, r.currency_code,
+        r.grand_total_amount, r.deposit_amount, r.deposit_required_flag,
+        r.guarantee_type, r.special_request_text, r.created_at,
+        g.guest_id, g.guest_code,
+        g.first_name + ' ' + g.last_name AS guest_name,
+        g.email AS guest_email,
+        h.hotel_id, h.hotel_name, h.hotel_code,
+        rr.room_id, rr.nightly_rate_snapshot,
+        rt.room_type_name, r2.room_number, r2.floor_number
+      FROM Reservation r
+      JOIN Guest g ON r.guest_id = g.guest_id
+      JOIN Hotel h ON r.hotel_id = h.hotel_id
+      LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+      LEFT JOIN RoomType rt ON rr.room_type_id = rt.room_type_id
+      LEFT JOIN Room r2 ON rr.room_id = r2.room_id
+      ${whereClause}
+      ORDER BY r.created_at DESC
+    `);
+
+    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// GET /api/reservations/by-guest/:guestCode — By guest code
+// ═══════════════════════════════════════════════════════════
+router.get('/by-guest/:guestCode', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const { guestCode } = req.params;
+
+    const result = await pool.request()
+      .input('guestCode', sql.VarChar(50), guestCode)
+      .query(`
+        SELECT
+          r.reservation_id, r.reservation_code, r.reservation_status,
+          r.checkin_date, r.checkout_date, r.nights,
+          r.adult_count, r.currency_code,
+          r.grand_total_amount, r.created_at,
+          h.hotel_id, h.hotel_name,
+          rt.room_type_name, r2.room_number
+        FROM Reservation r
+        JOIN Guest g ON r.guest_id = g.guest_id
+        JOIN Hotel h ON r.hotel_id = h.hotel_id
+        LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+        LEFT JOIN RoomType rt ON rr.room_type_id = rt.room_type_id
+        LEFT JOIN Room r2 ON rr.room_id = r2.room_id
+        WHERE g.guest_code = @guestCode
+        ORDER BY r.created_at DESC
+      `);
+
+    res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -231,8 +441,15 @@ router.get('/:code', async (req, res) => {
     const result = await pool.request()
       .input('code', sql.VarChar(50), code)
       .query(`
-        SELECT v.*, g.full_name AS guest_name, g.email AS guest_email,
-               h.hotel_name, h.currency_code AS hotel_currency
+        SELECT
+          v.reservation_id, v.reservation_code, v.reservation_status,
+          v.checkin_date, v.checkout_date, v.nights, v.currency_code,
+          v.grand_total        AS grand_total_amount,
+          v.total_paid, v.balance_due,
+          v.room_subtotal, v.service_subtotal,
+          g.guest_id, g.full_name AS guest_name, g.email AS guest_email,
+          g.first_name, g.last_name,
+          h.hotel_id, h.hotel_name, h.currency_code AS hotel_currency
         FROM vw_ReservationTotal v
         JOIN Guest g ON v.guest_id = g.guest_id
         JOIN Hotel h ON v.hotel_id = h.hotel_id
@@ -435,7 +652,7 @@ router.post('/:id/checkout', async (req, res) => {
 // POST /api/reservations/:id/guest-cancel
 // Guest initiates cancellation → FORFEIT DEPOSIT (no refund)
 // ═══════════════════════════════════════════════════════════
-router.post('/:id/guest-cancel', async (req, res) => {
+router.post('/:id/guest-cancel', requireAuth, async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -443,6 +660,20 @@ router.post('/:id/guest-cancel', async (req, res) => {
 
     if (isNaN(resvId)) {
       return res.status(400).json({ success: false, error: 'Invalid reservation ID' });
+    }
+
+    // ── Auth: only the guest who owns this reservation can cancel ──
+    if (req.auth.user_type !== 'GUEST') {
+      return res.status(403).json({ success: false, error: 'Only guests can use guest-cancel. Admins use hotel-cancel.' });
+    }
+
+    const ownerCheck = await pool.request()
+      .input('resvId', sql.BigInt, resvId)
+      .input('guestId', sql.BigInt, req.auth.sub)
+      .query('SELECT 1 AS ok FROM Reservation WHERE reservation_id = @resvId AND guest_id = @guestId');
+
+    if (ownerCheck.recordset.length === 0) {
+      return res.status(403).json({ success: false, error: 'You are not authorised to cancel this reservation.' });
     }
 
     const transaction = new sql.Transaction(pool);
@@ -543,6 +774,30 @@ router.post('/:id/guest-cancel', async (req, res) => {
           reason: reason || 'Guest requested cancellation'
         }
       });
+
+      // ── Fire-and-forget: cancellation email ─────────────────
+      try {
+        const guestRow = await pool.request().input('id', sql.BigInt, resvId).query(`
+          SELECT g.email, g.first_name, g.last_name, h.hotel_name
+          FROM Reservation r
+          JOIN Guest g ON r.guest_id = g.guest_id
+          JOIN Hotel h ON r.hotel_id = h.hotel_id
+          WHERE r.reservation_id = @id
+        `);
+        const gr = guestRow.recordset[0];
+        if (gr?.email) {
+          sendCancellationNotice({
+            to: gr.email,
+            fullName: `${gr.first_name} ${gr.last_name}`.trim(),
+            reservation: { ...resv, hotel_name: gr.hotel_name },
+            cancelledBy: 'guest',
+            reason: reason || 'Guest requested cancellation',
+          });
+        }
+      } catch (mailErr) {
+        console.error('[Mail] Cancellation email error:', mailErr.message);
+      }
+
     } catch (innerErr) {
       try { await transaction.rollback(); } catch (_) { /* transaction already aborted by SQL Server */ }
       throw innerErr;

@@ -101,6 +101,117 @@ router.get('/rates/alerts', async (req, res) => {
   }
 });
 
+// GET /api/admin/accounts — Admin account management snapshot
+router.get('/accounts', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+
+    const [systemUsers, guestAccounts] = await Promise.all([
+      pool.request().query(`
+        SELECT su.user_id, su.username, su.full_name, su.email, su.department,
+               su.account_status, su.last_login_at
+        FROM SystemUser su
+        ORDER BY su.user_id
+      `),
+      pool.request().query(`
+        SELECT ga.guest_auth_id, ga.login_email, ga.account_status, ga.last_login_at,
+               g.guest_id, g.guest_code, g.full_name, g.email, g.vip_flag,
+               la.tier_code, la.points_balance
+        FROM GuestAuth ga
+        JOIN Guest g ON ga.guest_id = g.guest_id
+        LEFT JOIN LoyaltyAccount la ON ga.guest_id = la.guest_id AND la.status = 'ACTIVE'
+        ORDER BY ga.guest_auth_id
+      `),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        system_users: systemUsers.recordset,
+        guest_accounts: guestAccounts.recordset,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /api/admin/accounts/system/:id — update system user account status
+router.put('/accounts/system/:id', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { account_status } = req.body;
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ success: false, error: 'Invalid system user ID' });
+    }
+
+    if (!['ACTIVE', 'LOCKED', 'DISABLED'].includes(account_status)) {
+      return res.status(400).json({ success: false, error: 'account_status must be ACTIVE, LOCKED, or DISABLED' });
+    }
+
+    if (String(req.auth.sub) === String(userId) && account_status !== 'ACTIVE') {
+      return res.status(400).json({ success: false, error: 'You cannot disable or lock the account currently in use' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('id', sql.BigInt, userId)
+      .input('status', sql.VarChar(10), account_status)
+      .query(`
+        UPDATE SystemUser
+        SET account_status = @status,
+            updated_at = GETDATE()
+        OUTPUT INSERTED.user_id, INSERTED.username, INSERTED.full_name, INSERTED.account_status
+        WHERE user_id = @id
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'System user not found' });
+    }
+
+    res.json({ success: true, data: result.recordset[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /api/admin/accounts/guest/:id — update guest login account status
+router.put('/accounts/guest/:id', async (req, res) => {
+  try {
+    const guestAuthId = parseInt(req.params.id, 10);
+    const { account_status } = req.body;
+
+    if (isNaN(guestAuthId)) {
+      return res.status(400).json({ success: false, error: 'Invalid guest auth ID' });
+    }
+
+    if (!['ACTIVE', 'LOCKED', 'DISABLED'].includes(account_status)) {
+      return res.status(400).json({ success: false, error: 'account_status must be ACTIVE, LOCKED, or DISABLED' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('id', sql.BigInt, guestAuthId)
+      .input('status', sql.VarChar(10), account_status)
+      .query(`
+        UPDATE GuestAuth
+        SET account_status = @status,
+            updated_at = GETDATE()
+        OUTPUT INSERTED.guest_auth_id, INSERTED.login_email, INSERTED.account_status
+        WHERE guest_auth_id = @id
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Guest account not found' });
+    }
+
+    res.json({ success: true, data: result.recordset[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET /api/admin/reports/revenue — Revenue Intelligence (Window Functions)
 router.get('/reports/revenue', async (req, res) => {
   try {
