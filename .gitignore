@@ -2,6 +2,10 @@
 node_modules/
 frontend/node_modules/
 
+# ─── Agent / AI context files ─────────────────────────────────
+.agent/
+
+
 # ─── Environment Variables ────────────────────────────────────
 .env
 .env.local
