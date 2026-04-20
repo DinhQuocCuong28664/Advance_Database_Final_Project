@@ -28,9 +28,13 @@ export function AuthProvider({ children }) {
   const [authSession, setAuthSession] = useState(() => readStoredSession());
   const [authBusy, setAuthBusy] = useState('');
 
-  const isSystemUser = authSession?.user?.user_type === 'SYSTEM_USER';
-  const isGuestUser = authSession?.user?.user_type === 'GUEST';
-  const guestAccounts = authSession?.user?.loyalty_accounts || [];
+  const isSystemUser   = authSession?.user?.user_type === 'SYSTEM_USER';
+  const isGuestUser    = authSession?.user?.user_type === 'GUEST';
+  const guestAccounts  = authSession?.user?.loyalty_accounts || [];
+  const systemRoles    = Array.isArray(authSession?.user?.roles) ? authSession.user.roles : [];
+  const hasSystemRole  = (roleCode) => systemRoles.includes(roleCode);
+  const isAdminUser    = isSystemUser && hasSystemRole('ADMIN');
+  const isCashierUser  = isSystemUser && (hasSystemRole('CASHIER') || hasSystemRole('FRONT_DESK'));
 
   useEffect(() => {
     async function syncSession() {
@@ -137,6 +141,8 @@ export function AuthProvider({ children }) {
         authBusy,
         isSystemUser,
         isGuestUser,
+        isAdminUser,
+        isCashierUser,
         guestAccounts,
         login,
         registerGuest,

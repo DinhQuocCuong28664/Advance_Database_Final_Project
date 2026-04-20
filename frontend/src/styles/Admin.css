@@ -615,3 +615,49 @@
 .rsv-cancelled         { background: rgba(200,80,60,0.15);  color: #8b2012; }
 .rsv-no_show           { background: rgba(180,130,20,0.15); color: #7a5500; }
 .rsv-pending           { background: rgba(240,160,30,0.15); color: #7a5500; }
+
+/* ???????????????????????????????????????
+   CASHIER / FRONT-DESK PORTAL
+??????????????????????????????????????? */
+.cashier-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, rgba(15,45,50,0.98), rgba(20,65,70,0.97));
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.cashier-topbar-identity { display:flex; align-items:center; gap:14px; }
+.cashier-topbar-logo {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .04em;
+}
+.cashier-topbar-role {
+  padding: 3px 12px;
+  border-radius: 99px;
+  background: rgba(100,210,190,0.18);
+  color: rgba(100,210,190,0.9);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.cashier-topbar-user { display:flex; align-items:center; gap:14px; }
+.cashier-topbar-name { color:rgba(255,255,255,0.7); font-size:0.9rem; }
+.cashier-signout {
+  color: rgba(255,255,255,0.55) !important;
+  border-color: rgba(255,255,255,0.18) !important;
+  font-size: 0.82rem;
+  padding: 5px 14px !important;
+}
+.cashier-signout:hover {
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.45) !important;
+  background: rgba(255,255,255,0.05) !important;
+}

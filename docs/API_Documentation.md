@@ -1,1187 +1,785 @@
-# LuxeReserve API Documentation
+# LuxeReserve — API Documentation
 
-This file documents the current Express implementation in `src/routes/*`.
-
-Source of truth:
-- Route mounting: `src/app.js`
-- Request and response behavior: `src/routes/*.js`
-
-Design documents such as sequence diagrams or test scenarios may describe the intended architecture, but this file is meant to match the API behavior that is currently implemented.
+> **Base URL:** `http://localhost:3000/api`  
+> **Format:** JSON  
+> **Auth:** Bearer token — `Authorization: Bearer <token>`  
+> **Total endpoints:** 55 across 14 route groups
 
 ---
 
-## Base URL
+## Table of Contents
 
-```text
-http://localhost:3000/api
+1. [Authentication](#1-authentication)
+2. [Hotels](#2-hotels)
+3. [Rooms](#3-rooms)
+4. [Promotions](#4-promotions)
+5. [Reservations](#5-reservations)
+6. [Payments](#6-payments)
+7. [Services](#7-services)
+8. [Invoices](#8-invoices)
+9. [Housekeeping](#9-housekeeping)
+10. [Maintenance](#10-maintenance)
+11. [Guests](#11-guests)
+12. [Locations](#12-locations)
+13. [Admin](#13-admin)
+14. [VNPay](#14-vnpay)
+
+---
+
+## 1. Authentication
+
+### POST `/auth/login`
+Unified login for both guests and system users. App auto-detects and redirects to the correct portal.
+
+**Request Body**
+```json
+{ "login": "cashier", "password": "cashier" }
 ```
 
-## Global Headers
-
-For requests with a JSON body:
-
-```http
-Content-Type: application/json
-```
-
-## Standard Response Shape
-
-Most endpoints return:
-
+**Response**
 ```json
 {
   "success": true,
-  "data": {}
+  "token": "<jwt>",
+  "user": {
+    "user_type": "SYSTEM_USER",
+    "user_id": 7,
+    "username": "cashier",
+    "full_name": "Front Desk Cashier",
+    "roles": ["CASHIER", "FRONT_DESK"]
+  }
 }
 ```
 
-Collection endpoints usually also include `count`, and some workflow endpoints include `message`, `summary`, or other helper fields.
-
----
-
-## 0. API Root
-
-### 0.1 API Index
-
-- Method: `GET`
-- Endpoint: `/`
-- Description: Returns API metadata and a route summary.
-
----
-
-## 1. Hotels
-
-### 1.1 List All Hotels
-
-- Method: `GET`
-- Endpoint: `/hotels`
-- Description: Returns active hotels by merging SQL operational data with MongoDB catalog content.
-
-Returned fields include:
-- SQL-side fields such as `hotel_id`, `hotel_code`, `hotel_name`, `hotel_type`, `currency_code`, `brand_name`, `chain_name`
-- Mongo-enriched fields such as `description`, `hero_image`, `amenity_count`, `location_detail`
-
-### 1.2 Get Hotel Details
-
-- Method: `GET`
-- Endpoint: `/hotels/:id`
-- Path params:
-  - `id` (number, required)
-- Description: Returns detailed hotel data, room types, operational amenities, and MongoDB content.
-
-Additional merged sections include:
-- `room_types`
-- `amenities`
-- `images`
-- `contact`
-
----
-
-## 2. Rooms
-
-### 2.1 Check Room Availability
-
-- Method: `GET`
-- Endpoint: `/rooms/availability`
-- Query params:
-  - `hotel_id` (number, required)
-  - `checkin` (`YYYY-MM-DD`, required)
-  - `checkout` (`YYYY-MM-DD`, required)
-- Description: Returns rooms that are currently sellable for the whole requested date range.
-
-Current response now includes `availability_records` for each returned room. This is important because admin optimistic locking uses those records.
-
-Example response item:
-
+**Guest login response user object**
 ```json
 {
-  "room_id": 7,
-  "room_number": "1205",
-  "floor_number": 12,
-  "room_type_name": "Deluxe King",
-  "category": "DELUXE",
-  "bed_type": "KING",
-  "max_adults": 2,
-  "room_size_sqm": 42,
-  "view_type": "CITY",
-  "room_type_code": "DLX-KING",
-  "min_nightly_rate": 8500000,
-  "availability_records": [
+  "user_type": "GUEST",
+  "guest_id": 1,
+  "guest_code": "G-DQC",
+  "full_name": "Dinh Quoc Cuong",
+  "email": "dqc@luxereserve.local",
+  "loyalty_accounts": [
+    { "membership_no": "MAR-PLT-DQC", "tier_code": "PLATINUM", "points_balance": 150000 }
+  ]
+}
+```
+
+---
+
+### POST `/auth/admin/login`
+System user only login (alternative endpoint).
+
+**Request Body:** `{ "username": "admin", "password": "admin" }`
+
+---
+
+### POST `/auth/guest/login`
+Guest only login.
+
+**Request Body:** `{ "login": "dqc", "password": "dqc" }`
+
+---
+
+### POST `/auth/guest/register`
+Register a new guest account.
+
+**Request Body**
+```json
+{
+  "login_email": "john@example.com",
+  "password": "password123",
+  "first_name": "John",
+  "last_name": "Doe",
+  "phone_country_code": "+84",
+  "phone_number": "0901234567"
+}
+```
+
+**Note:** New accounts are `LOCKED` until email is verified.
+
+---
+
+### POST `/auth/guest/verify-email`
+Verify email with OTP sent after registration.
+
+**Request Body:** `{ "login_email": "john@example.com", "otp_code": "123456" }`
+
+---
+
+### POST `/auth/guest/resend-verification`
+Resend OTP verification email.
+
+**Request Body:** `{ "login_email": "john@example.com" }`
+
+---
+
+### GET `/auth/me` 🔒
+Get current authenticated user details.
+
+**Headers:** `Authorization: Bearer <token>`
+
+---
+
+## 2. Hotels
+
+### GET `/hotels`
+List all active hotels. **Hybrid** — merges SQL operational data with MongoDB rich content.
+
+**Response fields per hotel**
+| Field | Source | Description |
+|---|---|---|
+| `hotel_id`, `hotel_name`, `hotel_code` | SQL | Identification |
+| `star_rating`, `hotel_type`, `status` | SQL | Classification |
+| `check_in_time`, `check_out_time` | SQL | Policy |
+| `brand_name`, `chain_name` | SQL | Hierarchy |
+| `city_name` | SQL | Location |
+| `description` | MongoDB | Rich text |
+| `hero_image` | MongoDB | Hero image URL |
+| `amenity_count` | MongoDB | Count of amenities |
+| `location_detail` | MongoDB | Coordinates, address |
+
+**Example Response**
+```json
+{
+  "success": true,
+  "count": 5,
+  "data": [
     {
-      "availability_id": 110,
-      "stay_date": "2026-04-14",
-      "availability_status": "OPEN",
-      "version_no": 3
+      "hotel_id": 1,
+      "hotel_name": "LuxeReserve Hanoi",
+      "star_rating": 5,
+      "brand_name": "LuxeReserve",
+      "city_name": "Hanoi",
+      "hero_image": "https://...",
+      "description": "A 5-star property in the heart of Hanoi..."
     }
   ]
 }
 ```
 
-Validation:
-- Missing `hotel_id`, `checkin`, or `checkout` -> `400`
+---
+
+### GET `/hotels/:id`
+Full hotel detail including room types, amenities, and MongoDB rich content.
+
+**Path param:** `id` — hotel_id (integer)
+
+**Response includes**
+- Full hotel info (SQL + MongoDB merged)
+- `room_types[]` — each with pricing, features, images from MongoDB
+- `amenities[]` — each with name, category, icon from MongoDB
+- `images[]` — gallery from MongoDB
+- `contact` — contact info from MongoDB
 
 ---
 
-## 3. Guests
+## 3. Rooms
 
-### 3.1 List All Guests
+### GET `/rooms/availability`
+Check available rooms for a date range.
 
-- Method: `GET`
-- Endpoint: `/guests`
+**Query Parameters**
+| Param | Required | Description |
+|---|---|---|
+| `hotel_id` | ✅ | Hotel ID |
+| `checkin` | ✅ | Date `YYYY-MM-DD` |
+| `checkout` | ✅ | Date `YYYY-MM-DD` |
 
-### 3.2 Get Guest Profile
+**Logic:** Returns rooms where `RoomAvailability.availability_status = 'OPEN'` for ALL requested nights. Joins with `RoomRate` to get nightly rates.
 
-- Method: `GET`
-- Endpoint: `/guests/:id`
-- Path params:
-  - `id` (number, required)
-
-Response includes:
-- guest base record
-- `preferences`
-- `loyalty_accounts`
-- `addresses`
-
-Validation:
-- Invalid `id` -> `400`
-- Guest not found -> `404`
-
-### 3.3 Create Guest
-
-- Method: `POST`
-- Endpoint: `/guests`
-
-Required body fields:
-- `guest_code`
-- `first_name`
-- `last_name`
-
-Example body:
-
+**Response per room**
 ```json
 {
-  "guest_code": "G-NEW-20260401",
-  "title": "Mr.",
-  "first_name": "Tony",
-  "last_name": "Stark",
-  "gender": "M",
-  "email": "tony@starkindustries.com",
-  "phone_country_code": "+1",
-  "phone_number": "555-0199",
-  "nationality_country_code": "US"
+  "room_id": 10,
+  "room_number": "101",
+  "floor_number": 1,
+  "room_type_name": "Deluxe Room",
+  "bed_type": "KING",
+  "max_adults": 2,
+  "room_size_sqm": 45,
+  "min_nightly_rate": 1500000,
+  "availability_records": [
+    { "stay_date": "2026-05-01", "availability_status": "OPEN", "version_no": 1 }
+  ]
 }
 ```
-
-Validation:
-- Missing required fields -> `400`
 
 ---
 
-## 4. Authentication
+## 4. Promotions
 
-### 4.1 Universal Login
+### GET `/promotions`
+List active promotions, optionally filtered and with guest eligibility.
 
-- Method: `POST`
-- Endpoint: `/auth/login`
-- Description: Unified login endpoint that tries system user authentication first, then falls back to guest authentication. Returns the same token/user shape as the dedicated endpoints.
+**Query Parameters**
+| Param | Required | Description |
+|---|---|---|
+| `hotel_id` | ❌ | Filter by hotel |
+| `guest_id` | ❌ | Check eligibility for this guest |
+| `member_only` | ❌ | `true` / `false` |
 
-Body:
-
+**Response per promotion**
 ```json
 {
-  "login": "admin",
-  "password": "admin123"
+  "promotion_id": 1,
+  "promotion_code": "SUMMER25",
+  "promotion_name": "Summer 25% Off",
+  "promotion_type": "PERCENTAGE",
+  "discount_value": 25,
+  "member_only_flag": false,
+  "min_nights": 2,
+  "scope_type": "HOTEL",
+  "eligible_for_guest": 1
 }
 ```
-
-- `login` can be a `username` (for system users), `login_email`, or `guest_code` (for guests).
-
-Response is identical to either admin or guest login depending on which account matches first.
-
-Validation:
-- Missing `login` or `password` -> `400`
-- Account found but password wrong -> `401`
-- Account suspended or inactive -> `403`
-- No matching account -> `401`
-
-### 4.2 Admin Login
-
-- Method: `POST`
-- Endpoint: `/auth/admin/login`
-
-Body:
-
-```json
-{
-  "username": "admin",
-  "password": "admin123"
-}
-```
-
-Response returns:
-- `token`
-- `user` with `user_type = SYSTEM_USER`
-- `roles`
-
-### 4.3 Guest Register
-
-- Method: `POST`
-- Endpoint: `/auth/guest/register`
-
-Body:
-
-```json
-{
-  "guest_id": 1,
-  "login_email": "quoc.nguyen@gmail.com",
-  "password": "guest12345"
-}
-```
-
-Notes:
-- Creates login credentials for an existing guest profile
-- Does not replace anonymous booking flow
-
-### 4.4 Guest Login
-
-- Method: `POST`
-- Endpoint: `/auth/guest/login`
-
-Body:
-
-```json
-{
-  "login": "quoc.nguyen@gmail.com",
-  "password": "guest12345"
-}
-```
-
-`login` may be:
-- `login_email`
-- `guest_code`
-
-Response returns:
-- `token`
-- `user` with `user_type = GUEST`
-- `loyalty_accounts`
-
-### 4.5 Current Authenticated User
-
-- Method: `GET`
-- Endpoint: `/auth/me`
-- Headers:
-  - `Authorization: Bearer <token>`
 
 ---
 
 ## 5. Reservations
 
-### 4.1 Create Reservation
+### POST `/reservations`
+Create a new reservation with **pessimistic locking** (UPDLOCK + HOLDLOCK per night).
 
-- Method: `POST`
-- Endpoint: `/reservations`
-- Description: Creates a reservation and directly locks inventory rows in `RoomAvailability` using pessimistic locking inside a SQL transaction.
-
-Important implementation note:
-- The current API no longer depends on `sp_ReserveRoom` at runtime for this route.
-- It locks inventory per stay date using `UPDLOCK, HOLDLOCK` and then updates those rows to `BOOKED`.
-
-Required body fields:
-- `hotel_id`
-- `guest_id`
-- `room_id`
-- `checkin_date`
-- `checkout_date`
-
-Common optional body fields:
-- `room_type_id`
-- `rate_plan_id`
-- `booking_channel_id`
-- `booking_source`
-- `nights`
-- `adult_count`
-- `child_count`
-- `nightly_rate`
-- `currency_code`
-- `guarantee_type`
-- `purpose_of_stay`
-- `special_request_text`
-
-Example body:
-
+**Request Body**
 ```json
 {
   "hotel_id": 1,
-  "guest_id": 1,
-  "room_id": 7,
-  "room_type_id": 3,
+  "room_id": 10,
+  "room_type_id": 2,
   "rate_plan_id": 1,
-  "checkin_date": "2026-04-14",
-  "checkout_date": "2026-04-16",
+  "checkin_date": "2026-05-10",
+  "checkout_date": "2026-05-13",
   "adult_count": 2,
-  "nightly_rate": 8500000,
+  "child_count": 0,
+  "nightly_rate": 1500000,
   "currency_code": "VND",
   "guarantee_type": "DEPOSIT",
   "purpose_of_stay": "LEISURE",
-  "special_request_text": "High floor if available"
+  "special_request_text": "High floor please",
+  "guest_id": 1
 }
 ```
 
-Current validation rules:
-- Missing `hotel_id`, `guest_id`, `room_id`, `checkin_date`, `checkout_date` -> `400`
-- `nightly_rate <= 0` or missing -> `400`
-- Invalid date format -> `400`
-- `checkout_date` must be after `checkin_date` -> `400`
-- Maximum stay length is `90` nights -> `400`
-- Missing inventory row for a stay date -> `409`
-- Inventory row not `OPEN` for a stay date -> `409`
-
-Current success response:
-
+**For anonymous booking** — provide `guest_profile` instead of `guest_id`:
 ```json
 {
-  "success": true,
-  "data": {
-    "reservation_id": 123,
-    "reservation_code": "RES-20260413-ABC123",
-    "status": "CONFIRMED",
-    "hotel_id": 1,
-    "room_id": 7,
-    "checkin_date": "2026-04-14",
-    "checkout_date": "2026-04-16",
-    "nights": 2,
-    "total": 17000000,
-    "deposit_required": true,
-    "deposit_amount": 5100000
+  "guest_profile": {
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john@example.com",
+    "phone_country_code": "+84",
+    "phone_number": "0901234567"
   }
 }
 ```
 
-Deposit behavior:
-- If `guarantee_type = "DEPOSIT"`, the API currently sets:
-  - `deposit_required_flag = 1`
-  - `deposit_amount = 30%` of reservation total
-- Otherwise `deposit_amount = 0`
+**Business Rules**
+- `nightly_rate` must be > 0
+- `checkout_date` must be after `checkin_date`
+- Max stay: 90 nights
+- If `guarantee_type = 'DEPOSIT'`: deposit = 30% of total
+- Locks `RoomAvailability` rows with UPDLOCK for each night atomically
 
-### 4.2 Get Reservation by Code
-
-- Method: `GET`
-- Endpoint: `/reservations/:code`
-- Path params:
-  - `code` (string, required)
-
-Response includes:
-- reservation financial summary from `vw_ReservationTotal`
-- `rooms`
-- `status_history`
-- guest and hotel display fields
-
-Validation:
-- Reservation not found -> `404`
-
-### 4.3 Check In
-
-- Method: `POST`
-- Endpoint: `/reservations/:id/checkin`
-- Path params:
-  - `id` (number, required)
-- Body:
-
+**Response**
 ```json
 {
+  "success": true,
+  "data": {
+    "reservation_id": 42,
+    "reservation_code": "RES-20260510-ABC123",
+    "status": "CONFIRMED",
+    "nights": 3,
+    "total": 4500000,
+    "deposit_required": true,
+    "deposit_amount": 1350000,
+    "guest_id": 1
+  }
+}
+```
+
+**Error codes**
+| Status | Meaning |
+|---|---|
+| `400` | Validation failed |
+| `404` | Guest not found |
+| `409` | Room not available on one or more nights |
+
+---
+
+### GET `/reservations`
+List reservations with optional filters.
+
+**Query Parameters**
+| Param | Description |
+|---|---|
+| `guest_id` | Filter by guest |
+| `email` | Filter by guest email |
+| `hotel_id` | Filter by hotel |
+| `status` | `CONFIRMED` / `CHECKED_IN` / `CHECKED_OUT` / `CANCELLED` |
+| `checkin_date` | Filter by check-in date `YYYY-MM-DD` |
+| `checkout_date` | Filter by check-out date `YYYY-MM-DD` |
+| `reservation_code` | Exact match |
+| `limit` | Max results (default 20, max 100) |
+
+---
+
+### GET `/reservations/:code`
+Get full reservation detail by reservation code.
+
+**Uses `vw_ReservationTotal`** — includes `balance_due`, `total_paid`, `room_subtotal`, `service_subtotal`.
+
+**Response includes**
+- Core reservation data
+- `rooms[]` — room line items with room type and number
+- `status_history[]` — audit trail of status changes
+
+---
+
+### GET `/reservations/by-guest/:guestCode`
+List all reservations by guest code (e.g. `G-DQC`).
+
+---
+
+### POST `/reservations/:id/checkin`
+Check in a reservation. Status must be `CONFIRMED`.
+
+**Request Body:** `{ "agent_id": 1 }` (optional)
+
+**Side effects**
+- Sets `reservation_status = 'CHECKED_IN'`
+- Sets `Room.room_status = 'OCCUPIED'`
+- Creates `StayRecord`
+- Adds status history entry
+
+---
+
+### POST `/reservations/:id/checkout`
+Check out a reservation. Status must be `CHECKED_IN`.
+
+**Request Body:** `{ "agent_id": 1 }` (optional)
+
+**Side effects**
+- Sets `reservation_status = 'CHECKED_OUT'`
+- Sets `Room.room_status = 'AVAILABLE'`, `housekeeping_status = 'DIRTY'`
+- Completes `StayRecord`
+- Creates `HousekeepingTask` with HIGH priority
+
+**Response includes `financials`:** `grand_total`, `total_paid`, `balance_due`
+
+---
+
+### POST `/reservations/:id/guest-cancel` 🔒 GUEST
+Cancel a reservation as guest. Status must be `CONFIRMED`.
+
+**Request Body:** `{ "reason": "Change of plans" }`
+
+**Policy:** Deposit is **forfeited** (no refund). Room availability released.
+
+---
+
+### POST `/reservations/:id/hotel-cancel` 🔒 ADMIN/FRONT_DESK/CASHIER
+Cancel a reservation as hotel staff.
+
+**Request Body:** `{ "reason": "Hotel maintenance", "agent_id": 1 }`
+
+---
+
+### POST `/reservations/:id/transfer` 🔒 ADMIN/FRONT_DESK/CASHIER
+Transfer guest to a different room using `sp_TransferRoom`.
+
+**Request Body:**
+```json
+{
+  "new_room_id": 15,
+  "reason": "Guest requested upgrade",
   "agent_id": 1
 }
 ```
-
-Behavior:
-- Only reservations in `CONFIRMED` state can check in.
-- Updates:
-  - `Reservation.reservation_status -> CHECKED_IN`
-  - `ReservationRoom.occupancy_status -> IN_HOUSE`
-  - `Room.room_status -> OCCUPIED`
-  - inserts `StayRecord`
-  - inserts `ReservationStatusHistory`
-
-Validation:
-- Invalid reservation ID -> `400`
-- Reservation not found or not `CONFIRMED` -> `409`
-
-### 4.4 Check Out
-
-- Method: `POST`
-- Endpoint: `/reservations/:id/checkout`
-- Path params:
-  - `id` (number, required)
-- Body:
-
-```json
-{
-  "agent_id": 1
-}
-```
-
-Behavior:
-- Only reservations in `CHECKED_IN` state can check out.
-- Updates:
-  - `Reservation.reservation_status -> CHECKED_OUT`
-  - `ReservationRoom.occupancy_status -> COMPLETED`
-  - `Room.room_status -> AVAILABLE`
-  - `Room.housekeeping_status -> DIRTY`
-  - updates `StayRecord`
-  - auto-creates a `HousekeepingTask`
-  - inserts `ReservationStatusHistory`
-- After commit, it reads `vw_ReservationTotal` and returns `financials`
-
-Validation:
-- Invalid reservation ID -> `400`
-- Reservation not found or not `CHECKED_IN` -> `409`
-
-### 4.5 Guest Cancel
-
-- Method: `POST`
-- Endpoint: `/reservations/:id/guest-cancel`
-- Path params:
-  - `id` (number, required)
-- Body:
-
-```json
-{
-  "reason": "Change of travel plans"
-}
-```
-
-Behavior:
-- Only `CONFIRMED` reservations can be guest-cancelled.
-- Releases booked inventory back to `OPEN`
-- Sets related room back to `AVAILABLE`
-- Marks `ReservationRoom.occupancy_status = CANCELLED`
-- Writes `ReservationStatusHistory`
-- Deposit already paid is treated as forfeited, not refunded
-
-Validation:
-- Invalid reservation ID -> `400`
-- Reservation not found -> `404`
-- Reservation not in `CONFIRMED` -> `409`
-
-### 4.6 Hotel Cancel
-
-- Method: `POST`
-- Endpoint: `/reservations/:id/hotel-cancel`
-- Path params:
-  - `id` (number, required)
-- Body:
-
-```json
-{
-  "reason": "Room issue, cannot honor booking",
-  "agent_id": 1
-}
-```
-
-Behavior:
-- Hotel-side cancellation may happen from active reservation states.
-- The route:
-  - sets reservation to `CANCELLED`
-  - releases inventory back to `OPEN`
-  - restores room availability
-  - marks `ReservationRoom` as cancelled
-  - creates a `REFUND` payment if captured money exists
-  - writes `ReservationStatusHistory`
-
-Validation:
-- Invalid reservation ID -> `400`
-- Missing `reason` -> `400`
-- Reservation not found -> `404`
-- Reservation already `CANCELLED`, `CHECKED_OUT`, or `NO_SHOW` -> `409`
-
-### 4.7 Room Transfer
-
-- Method: `POST`
-- Endpoint: `/reservations/:id/transfer`
-- Path params:
-  - `id` (number, required)
-- Body:
-
-```json
-{
-  "new_room_id": 9,
-  "reason": "Air conditioning malfunction",
-  "agent_id": 1
-}
-```
-
-Behavior:
-- This route still uses stored procedure `sp_TransferRoom`.
-- Reservation must be in `CONFIRMED` or `CHECKED_IN`.
-- New room must belong to the same hotel.
-
-Validation:
-- Invalid reservation ID -> `400`
-- Missing `new_room_id` or `reason` -> `400`
-- Reservation not found -> `404`
-- Invalid reservation state -> `409`
-- Transfer conflict from stored procedure -> `409`
 
 ---
 
 ## 6. Payments
 
-### 5.1 Create Payment
+### POST `/payments`
+Create a payment for a reservation.
 
-- Method: `POST`
-- Endpoint: `/payments`
-
-Required body fields:
-- `reservation_id`
-- `amount`
-
-Common optional body fields:
-- `payment_type`
-- `payment_method`
-- `currency_code`
-
-Defaults:
-- `payment_type` defaults to `FULL_PAYMENT`
-- `payment_method` defaults to `CREDIT_CARD`
-- `currency_code` defaults to `VND`
-
-Example body:
-
+**Request Body**
 ```json
 {
-  "reservation_id": 123,
+  "reservation_id": 42,
   "payment_type": "DEPOSIT",
   "payment_method": "CREDIT_CARD",
-  "amount": 5100000,
+  "amount": 1350000,
   "currency_code": "VND"
 }
 ```
 
-Current payment types used by the codebase:
-- `DEPOSIT`
-- `PREPAYMENT`
-- `FULL_PAYMENT`
-- `REFUND`
-- `INCIDENTAL_HOLD`
+**Payment types**
+| Type | Description |
+|---|---|
+| `DEPOSIT` | 30% deposit (must not exceed deposit_amount) |
+| `PREPAYMENT` | Partial payment |
+| `FULL_PAYMENT` | Must equal remaining balance exactly |
 
-Current payment methods used by the codebase:
-- `CREDIT_CARD`
-- `BANK_TRANSFER`
-- `WALLET`
-- `CASH`
-- `CORPORATE_BILLING`
-- `POINTS`
+**Business Rules**
+- Cannot pay on `CANCELLED`, `CHECKED_OUT`, or `NO_SHOW` reservations
+- Total payments cannot exceed `grand_total_amount`
+- `DEPOSIT` type cannot exceed `deposit_amount`
+- `FULL_PAYMENT` must equal exactly the remaining balance
 
-Current validation rules:
-- Missing `reservation_id` or `amount` -> `400`
-- `amount <= 0` -> `400`
-- Reservation not found -> `404`
-- Reservation in `CANCELLED`, `CHECKED_OUT`, or `NO_SHOW` -> `400`
-- Reject if total paid would exceed `grand_total_amount`
-- For `DEPOSIT`, reject if total deposited would exceed `deposit_amount`
-- For `FULL_PAYMENT`, `amount` must equal the exact remaining balance
+**Response includes `payment_summary`:** `grand_total`, `total_paid_after`, `remaining_balance`
 
-Current success response includes `payment_summary`:
+---
 
-```json
-{
-  "success": true,
-  "data": {
-    "payment_id": 88,
-    "reservation_id": 123,
-    "payment_reference": "PAY-1713000000000-ABCD",
-    "payment_type": "DEPOSIT",
-    "payment_method": "CREDIT_CARD",
-    "payment_status": "CAPTURED",
-    "amount": 5100000
-  },
-  "payment_summary": {
-    "grand_total": 17000000,
-    "total_paid_after": 5100000,
-    "remaining_balance": 11900000
-  }
-}
-```
+### GET `/payments`
+List payments.
 
-### 5.2 List Payments
-
-- Method: `GET`
-- Endpoint: `/payments`
-- Query params:
-  - `reservation_id` (number, optional)
-
-Behavior:
-- If `reservation_id` is provided, returns only that reservation's payments
-- Otherwise returns all payments
+**Query Parameters:** `reservation_id` (optional)
 
 ---
 
 ## 7. Services
 
-### 6.1 List Available Services
+### GET `/services?hotel_id=1`
+List available services in the hotel's service catalog.
 
-- Method: `GET`
-- Endpoint: `/services`
-- Query params:
-  - `hotel_id` (number, required)
-
-Validation:
-- Missing `hotel_id` -> `400`
-
-### 6.2 Order Service
-
-- Method: `POST`
-- Endpoint: `/services/order`
-
-Required body fields:
-- `reservation_id`
-- `service_id`
-
-Common optional body fields:
-- `quantity`
-- `special_instruction`
-- `scheduled_at`
-
-Example body:
-
+**Response per service**
 ```json
 {
-  "reservation_id": 123,
-  "service_id": 4,
+  "service_id": 1,
+  "service_code": "SPA-MASSAGE",
+  "service_name": "Thai Massage 60min",
+  "service_category": "SPA",
+  "pricing_model": "PER_SESSION",
+  "base_price": 800000,
+  "currency_code": "VND"
+}
+```
+
+---
+
+### POST `/services/order`
+Order a service for a reservation.
+
+**Request Body**
+```json
+{
+  "reservation_id": 42,
+  "service_id": 1,
   "quantity": 2,
-  "special_instruction": "Use organic products",
-  "scheduled_at": "2026-04-15T14:00:00"
+  "special_instruction": "Aromatherapy please",
+  "scheduled_at": "2026-05-11T14:00:00Z"
 }
 ```
 
-Behavior:
-- Reservation must be `CONFIRMED` or `CHECKED_IN`
-- Service must belong to the same hotel as the reservation
-- Initial `service_status` is `REQUESTED`
-
-Validation:
-- Missing `reservation_id` or `service_id` -> `400`
-- Reservation not found -> `404`
-- Reservation status invalid -> `400`
-- Service not found for hotel -> `404`
-- Service inactive -> `400`
-
-### 6.3 List Service Orders
-
-- Method: `GET`
-- Endpoint: `/services/orders`
-- Query params:
-  - `reservation_id` (number, required)
-
-Response includes:
-- `summary.total_orders`
-- `summary.active_orders`
-- `summary.total_amount`
-- `summary.active_amount`
-
-Validation:
-- Missing `reservation_id` -> `400`
-
-### 6.4 Update Service Order Status
-
-- Method: `PUT`
-- Endpoint: `/services/orders/:id/status`
-- Path params:
-  - `id` (number, required)
-- Body:
-
-```json
-{
-  "status": "DELIVERED"
-}
-```
-
-Valid statuses:
-- `CONFIRMED`
-- `DELIVERED`
-- `CANCELLED`
-
-Validation:
-- Invalid order ID -> `400`
-- Invalid status -> `400`
-- Service order not found -> `404`
-
-### 6.5 Pay for Service Order
-
-- Method: `POST`
-- Endpoint: `/services/orders/:id/pay`
-- Path params:
-  - `id` (number, required)
-- Body:
-
-```json
-{
-  "payment_method": "CREDIT_CARD"
-}
-```
-
-Behavior:
-- Creates a `Payment` row with:
-  - `payment_type = INCIDENTAL_HOLD`
-  - `payment_reference = INCIDENTAL-ORDER-{orderId}`
-- Prevents double payment by checking the same reference
-- If the order is not already `DELIVERED`, it is updated to `DELIVERED`
-
-Validation:
-- Invalid order ID -> `400`
-- Service order not found -> `404`
-- Cancelled service order -> `400`
-- Already paid -> `400`
+**Restrictions:** Reservation must be `CONFIRMED` or `CHECKED_IN`.
 
 ---
 
-## 8. Admin and Reporting
-
-### 7.1 Update Room Rate
-
-- Method: `PUT`
-- Endpoint: `/admin/rates/:id`
-- Path params:
-  - `id` (number, required)
-- Body:
-
-```json
-{
-  "final_rate": 9200000,
-  "price_source": "MANUAL",
-  "updated_by": 1
-}
-```
-
-Behavior:
-- Updates `RoomRate`
-- If price change is greater than `50%`, trigger-based logging may create a `RateChangeLog` entry
-- All `/api/admin/*` endpoints now require a valid system-user bearer token
-
-Validation:
-- Invalid rate ID -> `400`
-- Missing `final_rate` -> `400`
-- Rate not found -> `404`
-- Missing or invalid auth -> `401`
-
-### 7.2 View Rate Alerts
-
-- Method: `GET`
-- Endpoint: `/admin/rates/alerts`
-
-### 7.3 Revenue Report by Hotel
-
-- Method: `GET`
-- Endpoint: `/admin/reports/revenue`
-- Description: Revenue analytics with SQL window functions, partitioned by hotel.
-
-### 7.4 Revenue Report by Brand and Chain
-
-- Method: `GET`
-- Endpoint: `/admin/reports/revenue-by-brand`
-- Description: Revenue analytics across `HotelChain -> Brand -> Hotel` hierarchy with SQL window functions.
-
-### 7.5 Update Availability with Optimistic Locking
-
-- Method: `PUT`
-- Endpoint: `/admin/availability/:id`
-- Path params:
-  - `id` (number, required)
-- Body:
-
-```json
-{
-  "availability_status": "BLOCKED",
-  "expected_version": 3,
-  "inventory_note": "Blocked for maintenance"
-}
-```
-
-Behavior:
-- Uses optimistic locking on `RoomAvailability.version_no`
-- Update condition is effectively:
-
-```sql
-WHERE availability_id = @id AND version_no = @expected_version
-```
-
-How to get `availability_id` and `expected_version`:
-- Call `GET /api/rooms/availability`
-- Read them from each room's `availability_records[]`
-
-Validation:
-- Invalid availability ID -> `400`
-- Missing `availability_status` -> `400`
-- Missing `expected_version` -> `400`
-- Availability row not found -> `404`
-- Version mismatch -> `409`
-
-Conflict response shape:
-
-```json
-{
-  "success": false,
-  "error": "OPTIMISTIC LOCK CONFLICT: This record was modified by another user since you last read it. Please re-read and retry.",
-  "your_expected_version": 3,
-  "current_version": 4,
-  "current_status": "BLOCKED"
-}
-```
+### GET `/services/orders?reservation_id=42`
+List all service orders for a reservation with totals summary.
 
 ---
 
-## 9. Locations
+### PUT `/services/orders/:id/status`
+Update service order status.
 
-### 8.1 Get Location Tree
+**Request Body:** `{ "status": "DELIVERED" }`
 
-- Method: `GET`
-- Endpoint: `/locations/tree`
-- Query params:
-  - `root` (string, optional)
-  - `root_id` (number, optional)
-
-Behavior:
-- If `root_id` is provided, tree starts there
-- Else if `root` is provided, tree starts from that name
-- Else returns the full hierarchy from root nodes
-
-### 8.2 List Locations
-
-- Method: `GET`
-- Endpoint: `/locations`
+**Valid statuses:** `CONFIRMED`, `DELIVERED`, `CANCELLED`
 
 ---
 
-## 10. Housekeeping
+### POST `/services/orders/:id/pay`
+Pay for a specific service order (creates incidental payment).
 
-### 9.1 List Housekeeping Tasks
-
-- Method: `GET`
-- Endpoint: `/housekeeping`
-- Query params:
-  - `hotel_id` (number, required)
-  - `status` (string, optional)
-  - `priority` (string, optional)
-
-Response includes:
-- task list
-- `summary` counts by task status
-
-Validation:
-- Missing `hotel_id` -> `400`
-
-### 9.2 Create Housekeeping Task
-
-- Method: `POST`
-- Endpoint: `/housekeeping`
-
-Required body fields:
-- `hotel_id`
-- `room_id`
-- `task_type`
-
-Optional body fields:
-- `priority_level`
-- `note`
-- `scheduled_for`
-- `assigned_staff_id`
-
-Behavior:
-- If `assigned_staff_id` is provided, initial `task_status = ASSIGNED`
-- Otherwise initial `task_status = OPEN`
-
-Validation:
-- Missing required fields -> `400`
-
-### 9.3 Assign Housekeeping Task
-
-- Method: `PUT`
-- Endpoint: `/housekeeping/:id/assign`
-- Path params:
-  - `id` (number, required)
-- Body:
-
-```json
-{
-  "staff_id": 2,
-  "scheduled_for": "2026-04-15T10:00:00"
-}
-```
-
-Behavior:
-- Allowed only when current task status is `OPEN` or `ASSIGNED`
-- Sets:
-  - `assigned_staff_id`
-  - `task_status = ASSIGNED`
-  - optional `scheduled_for`
-
-Validation:
-- Invalid task ID or missing `staff_id` -> `400`
-- Task not found or already in progress/completed -> `404`
-
-### 9.4 Update Housekeeping Status
-
-- Method: `PUT`
-- Endpoint: `/housekeeping/:id/status`
-- Path params:
-  - `id` (number, required)
-- Body:
-
-```json
-{
-  "status": "DONE",
-  "note": "Completed with extra sanitation"
-}
-```
-
-Allowed transitions:
-- `ASSIGNED -> IN_PROGRESS`
-- `IN_PROGRESS -> DONE`
-- `DONE -> VERIFIED`
-
-Room sync mapping:
-- `IN_PROGRESS -> IN_PROGRESS`
-- `DONE -> CLEAN`
-- `VERIFIED -> INSPECTED`
-
-Validation:
-- Invalid task ID -> `400`
-- Invalid status target -> `400`
-- Invalid current state for transition -> `409`
+**Request Body:** `{ "payment_method": "CREDIT_CARD" }` (optional)
 
 ---
 
-## 11. Maintenance
+## 8. Invoices
 
-### 10.1 List Maintenance Tickets
+### POST `/invoices`
+Generate an invoice for a reservation (from `vw_ReservationTotal`).
 
-- Method: `GET`
-- Endpoint: `/maintenance`
-- Query params:
-  - `hotel_id` (number, required)
-  - `status` (string, optional)
-  - `severity` (string, optional)
+**Request Body:** `{ "reservation_id": 42 }`
 
-Validation:
-- Missing `hotel_id` -> `400`
+---
 
-### 10.2 Create Maintenance Ticket
+### GET `/invoices`
+List invoices.
 
-- Method: `POST`
-- Endpoint: `/maintenance`
+**Query Parameters:** `reservation_id`, `status`
 
-Required body fields:
-- `hotel_id`
-- `issue_category`
-- `issue_description`
+---
 
-Optional body fields:
-- `room_id`
-- `reported_by`
-- `severity_level`
+### GET `/invoices/:id`
+Get invoice detail.
 
-Example body:
+---
 
+### POST `/invoices/:id/issue`
+Issue an invoice (change status from `DRAFT` to `ISSUED`).
+
+---
+
+## 9. Housekeeping
+
+### POST `/housekeeping`
+Create a housekeeping task.
+
+**Request Body**
 ```json
 {
   "hotel_id": 1,
-  "room_id": 7,
-  "reported_by": 2,
-  "issue_category": "PLUMBING",
-  "issue_description": "Water leak in bathroom ceiling",
-  "severity_level": "HIGH"
+  "room_id": 10,
+  "task_type": "CLEANING",
+  "priority_level": "HIGH",
+  "notes": "Deep clean required"
 }
 ```
 
-Behavior:
-- Creates `MaintenanceTicket`
-- If `room_id` is present and severity is `HIGH` or `CRITICAL`, room is marked `UNDER_REPAIR`
-
-Validation:
-- Missing required fields -> `400`
-
-### 10.3 Update Maintenance Ticket
-
-- Method: `PUT`
-- Endpoint: `/maintenance/:id`
-- Path params:
-  - `id` (number, required)
-
-Common body fields:
-- `status`
-- `assigned_to`
-- `resolution_note`
-
-Behavior:
-- Updates ticket status and assignee
-- If status becomes `RESOLVED` or `CLOSED` and there are no other active tickets for the same room, the room is restored to `maintenance_status = NORMAL`
-
-Validation:
-- Invalid ticket ID -> `400`
-- Missing `status` -> `400`
-- Ticket not found -> `404`
+**Task types:** `CLEANING`, `TURNDOWN`, `INSPECTION`, `MAINTENANCE`
 
 ---
 
-## 12. Invoices
+### GET `/housekeeping`
+List housekeeping tasks.
 
-### 11.1 List Invoices
-
-- Method: `GET`
-- Endpoint: `/invoices`
-- Query params:
-  - `reservation_id` (number, optional)
-
-Behavior:
-- If `reservation_id` is provided, returns only invoices for that reservation.
-- Otherwise returns all invoices across all reservations, ordered by newest first.
-
-Example response item:
-
-```json
-{
-  "invoice_id": 5,
-  "reservation_id": 123,
-  "invoice_no": "INV-RES-20260413-ABC123-F",
-  "invoice_type": "FINAL",
-  "total_amount": 17000000,
-  "currency_code": "VND",
-  "status": "ISSUED",
-  "issued_at": "2026-04-15T10:00:00.000Z",
-  "reservation_code": "RES-20260413-ABC123",
-  "hotel_name": "LuxeReserve Saigon",
-  "guest_name": "Quoc Anh Nguyen"
-}
-```
-
-### 11.2 Create Invoice
-
-- Method: `POST`
-- Endpoint: `/invoices`
-
-Required body fields:
-- `reservation_id`
-
-Optional body fields:
-- `invoice_type`
-- `billing_name`
-- `billing_tax_no`
-- `billing_address`
-
-Example body:
-
-```json
-{
-  "reservation_id": 123,
-  "invoice_type": "FINAL",
-  "billing_name": "Quoc Anh Nguyen",
-  "billing_tax_no": "0312345678",
-  "billing_address": "28 Dong Khoi, District 1, HCMC"
-}
-```
-
-Behavior:
-- Reads reservation totals from `vw_ReservationTotal`
-- Creates invoice with initial `status = DRAFT`
-- Prevents duplicate active invoice of the same `invoice_type`
-
-Validation:
-- Missing `reservation_id` -> `400`
-- Reservation not found -> `404`
-- Existing non-cancelled invoice of same type -> `409`
-
-### 11.3 Get Invoice
-
-- Method: `GET`
-- Endpoint: `/invoices/:id`
-- Path params:
-  - `id` (number, required)
-
-Response includes:
-- invoice header
-- reservation and guest context
-- `line_items.rooms`
-- `line_items.services`
-- `payments`
-
-Validation:
-- Invalid invoice ID -> `400`
-- Invoice not found -> `404`
-
-### 11.4 Issue Invoice
-
-- Method: `POST`
-- Endpoint: `/invoices/:id/issue`
-- Path params:
-  - `id` (number, required)
-
-Behavior:
-- Only invoices in `DRAFT` can be issued
-- Updates:
-  - `status = ISSUED`
-  - `issued_at = GETDATE()`
-
-Validation:
-- Invalid invoice ID -> `400`
-- Invoice not found or not `DRAFT` -> `409`
+**Query Parameters:** `hotel_id`, `status`, `room_id`
 
 ---
 
-## 13. Promotions
+### PUT `/housekeeping/:id/assign`
+Assign a task to a staff member.
 
-### 12.1 List Promotions
-
-- Method: `GET`
-- Endpoint: `/promotions`
-- Query params:
-  - `hotel_id` (number, optional) — filters to promotions that apply to this hotel (hotel-specific or brand-level)
-  - `guest_id` (number, optional) — if provided, adds `eligible_for_guest` flag per promotion
-  - `member_only` (boolean string, optional) — `true` or `false`, filters by `member_only_flag`
-
-Description:
-- Returns all currently `ACTIVE` promotions where today falls within `booking_start_date` and `booking_end_date`.
-- If the authenticated user is a `GUEST`, `guest_id` is auto-resolved from the JWT token even if not passed in the query.
-- Promotions can be scoped at `HOTEL`, `BRAND`, or `GLOBAL` level. The `scope_type` field indicates which.
-
-Example response item:
-
-```json
-{
-  "promotion_id": 3,
-  "promotion_code": "SUMMER2026",
-  "promotion_name": "Summer Early Bird",
-  "promotion_type": "PERCENTAGE",
-  "discount_value": 15.00,
-  "currency_code": "VND",
-  "applies_to": "ROOM",
-  "booking_start_date": "2026-04-01",
-  "booking_end_date": "2026-06-30",
-  "stay_start_date": "2026-05-01",
-  "stay_end_date": "2026-08-31",
-  "member_only_flag": false,
-  "min_nights": 2,
-  "status": "ACTIVE",
-  "scope_type": "BRAND",
-  "brand_name": "LuxeReserve Collection",
-  "eligible_for_guest": true
-}
-```
-
-Response includes:
-- `count`: total number of matching promotions
-- `data`: array of promotion objects
+**Request Body:** `{ "assigned_to": 5 }` (user_id)
 
 ---
 
-## Notes on Current Implementation
+### PUT `/housekeeping/:id/status`
+Update task status.
 
-- `POST /api/reservations` now documents the actual runtime behavior: direct pessimistic locking on `RoomAvailability`, not a stored procedure call.
-- `GET /api/rooms/availability` now exposes `availability_records`, which the admin optimistic locking flow depends on.
-- `POST /api/payments` currently blocks payments for reservations in `CANCELLED`, `CHECKED_OUT`, and `NO_SHOW`.
-- `/api/auth/*` now provides universal login, admin login, guest login, guest registration, and `/api/auth/me`.
-- `POST /api/auth/login` is the universal login: tries system user first, then guest. Dedicated `/admin/login` and `/guest/login` endpoints also exist.
-- `/api/admin/*` now requires a system-user bearer token.
-- `POST /api/reservations/:id/transfer` still depends on `sp_TransferRoom`.
-- `POST /api/invoices` uses `vw_ReservationTotal` as the financial source of truth.
-- `GET /api/invoices` lists all invoices; filter by `reservation_id` to scope results.
-- `GET /api/promotions` resolves guest eligibility from JWT automatically when called by an authenticated guest.
+**Request Body:** `{ "status": "COMPLETED" }`
+
+**Valid statuses:** `OPEN`, `IN_PROGRESS`, `COMPLETED`, `VERIFIED`
+
+---
+
+## 10. Maintenance
+
+### POST `/maintenance`
+Create a maintenance ticket.
+
+**Request Body**
+```json
+{
+  "hotel_id": 1,
+  "room_id": 10,
+  "issue_type": "PLUMBING",
+  "description": "Sink is leaking",
+  "priority": "HIGH"
+}
+```
+
+---
+
+### GET `/maintenance`
+List maintenance tickets.
+
+**Query Parameters:** `hotel_id`, `status`, `room_id`
+
+---
+
+### PUT `/maintenance/:id`
+Update maintenance ticket (assign, resolve, change status).
+
+---
+
+## 11. Guests
+
+### GET `/guests`
+List guests.
+
+**Query Parameters:** `email`, `guest_code`, `limit`
+
+---
+
+### GET `/guests/:id`
+Get guest profile by `guest_id`.
+
+---
+
+### POST `/guests`
+Create a guest profile (without auth account).
+
+**Request Body**
+```json
+{
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "email": "jane@example.com",
+  "phone_country_code": "+84",
+  "phone_number": "0912345678",
+  "nationality_country_code": "VN"
+}
+```
+
+---
+
+## 12. Locations
+
+### GET `/locations`
+List all locations (flat list).
+
+---
+
+### GET `/locations/tree`
+Get location hierarchy as a tree (Country → City → District).
+
+---
+
+## 13. Admin
+
+> All endpoints require `ADMIN` role (Bearer token + ADMIN system role).
+
+### GET `/admin/accounts`
+List all accounts (system users + guests).
+
+---
+
+### PUT `/admin/accounts/guest/:id`
+Update guest account status or info.
+
+---
+
+### PUT `/admin/accounts/system/:id`
+Update system user account.
+
+---
+
+### GET `/admin/reports/summary`
+Dashboard KPI summary.
+
+**Response**
+```json
+{
+  "total_reservations": 120,
+  "confirmed": 45,
+  "checked_in": 12,
+  "checked_out": 55,
+  "cancelled": 8,
+  "total_revenue": 450000000,
+  "this_month_revenue": 85000000,
+  "available_rooms": 87
+}
+```
+
+---
+
+### GET `/admin/reports/revenue`
+Revenue breakdown by hotel with date filtering.
+
+**Query Parameters:** `hotel_id`, `from`, `to` (dates)
+
+---
+
+### GET `/admin/reports/revenue-by-brand`
+Revenue grouped by brand using SQL Window Functions.
+
+---
+
+### GET `/admin/rates/alerts`
+Price anomaly alerts — rates that changed >50%.
+
+---
+
+### PUT `/admin/availability/:id`
+Update room availability status manually.
+
+**Request Body:** `{ "availability_status": "MAINTENANCE", "note": "AC repair" }`
+
+---
+
+### PUT `/admin/rates/:id`
+Update a room rate.
+
+---
+
+## 14. VNPay
+
+> ⚠️ Integration ready but **not activated** — waiting for production `IPN_URL`.
+
+### POST `/vnpay/create-payment`
+Create a VNPay payment URL for redirect.
+
+**Request Body**
+```json
+{
+  "reservation_id": 42,
+  "amount": 1350000,
+  "order_desc": "Deposit for RES-20260510-ABC123"
+}
+```
+
+---
+
+### GET `/vnpay/return`
+Handles redirect back from VNPay after payment attempt.
+
+---
+
+### GET `/vnpay/ipn`
+VNPay IPN (Instant Payment Notification) webhook endpoint.
+
+---
+
+## Error Responses
+
+All errors follow this format:
+```json
+{
+  "success": false,
+  "error": "Human-readable error message"
+}
+```
+
+| HTTP Status | Meaning |
+|---|---|
+| `400` | Bad request / validation error |
+| `401` | Unauthorized — missing or invalid token |
+| `403` | Forbidden — insufficient permissions |
+| `404` | Resource not found |
+| `409` | Conflict — e.g. room already booked, wrong status |
+| `500` | Internal server error |
+
+---
+
+## Authentication Reference
+
+| Account | Password | Type | Roles | Portal |
+|---|---|---|---|---|
+| `admin` | `admin` | System | ADMIN | `/admin` |
+| `cashier` | `cashier` | System | CASHIER, FRONT_DESK | `/cashier` |
+| `dqc` | `dqc` | Guest | — (PLATINUM member) | `/` |
+| `user` | `user` | Guest | — (new member) | `/` |
+
+---
+
+## Architecture Notes
+
+### Polyglot Persistence
+- **SQL Server**: Transactional data (reservations, payments, inventory, users)
+- **MongoDB**: Rich content (hotel descriptions, room photos, amenities, icons)
+
+### Locking Strategy
+- **Pessimistic Lock**: `UPDLOCK + HOLDLOCK` per room per night during booking
+- **Optimistic Lock**: `version_no` check for inventory updates
+
+### Security
+- JWT Bearer tokens (24h expiry)
+- Role-based middleware: `requireSystemRole(['ADMIN', 'CASHIER', 'FRONT_DESK'])`
+- Guest-cancel restricted to reservation owner only
+
+*Last updated: 2026-04-20 | LuxeReserve v1.0*

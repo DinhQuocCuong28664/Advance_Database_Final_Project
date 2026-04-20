@@ -19,7 +19,7 @@ const ADMIN_TABS = [
 
 export default function AdminPage() {
   const navigate = useNavigate();
-  const { isSystemUser, authSession, logout } = useAuth();
+  const { isSystemUser, isAdminUser, authSession, logout } = useAuth();
   const { setFlash } = useFlash();
 
   const [hotels, setHotels] = useState([]);
@@ -32,8 +32,13 @@ export default function AdminPage() {
   const [revenueData, setRevenueData] = useState([]);
   const [loadingReport, setLoadingReport] = useState(false);
 
+  // Not logged in → login
   if (!isSystemUser) {
     return <Navigate to="/login" replace state={{ nextUrl: '/admin' }} />;
+  }
+  // Logged in but not ADMIN → cashier portal
+  if (!isAdminUser) {
+    return <Navigate to="/cashier" replace />;
   }
 
   useEffect(() => {
