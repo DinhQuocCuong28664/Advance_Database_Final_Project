@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import '../styles/Account.css';
 import { apiRequest } from '../lib/api';
 
 const STATUS_META = {

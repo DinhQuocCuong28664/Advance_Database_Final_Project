@@ -212,6 +212,69 @@ router.put('/accounts/guest/:id', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════
+// GET /api/admin/reports/summary — Dashboard KPIs
+// ═══════════════════════════════════════════════
+router.get('/reports/summary', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const [overview, byStatus, topHotels, paymentStats] = await Promise.all([
+      // Overall KPIs
+      pool.request().query(`
+        SELECT
+          COUNT(*)                                          AS total_reservations,
+          SUM(CASE WHEN reservation_status NOT IN ('CANCELLED','NO_SHOW') THEN 1 ELSE 0 END) AS active_reservations,
+          COUNT(DISTINCT hotel_id)                          AS hotels_with_bookings
+        FROM Reservation
+      `),
+      // Breakdown by status
+      pool.request().query(`
+        SELECT reservation_status, COUNT(*) AS count
+        FROM Reservation
+        GROUP BY reservation_status
+        ORDER BY count DESC
+      `),
+      // Top 5 hotels by revenue
+      pool.request().query(`
+        SELECT TOP 5
+          h.hotel_name,
+          COUNT(r.reservation_id) AS bookings,
+          SUM(rr.final_amount)    AS total_revenue
+        FROM Reservation r
+        JOIN ReservationRoom rr ON r.reservation_id = rr.reservation_id
+        JOIN Hotel h ON r.hotel_id = h.hotel_id
+        WHERE r.reservation_status NOT IN ('CANCELLED','NO_SHOW')
+        GROUP BY h.hotel_id, h.hotel_name
+        ORDER BY total_revenue DESC
+      `),
+      // Payment summary
+      pool.request().query(`
+        SELECT
+          payment_method,
+          COUNT(*)       AS count,
+          SUM(amount)    AS total_amount
+        FROM Payment
+        WHERE payment_status = 'COMPLETED'
+        GROUP BY payment_method
+        ORDER BY total_amount DESC
+      `),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        overview:      overview.recordset[0],
+        by_status:     byStatus.recordset,
+        top_hotels:    topHotels.recordset,
+        payment_stats: paymentStats.recordset,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════
 // GET /api/admin/reports/revenue — Revenue Intelligence (Window Functions)
 router.get('/reports/revenue', async (req, res) => {
   try {

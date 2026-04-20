@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
+import '../styles/Hotel.css';
 import { resolveHotelImage, imgError } from '../utils/hotelImages';
 
 
@@ -23,9 +24,21 @@ function RoomCard({ room, checkin, checkout, hotelId, onSelect }) {
   const nights = nightsBetween(checkin, checkout);
   const nightlyRate = Number(room.min_nightly_rate || room.nightly_rate || 0);
   const total = nightlyRate * nights;
+  const isOpen = room.availability_status === 'OPEN' || !room.availability_status;
 
   return (
-    <div className={`room-card ${room.availability_status === 'OPEN' ? '' : 'room-card-unavail'}`}>
+    <div
+      className={`room-card ${isOpen ? 'room-card-clickable' : 'room-card-unavail'}`}
+      role={isOpen ? 'button' : undefined}
+      tabIndex={isOpen ? 0 : undefined}
+      onClick={isOpen ? () => onSelect(room) : undefined}
+      onKeyDown={isOpen ? (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect(room);
+        }
+      } : undefined}
+    >
       <div className="room-card-body">
         <div>
           <h3 className="room-card-name">{room.room_type_name || room.room_type}</h3>
@@ -58,10 +71,13 @@ function RoomCard({ room, checkin, checkout, hotelId, onSelect }) {
           <button
             className="primary-button room-select-btn"
             type="button"
-            disabled={room.availability_status && room.availability_status !== 'OPEN'}
-            onClick={() => onSelect(room)}
+            disabled={!isOpen}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelect(room);
+            }}
           >
-            {room.availability_status === 'OPEN' || !room.availability_status ? 'Select room' : 'Unavailable'}
+            {isOpen ? 'Select room' : 'Unavailable'}
           </button>
         </div>
       </div>

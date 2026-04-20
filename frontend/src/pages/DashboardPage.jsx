@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { apiRequest } from '../lib/api';
 import { resolveHotelImage, imgError } from '../utils/hotelImages';
+import '../styles/Home.css';
 
 // ─── tiny helpers ──────────────────────────────────────────────────────────
 function today() {

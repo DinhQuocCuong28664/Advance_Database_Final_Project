@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import '../styles/Booking.css';
 import { apiRequest } from '../lib/api';
 
 const DEPOSIT_RATE = 0.30; // 30% bắt buộc

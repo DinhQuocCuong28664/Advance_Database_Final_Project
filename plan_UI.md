@@ -347,14 +347,14 @@ This area should not share workflow assumptions with public pages.
 
 The rebuild must happen in this order:
 
-### Phase 1: Architecture And Routing
+### Phase 1: Architecture And Routing ✅ DONE
 
 - finalize page map
 - create global shell
 - separate public routes, account routes, and admin routes
 - define auth entry points
 
-### Phase 2: Homepage
+### Phase 2: Homepage ✅ DONE
 
 - build header and footer
 - build hero banner and destination search
@@ -362,7 +362,7 @@ The rebuild must happen in this order:
 - build featured properties/promotions section
 - build trust/value section
 
-### Phase 3: Search Results
+### Phase 3: Search Results ✅ DONE
 
 - build `/search`
 - implement destination-driven hotel comparison
@@ -371,45 +371,335 @@ The rebuild must happen in this order:
 - add result list/grid mode if needed
 - add optional map placeholder block
 
-### Phase 4: Hotel Detail
+### Phase 4: Hotel Detail ✅ DONE
 
 - build `/hotel/:id`
 - add gallery, overview, amenities, room options, and promotions
 - connect reserve CTA to booking flow
 
-### Phase 5: Booking Flow
+### Phase 5: Booking Flow ✅ DONE
 
 - build checkout-style booking page
 - support anonymous booking
 - support logged-in loyalty autofill
 - build summary sidebar
 - finalize confirmation state
+- deposit system (30% bắt buộc)
+- VNPay integration (code ready, commented out)
 
-### Phase 6: Reservation Self-Service
+### Phase 6: Reservation Self-Service ✅ DONE
 
 - build guest lookup page
 - add summary, timeline, payment summary, and guest actions
 - keep admin actions out
 
-### Phase 7: Account
+### Phase 7: Account ✅ DONE
 
 - build guest account shell
 - add profile summary, upcoming stays, history, and loyalty snapshot
 
-### Phase 8: Admin
+### Phase 8: Admin Portal 🔶 PARTIAL
 
-- build separate admin login
-- rebuild admin portal independently from public flow
+- ✅ build admin login (unified with guest login)
+- ✅ inventory management with optimistic locking
+- ✅ account management (system users + guests)
+- ✅ reports & analytics with KPIs + Excel/PDF export
+- ❌ front desk (check-in / check-out / room transfer)
+- ❌ guest services (order, deliver, pay incidentals)
+- ❌ housekeeping task management
+- ❌ maintenance ticket management
+- ❌ invoice generation and issuance
 
-### Phase 9: Polish
+### Phase 9: Polish 🔶 PARTIAL
 
-- refine responsive behavior
-- improve visual system
-- improve consistency and accessibility
+- ✅ responsive behavior (all breakpoints)
+- ✅ CSS refactored to per-page stylesheets
+- ◻ improve consistency and accessibility
+- ◻ further visual refinements
 
-No advanced UI polish should start before Phase 1 through Phase 6 are structurally correct.
+---
 
-## 8. Backend Mapping
+## 8. Backend vs Frontend Gap Analysis
+
+> **Updated: 2026-04-20**
+
+### 8.1 Database Schema — 30 Tables in 12 Domains
+
+| Domain | Tables | Frontend Coverage |
+|---|---|---|
+| 1. Location Hierarchy | Location | ✅ Used in search + homepage |
+| 2. Hotel Chain → Brand → Hotel | HotelChain, Brand, Hotel | ✅ Used in hotel list/detail |
+| 3. Hotel Policies & Amenities | HotelPolicy, HotelAmenity | 🔶 Amenities shown, policies not displayed |
+| 4. Room Management | RoomType, Room, RoomFeature, RoomAvailability | ✅ Used in booking + admin inventory |
+| 5. Guest Management | Guest, GuestAddress, GuestPreference, LoyaltyAccount, GuestAuth | 🔶 Auth + basic profile used, preferences/addresses not exposed |
+| 6. System Users & Roles | SystemUser, Role, UserRole | ✅ Used in admin auth + account management |
+| 7. Rate & Pricing | RatePlan, RoomRate, RateChangeLog, Promotion | ✅ Rates in booking, promos in hotel/home, rate alerts in admin |
+| 8. Booking & Reservation | BookingChannel, Reservation, ReservationRoom, ReservationGuest, ReservationStatusHistory | ✅ Full booking flow + guest self-service |
+| 9. Payment & Invoice | Payment, PaymentCardToken, Invoice | 🔶 Payment done, **Invoice has NO frontend** |
+| 10. Services & Stay | ServiceCatalog, ReservationService, StayRecord | ❌ **No frontend at all** |
+| 11. Operations | HousekeepingTask, MaintenanceTicket | ❌ **No frontend at all** |
+| 12. Audit & Lock | InventoryLockLog, AuditLog | ⬜ Backend-only (audit trail, no UI needed) |
+
+### 8.2 Backend Endpoints — Full Coverage Matrix
+
+#### Public Guest Endpoints
+
+| Endpoint | Status | Frontend Page |
+|---|---|---|
+| `GET /api/hotels` | ✅ | DashboardPage, SearchPage |
+| `GET /api/hotels/:id` | ✅ | HotelPage |
+| `GET /api/rooms/availability` | ✅ | HotelPage, AdminInventory |
+| `GET /api/promotions` | ✅ | DashboardPage, HotelPage |
+| `GET /api/locations` | ✅ | DashboardPage (destinations) |
+| `GET /api/locations/tree` | ⬜ | Not used (flat list sufficient for now) |
+| `POST /api/auth/login` | ✅ | LoginPage |
+| `POST /api/auth/guest/register` | ✅ | RegisterPage |
+| `POST /api/auth/guest/login` | ✅ | LoginPage |
+| `GET /api/auth/me` | ✅ | AuthContext |
+| `POST /api/reservations` | ✅ | BookingPage |
+| `GET /api/reservations/:code` | ✅ | ReservationPage |
+| `GET /api/reservations/by-guest/:code` | ✅ | ReservationPage |
+| `POST /api/reservations/:id/guest-cancel` | ✅ | ReservationPage |
+| `POST /api/payments` | ✅ | BookingPage |
+| `GET /api/payments?reservation_id=` | ✅ | ReservationPage |
+
+#### Admin Endpoints
+
+| Endpoint | Status | Frontend Component |
+|---|---|---|
+| `GET /api/admin/accounts` | ✅ | AdminAccounts |
+| `PUT /api/admin/rates/:id` | ✅ | AdminInventory |
+| `GET /api/admin/rates/alerts` | ✅ | AdminPage (metric card) |
+| `GET /api/admin/reports/revenue` | ✅ | AdminReports |
+| `GET /api/admin/reports/revenue-by-brand` | ⬜ | Exists, not surfaced in UI |
+| `GET /api/admin/reports/summary` | ✅ | AdminReports |
+| `PUT /api/admin/availability/:id` | ✅ | AdminInventory (optimistic lock) |
+| `POST /api/reservations/:id/checkin` | ❌ | **Missing — needs Front Desk UI** |
+| `POST /api/reservations/:id/checkout` | ❌ | **Missing — needs Front Desk UI** |
+| `POST /api/reservations/:id/hotel-cancel` | ❌ | **Missing — needs Front Desk UI** |
+| `POST /api/reservations/:id/transfer` | ❌ | **Missing — needs Front Desk UI** |
+
+#### Service Endpoints
+
+| Endpoint | Status | Frontend Component |
+|---|---|---|
+| `GET /api/services?hotel_id=` | ❌ | **Missing — needs Services UI** |
+| `POST /api/services/order` | ❌ | **Missing — needs Services UI** |
+| `GET /api/services/orders?reservation_id=` | ❌ | **Missing — needs Services UI** |
+| `PUT /api/services/orders/:id/status` | ❌ | **Missing — needs Services UI** |
+| `POST /api/services/orders/:id/pay` | ❌ | **Missing — needs Services UI** |
+
+#### Housekeeping Endpoints
+
+| Endpoint | Status | Frontend Component |
+|---|---|---|
+| `GET /api/housekeeping?hotel_id=` | ❌ | **Missing — needs Housekeeping UI** |
+| `POST /api/housekeeping` | ❌ | **Missing — needs Housekeeping UI** |
+| `PUT /api/housekeeping/:id/assign` | ❌ | **Missing — needs Housekeeping UI** |
+| `PUT /api/housekeeping/:id/status` | ❌ | **Missing — needs Housekeeping UI** |
+
+#### Maintenance Endpoints
+
+| Endpoint | Status | Frontend Component |
+|---|---|---|
+| `GET /api/maintenance?hotel_id=` | ❌ | **Missing — needs Maintenance UI** |
+| `POST /api/maintenance` | ❌ | **Missing — needs Maintenance UI** |
+| `PUT /api/maintenance/:id` | ❌ | **Missing — needs Maintenance UI** |
+
+#### Invoice Endpoints
+
+| Endpoint | Status | Frontend Component |
+|---|---|---|
+| `GET /api/invoices?reservation_id=` | ❌ | **Missing — needs Invoice UI** |
+| `POST /api/invoices` | ❌ | **Missing — needs Invoice UI** |
+| `GET /api/invoices/:id` | ❌ | **Missing — needs Invoice UI** |
+| `POST /api/invoices/:id/issue` | ❌ | **Missing — needs Invoice UI** |
+
+#### Other Endpoints
+
+| Endpoint | Status | Note |
+|---|---|---|
+| `GET /api/guests` | ⬜ | Admin-only, not needed for public v1 |
+| `GET /api/guests/:id` | ⬜ | Admin-only |
+| `POST /api/guests` | ⬜ | Used indirectly by registration |
+| `POST /api/vnpay/create-payment` | 🔶 | Integrated, commented out |
+| `GET /api/vnpay/return` | 🔶 | Integrated, commented out |
+| `GET /api/vnpay/ipn` | 🔶 | Server-side only |
+
+### 8.3 Summary of Gaps
+
+**5 admin modules are missing frontend UI despite having complete backend APIs:**
+
+1. **Front Desk** — check-in, check-out, hotel cancellation, room transfer (uses `sp_TransferRoom` stored procedure with pessimistic locking)
+2. **Guest Services** — service catalog browsing, ordering, status tracking, incidental payment
+3. **Housekeeping** — task list, staff assignment, status workflow (OPEN → ASSIGNED → IN_PROGRESS → DONE → VERIFIED), syncs with Room.housekeeping_status
+4. **Maintenance** — ticket creation, assignment, resolution, auto-updates Room.maintenance_status
+5. **Invoices** — generation from `vw_ReservationTotal`, line item breakdown (rooms + services + payments), issuing (DRAFT → ISSUED)
+
+**Database tables with zero frontend exposure:**
+
+- `StayRecord` — tracks actual check-in/check-out timestamps, front desk agent
+- `ServiceCatalog` — hotel service catalog (SPA, dining, butler, tours...)
+- `ReservationService` — ordered services linked to reservations
+- `HousekeepingTask` — cleaning, turn-down, inspection, deep clean tasks
+- `MaintenanceTicket` — repair tickets with severity levels
+- `Invoice` — generated invoices with line items
+- `HotelPolicy` — cancellation, deposit, child, pet, smoking policies (text fields)
+- `GuestPreference` — bed, pillow, floor, diet, view preferences
+- `GuestAddress` — home, work, billing addresses
+- `PaymentCardToken` — saved card tokens
+
+---
+
+## 9. Proposed Admin Module Specifications
+
+### 9.1 Front Desk Module
+
+**Purpose:** Manage the guest stay lifecycle: check-in → in-house → check-out.
+
+**Core Features:**
+
+- **Check-in workflow:**
+  - List today's arrivals (reservations with `checkin_date = TODAY` and status `CONFIRMED`)
+  - Verify guest identity (identity_document_type, identity_document_no from Guest table)
+  - Assign physical room if not pre-assigned (ReservationRoom.assignment_status)
+  - Execute `POST /api/reservations/:id/checkin`
+  - Creates StayRecord with `actual_checkin_at` timestamp
+
+- **Check-out workflow:**
+  - List today's departures (status `CHECKED_IN`, checkout_date = TODAY)
+  - Show balance due from `vw_ReservationTotal`
+  - Execute `POST /api/reservations/:id/checkout`
+  - Option to generate invoice at checkout
+
+- **Room transfer:**
+  - Select reservation → select new room → provide reason
+  - Execute `POST /api/reservations/:id/transfer` (uses `sp_TransferRoom` with pessimistic locking)
+  - Shows transfer result with old/new room info
+
+- **Hotel cancellation:**
+  - Cancel with full refund via `POST /api/reservations/:id/hotel-cancel`
+  - Different from guest-cancel (which forfeits deposit)
+
+**Backend endpoints used:** checkin, checkout, transfer, hotel-cancel
+
+### 9.2 Guest Services Module
+
+**Purpose:** Browse hotel service catalog, order services for guests, track delivery.
+
+**Core Features:**
+
+- **Service catalog browser:**
+  - List services by hotel (`GET /api/services?hotel_id=`)
+  - Categories: SPA, AIRPORT_TRANSFER, DINING, BUTLER, YACHT, TOUR, BABYSITTING, EVENT, WELLNESS, OTHER
+  - Pricing models: PER_USE, PER_HOUR, PER_PERSON, PACKAGE, PER_TRIP
+
+- **Order service:**
+  - Select reservation + service + quantity
+  - `POST /api/services/order`
+  - Status workflow: REQUESTED → CONFIRMED → DELIVERED → CANCELLED
+
+- **Order management:**
+  - View orders per reservation (`GET /api/services/orders?reservation_id=`)
+  - Update status (`PUT /api/services/orders/:id/status`)
+  - Process incidental payment (`POST /api/services/orders/:id/pay`)
+
+**Backend endpoints used:** 5 service endpoints
+
+### 9.3 Housekeeping Module
+
+**Purpose:** Manage room cleaning tasks, staff assignment, and room readiness.
+
+**Core Features:**
+
+- **Task board:**
+  - List by hotel with status/priority filters (`GET /api/housekeeping?hotel_id=&status=`)
+  - Task types: CLEANING, TURN_DOWN, INSPECTION, DEEP_CLEAN
+  - Priority levels: LOW, MEDIUM, HIGH, CRITICAL
+
+- **Create task:**
+  - Select hotel → room → task type → priority
+  - `POST /api/housekeeping`
+
+- **Assign staff:**
+  - Assign system user to task
+  - `PUT /api/housekeeping/:id/assign`
+
+- **Status update:**
+  - Workflow: OPEN → ASSIGNED → IN_PROGRESS → DONE → VERIFIED
+  - Auto-syncs Room.housekeeping_status (CLEAN, DIRTY, INSPECTED, IN_PROGRESS)
+  - `PUT /api/housekeeping/:id/status`
+
+**Backend endpoints used:** 4 housekeeping endpoints
+
+### 9.4 Maintenance Module
+
+**Purpose:** Track and resolve room/facility maintenance issues.
+
+**Core Features:**
+
+- **Ticket list:**
+  - Filter by hotel and status (`GET /api/maintenance?hotel_id=&status=`)
+  - Severity: LOW, MEDIUM, HIGH, CRITICAL
+  - Status: OPEN, ASSIGNED, IN_PROGRESS, RESOLVED, CLOSED, CANCELLED
+
+- **Create ticket:**
+  - Hotel → Room (optional) → Category → Description → Severity
+  - `POST /api/maintenance`
+  - Auto-updates Room.maintenance_status to UNDER_REPAIR
+
+- **Update/resolve ticket:**
+  - `PUT /api/maintenance/:id`
+  - Resolving restores Room.maintenance_status to NORMAL
+
+**Backend endpoints used:** 3 maintenance endpoints
+
+### 9.5 Invoice Module
+
+**Purpose:** Generate, review, and issue invoices from reservation financial data.
+
+**Core Features:**
+
+- **Invoice list:**
+  - Filter by reservation (`GET /api/invoices?reservation_id=`)
+
+- **Generate invoice:**
+  - From `vw_ReservationTotal` view
+  - `POST /api/invoices` creates DRAFT invoice
+
+- **Invoice detail:**
+  - Line items: room charges + services + payments
+  - `GET /api/invoices/:id`
+
+- **Issue invoice:**
+  - DRAFT → ISSUED transition
+  - `POST /api/invoices/:id/issue`
+
+**Backend endpoints used:** 4 invoice endpoints
+
+---
+
+## 10. Hotel Policy Display (Data exists but not surfaced)
+
+The `HotelPolicy` table stores rich policy text fields that could enhance the hotel detail page:
+
+| Field | Where to show |
+|---|---|
+| `cancellation_policy_text` | Hotel detail + Booking page |
+| `deposit_policy_text` | Booking page (alongside deposit banner) |
+| `child_policy_text` | Hotel detail |
+| `pet_policy_text` | Hotel detail |
+| `smoking_policy_text` | Hotel detail |
+| `extra_bed_policy_text` | Hotel detail |
+| `late_checkout_policy_text` | Hotel detail |
+| `early_checkin_policy_text` | Hotel detail |
+| `minimum_checkin_age` | Booking validation |
+
+> **Note:** These require a new backend endpoint or adding to the existing `GET /api/hotels/:id` response.
+
+---
+
+## 11. Backend Mapping
 
 The new frontend should use the current backend as the implementation foundation.
 
@@ -442,97 +732,39 @@ Important rule:
 - filters, widgets, and comparisons must only depend on fields that actually exist in backend responses
 - the UI must not invent marketplace-style features that backend data cannot truthfully support
 
-## 9. Endpoint Utilization Strategy
+## 12. Endpoint Utilization Strategy
 
 The backend exposes far more endpoints than the first UI rebuild needs. The rebuild should not try to surface everything at once. Instead, every endpoint group should be classified clearly so the frontend roadmap uses the backend deliberately rather than partially by accident.
 
-### 9.1 Public V1 Endpoints
+### 12.1 Public V1 Endpoints ✅ All wired
 
-These should be wired into the first public rebuild:
+- hotels, promotions, search/inventory, auth, booking/reservation, payments, guest-cancel
 
-- hotels
-  - `/api/hotels`
-  - `/api/hotels/:id`
-- promotions
-  - `/api/promotions`
-- search and inventory
-  - `/api/rooms/availability`
-  - `/api/locations`
-  - `/api/locations/tree`
-- auth
-  - `/api/auth/login`
-  - `/api/auth/guest/register`
-  - `/api/auth/guest/login`
-  - `/api/auth/me`
-- booking and reservation
-  - `/api/reservations`
-  - `/api/reservations/:code`
-- guest-facing payment
-  - `/api/payments`
-  - `/api/payments?reservation_id=`
-- guest-facing cancellation
-  - `/api/reservations/:id/guest-cancel`
+### 12.2 Guest Account / Loyalty Endpoints ✅ Partially wired
 
-### 9.2 Guest Account / Loyalty Endpoints
+- `/api/auth/me` ✅
+- `/api/promotions?guest_id=` ✅
+- `/api/reservations/:code` ✅
+- `/api/payments?reservation_id=` ✅
 
-These belong in account and signed-in guest experiences:
+### 12.3 Admin Portal Endpoints ❌ 17 endpoints missing UI
 
-- `/api/auth/me`
-- `/api/promotions?guest_id=`
-- `/api/reservations/:code`
-- `/api/payments?reservation_id=`
+These should be considered first-class for the admin rebuild:
 
-These should support:
+- **Front desk operations** (4 endpoints) — checkin, checkout, hotel-cancel, transfer
+- **Services** (5 endpoints) — catalog, order, list orders, update status, pay
+- **Housekeeping** (4 endpoints) — list, create, assign, update status
+- **Maintenance** (3 endpoints) — list, create, update/resolve
+- **Invoices** (4 endpoints) — list, generate, detail, issue
 
-- profile context
-- loyalty display
-- member offers
-- reservation history or upcoming stays once account UI is added
+### 12.4 Existing But Not Prioritized For First UI Pass
 
-### 9.3 Admin Portal Endpoints
+- `/api/guests` — admin/data workflows
+- `/api/guests/:id` — admin/data workflows
+- `/api/guests` `POST` — used internally by registration
+- `/api/admin/reports/revenue-by-brand` — available, not surfaced
 
-These should be considered first-class for the admin rebuild, even if they are not used in public v1:
-
-- admin pricing and revenue
-  - `/api/admin/rates/:id`
-  - `/api/admin/rates/alerts`
-  - `/api/admin/reports/revenue`
-  - `/api/admin/reports/revenue-by-brand`
-  - `/api/admin/availability/:id`
-- reservation operations
-  - `/api/reservations/:id/checkin`
-  - `/api/reservations/:id/checkout`
-  - `/api/reservations/:id/hotel-cancel`
-  - `/api/reservations/:id/transfer`
-- services
-  - `/api/services`
-  - `/api/services/order`
-  - `/api/services/orders`
-  - `/api/services/orders/:id/status`
-  - `/api/services/orders/:id/pay`
-- housekeeping
-  - `/api/housekeeping`
-  - `/api/housekeeping/:id/assign`
-  - `/api/housekeeping/:id/status`
-- maintenance
-  - `/api/maintenance`
-  - `/api/maintenance/:id`
-- invoices
-  - `/api/invoices`
-  - `/api/invoices/:id`
-  - `/api/invoices/:id/issue`
-
-### 9.4 Existing But Not Prioritized For First UI Pass
-
-These endpoints exist and should be acknowledged in the roadmap, but they should not distort the first clean rebuild:
-
-- `/api/guests`
-- `/api/guests/:id`
-- `/api/guests` `POST`
-
-They are useful for admin/data workflows, but the new public UI should not depend on a broad guest list to function.
-
-### 9.5 Rule For Endpoint Coverage
+### 12.5 Rule For Endpoint Coverage
 
 The UI plan should not aim to use all backend endpoints in the first release.
 
@@ -543,7 +775,7 @@ Instead:
 - anything not used in v1 must be intentionally deferred, not silently ignored
 - backend breadth should shape the long-term roadmap, not overload the first rebuild
 
-## 10. Deferred Features / Not In V1
+## 13. Deferred Features / Not In V1
 
 These should be explicitly postponed:
 
@@ -560,7 +792,7 @@ These should be explicitly postponed:
 - public service operations
 - admin tools inside guest pages
 
-## 11. Acceptance Criteria
+## 14. Acceptance Criteria
 
 `plan_UI.md` is complete if a new implementer can answer all of these without guessing:
 
@@ -578,7 +810,7 @@ These should be explicitly postponed:
 - which endpoint groups belong to public v1, loyalty/account, admin, or deferred use
 - which features are deferred
 
-## 12. Default Build Rules
+## 15. Default Build Rules
 
 - workflow correctness comes before visual polish
 - hotel comparison comes before booking
@@ -586,3 +818,54 @@ These should be explicitly postponed:
 - booking is checkout-style, not search-style
 - admin is fully separate from guest product flow
 - backend truth is the limit for frontend complexity
+
+## 16. Implementation Priority For Missing Admin Modules
+
+Based on hotel PMS industry best practices and business flow dependencies:
+
+| Priority | Module | Reason |
+|---|---|---|
+| **P0** | Front Desk | Core PMS function — check-in/check-out drives all other operations |
+| **P1** | Invoices | Usually triggered at check-out — natural extension of front desk |
+| **P2** | Guest Services | Enhances guest experience, generates ancillary revenue |
+| **P3** | Housekeeping | Critical for room turnover, but can use backend directly initially |
+| **P4** | Maintenance | Important but lower frequency, can use backend directly initially |
+
+Recommended implementation order: Front Desk → Invoices → Services → Housekeeping → Maintenance.
+
+## 17. Current File Structure (Post-Refactoring)
+
+### Frontend Pages
+
+| File | Lines | Purpose |
+|---|---|---|
+| `pages/DashboardPage.jsx` | 340 | Homepage |
+| `pages/SearchPage.jsx` | 316 | Search results |
+| `pages/BookingPage.jsx` | 322 | Booking checkout |
+| `pages/RegisterPage.jsx` | 278 | Guest registration |
+| `pages/HotelPage.jsx` | 241 | Hotel detail |
+| `pages/ReservationPage.jsx` | 244 | Guest reservation self-service |
+| `pages/AccountPage.jsx` | 224 | Guest account |
+| `pages/AdminPage.jsx` | 145 | Admin shell (composes sub-components) |
+| `pages/VnpayReturnPage.jsx` | 113 | VNPay payment result |
+| `pages/LoginPage.jsx` | 70 | Login form |
+
+### Admin Sub-Components
+
+| File | Purpose |
+|---|---|
+| `pages/admin/AdminAccounts.jsx` | Account management |
+| `pages/admin/AdminInventory.jsx` | Inventory control + optimistic locking |
+| `pages/admin/AdminReports.jsx` | Reports + Export Excel/PDF |
+
+### CSS Architecture
+
+| File | Lines | Scope |
+|---|---|---|
+| `App.css` | 453 | Shared: shell, footer, auth, buttons, toast, responsive, VNPay |
+| `styles/Home.css` | 250 | Homepage |
+| `styles/Search.css` | 68 | Search page |
+| `styles/Hotel.css` | 66 | Hotel detail |
+| `styles/Booking.css` | 109 | Booking flow |
+| `styles/Account.css` | 240 | Guest dashboard + reservation |
+| `styles/Admin.css` | 370 | Admin dashboard |

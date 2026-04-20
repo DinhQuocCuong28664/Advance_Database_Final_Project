@@ -1,5 +1,6 @@
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import '../styles/Account.css';
 
 const ACCOUNT_MENU = [
   'Account overview',

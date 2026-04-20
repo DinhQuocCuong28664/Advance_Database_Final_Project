@@ -1,23 +1,76 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
+import '../styles/Search.css';
 import { resolveHotelImage, imgError } from '../utils/hotelImages';
 
+const GENERIC_SEARCH_WORDS = new Set([
+  'city',
+  'hotel',
+  'hotels',
+  'resort',
+  'resorts',
+  'stay',
+  'stays',
+  'the',
+]);
 
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
+
 function addDays(dateStr, n) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() + n);
+  return date.toISOString().slice(0, 10);
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildSearchHaystack(hotel) {
+  return normalizeText([
+    hotel.hotel_name,
+    hotel.city_name,
+    hotel.brand_name,
+    hotel.chain_name,
+    hotel.location_detail?.city,
+    hotel.location_detail?.country,
+    hotel.location_detail?.district,
+    hotel.hotel_type,
+  ].filter(Boolean).join(' '));
+}
+
+function hotelMatchesDestination(hotel, destination) {
+  const normalizedQuery = normalizeText(destination);
+  if (!normalizedQuery) return true;
+
+  const haystack = buildSearchHaystack(hotel);
+  if (!haystack) return false;
+
+  if (haystack.includes(normalizedQuery)) return true;
+
+  const rawTokens = normalizedQuery.split(' ').filter(Boolean);
+  const meaningfulTokens = rawTokens.filter((token) => !GENERIC_SEARCH_WORDS.has(token));
+  const tokens = meaningfulTokens.length > 0 ? meaningfulTokens : rawTokens;
+
+  return tokens.every((token) => haystack.includes(token));
 }
 
 function StarRating({ stars }) {
   return (
-    <span className="star-rating">
-      {Array.from({ length: 5 }, (_, i) => (
-        <span key={i} style={{ opacity: i < stars ? 1 : 0.25 }}>★</span>
+    <span className="star-rating" aria-label={`${stars} star rating`}>
+      {Array.from({ length: 5 }, (_, index) => (
+        <span key={index} style={{ opacity: index < stars ? 1 : 0.25 }}>
+          ★
+        </span>
       ))}
     </span>
   );
@@ -26,8 +79,6 @@ function StarRating({ stars }) {
 function HotelCard({ hotel, checkin, checkout, guests }) {
   const navigate = useNavigate();
   const minRate = hotel.min_nightly_rate;
-  // location_detail: { city, country, district, ... } from MongoDB
-  // city_name from SQL = district/area name
   const locationText = [
     hotel.location_detail?.district || hotel.city_name,
     hotel.location_detail?.city,
@@ -62,9 +113,7 @@ function HotelCard({ hotel, checkin, checkout, guests }) {
             )}
           </div>
         </div>
-        {hotel.hotel_type && (
-          <span className="search-hotel-type-pill">{hotel.hotel_type}</span>
-        )}
+        {hotel.hotel_type ? <span className="search-hotel-type-pill">{hotel.hotel_type}</span> : null}
         <button
           className="primary-button search-hotel-cta"
           type="button"
@@ -83,7 +132,6 @@ export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // ── controlled form state (what user is typing) ──────────────────────────
   const [search, setSearch] = useState({
     destination: searchParams.get('destination') || '',
     checkin: searchParams.get('checkin') || today(),
@@ -91,7 +139,6 @@ export default function SearchPage() {
     guests: Number(searchParams.get('guests')) || 1,
   });
 
-  // ── committed query — only updates when user hits Search ─────────────────
   const [activeQuery, setActiveQuery] = useState({
     destination: searchParams.get('destination') || '',
     checkin: searchParams.get('checkin') || today(),
@@ -100,129 +147,165 @@ export default function SearchPage() {
   });
 
   const [allHotels, setAllHotels] = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
-  const [filters, setFilters]     = useState({ minPrice: '', maxPrice: '', stars: '', brand: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filters, setFilters] = useState({ minPrice: '', maxPrice: '', stars: '', brand: '' });
 
-  // ── fetch hotels once ─────────────────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
+
     setLoading(true);
     setError(null);
+
     apiRequest('/hotels')
       .then((res) => {
-        // backend: { success, count, data: [...] }
+        if (cancelled) return;
         const list = res.data || res.hotels || [];
         setAllHotels(list);
       })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // ── derived filter — computed inline (no stale closures, always reactive) ─
-  const hotels = (() => {
+  const brands = useMemo(
+    () => [...new Set(allHotels.map((hotel) => hotel.brand_name || hotel.chain_name).filter(Boolean))],
+    [allHotels],
+  );
+
+  const hotels = useMemo(() => {
     let result = allHotels;
-    const dest = activeQuery.destination.trim();
+    const destination = activeQuery.destination.trim();
 
-    if (dest) {
-      // Build a combined text blob per hotel; search each word of query separately
-      // e.g. "Dicstric 1" → words ["dicstric","1"] → "1" matches "District 1"
-      const words = dest.toLowerCase().split(/\s+/).filter(Boolean);
-
-      result = result.filter((h) => {
-        const haystack = [
-          h.hotel_name, h.city_name, h.brand_name, h.chain_name,
-          h.location_detail?.city, h.location_detail?.country,
-          h.location_detail?.district, h.hotel_type,
-        ].filter(Boolean).join(' ').toLowerCase();
-
-        // Pass if ANY word from the query matches somewhere in the hotel text
-        return words.some((w) => haystack.includes(w));
-      });
+    if (destination) {
+      result = result.filter((hotel) => hotelMatchesDestination(hotel, destination));
     }
 
-    if (filters.stars)    result = result.filter((h) => Number(h.star_rating) >= Number(filters.stars));
-    if (filters.brand)    result = result.filter((h) => h.brand_name === filters.brand || h.chain_name === filters.brand);
-    if (filters.minPrice) result = result.filter((h) => !h.min_nightly_rate || Number(h.min_nightly_rate) >= Number(filters.minPrice));
-    if (filters.maxPrice) result = result.filter((h) => !h.min_nightly_rate || Number(h.min_nightly_rate) <= Number(filters.maxPrice));
+    if (filters.stars) {
+      result = result.filter((hotel) => Number(hotel.star_rating) >= Number(filters.stars));
+    }
+    if (filters.brand) {
+      result = result.filter(
+        (hotel) => hotel.brand_name === filters.brand || hotel.chain_name === filters.brand,
+      );
+    }
+    if (filters.minPrice) {
+      result = result.filter(
+        (hotel) => !hotel.min_nightly_rate || Number(hotel.min_nightly_rate) >= Number(filters.minPrice),
+      );
+    }
+    if (filters.maxPrice) {
+      result = result.filter(
+        (hotel) => !hotel.min_nightly_rate || Number(hotel.min_nightly_rate) <= Number(filters.maxPrice),
+      );
+    }
 
     return result;
-  })();
+  }, [activeQuery.destination, allHotels, filters]);
 
-  function handleSearchSubmit(e) {
-    e.preventDefault();
-    // Commit form values to activeQuery — triggers re-render, filter recomputes
-    setActiveQuery({ ...search });
-    setSearchParams(new URLSearchParams({
+  function handleSearchSubmit(event) {
+    event.preventDefault();
+
+    const nextQuery = {
       destination: search.destination,
       checkin: search.checkin,
       checkout: search.checkout,
-      guests: String(search.guests),
+      guests: Number(search.guests) || 1,
+    };
+
+    setActiveQuery(nextQuery);
+    setSearchParams(new URLSearchParams({
+      destination: nextQuery.destination,
+      checkin: nextQuery.checkin,
+      checkout: nextQuery.checkout,
+      guests: String(nextQuery.guests),
     }));
   }
 
-  function handleFilterChange(key, val) {
-    setFilters((prev) => ({ ...prev, [key]: val }));
+  function handleFilterChange(key, value) {
+    setFilters((prev) => ({ ...prev, [key]: value }));
   }
-
-  const brands = [...new Set(allHotels.map((h) => h.brand_name || h.chain_name).filter(Boolean))];
 
   return (
     <div className="search-page">
-      {/* ── persistent search row ── */}
       <div className="search-top-bar">
         <form className="search-top-form" onSubmit={handleSearchSubmit}>
           <input
             type="text"
-            placeholder="Destination, hotel, city…"
+            placeholder="Destination, hotel, city..."
             value={search.destination}
-            onChange={(e) => setSearch((s) => ({ ...s, destination: e.target.value }))}
+            onChange={(event) => setSearch((prev) => ({ ...prev, destination: event.target.value }))}
             className="search-top-input"
           />
           <input
             type="date"
             value={search.checkin}
             min={today()}
-            onChange={(e) => setSearch((s) => ({ ...s, checkin: e.target.value }))}
+            onChange={(event) => setSearch((prev) => ({ ...prev, checkin: event.target.value }))}
             className="search-top-input"
           />
           <input
             type="date"
             value={search.checkout}
             min={addDays(search.checkin, 1)}
-            onChange={(e) => setSearch((s) => ({ ...s, checkout: e.target.value }))}
+            onChange={(event) => setSearch((prev) => ({ ...prev, checkout: event.target.value }))}
             className="search-top-input"
           />
           <div className="guests-stepper search-guests-stepper">
-            <button type="button" className="guests-btn"
-              onClick={() => setSearch((s) => ({ ...s, guests: Math.max(1, s.guests - 1) }))}
-              disabled={search.guests <= 1}>−</button>
+            <button
+              type="button"
+              className="guests-btn"
+              onClick={() => setSearch((prev) => ({ ...prev, guests: Math.max(1, Number(prev.guests) - 1) }))}
+              disabled={Number(search.guests) <= 1}
+            >
+              -
+            </button>
             <input
-              type="text" inputMode="numeric"
+              type="text"
+              inputMode="numeric"
               className="guests-val guests-input"
               value={search.guests}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => {
-                const val = parseInt(e.target.value.replace(/\D/g, ''), 10);
-                setSearch((s) => ({ ...s, guests: isNaN(val) ? '' : Math.min(10, Math.max(1, val)) }));
+              onFocus={(event) => event.target.select()}
+              onChange={(event) => {
+                const value = parseInt(event.target.value.replace(/\D/g, ''), 10);
+                setSearch((prev) => ({
+                  ...prev,
+                  guests: Number.isNaN(value) ? '' : Math.min(10, Math.max(1, value)),
+                }));
               }}
-              onBlur={() => setSearch((s) => ({ ...s, guests: s.guests || 1 }))}
+              onBlur={() => setSearch((prev) => ({ ...prev, guests: prev.guests || 1 }))}
             />
-            <button type="button" className="guests-btn"
-              onClick={() => setSearch((s) => ({ ...s, guests: Math.min(10, s.guests + 1) }))}
-              disabled={search.guests >= 10}>+</button>
+            <button
+              type="button"
+              className="guests-btn"
+              onClick={() => setSearch((prev) => ({ ...prev, guests: Math.min(10, Number(prev.guests) + 1) }))}
+              disabled={Number(search.guests) >= 10}
+            >
+              +
+            </button>
           </div>
           <button className="primary-button" type="submit">Search</button>
         </form>
       </div>
 
       <div className="search-body">
-        {/* ── sidebar filters ── */}
         <aside className="search-sidebar">
           <h3 className="search-filter-title">Filter results</h3>
 
           <div className="search-filter-group">
             <label className="search-filter-label">Min stars</label>
-            <select className="search-filter-select" value={filters.stars} onChange={(e) => handleFilterChange('stars', e.target.value)}>
+            <select
+              className="search-filter-select"
+              value={filters.stars}
+              onChange={(event) => handleFilterChange('stars', event.target.value)}
+            >
               <option value="">Any</option>
               <option value="3">3+</option>
               <option value="4">4+</option>
@@ -232,9 +315,17 @@ export default function SearchPage() {
 
           <div className="search-filter-group">
             <label className="search-filter-label">Brand</label>
-            <select className="search-filter-select" value={filters.brand} onChange={(e) => handleFilterChange('brand', e.target.value)}>
+            <select
+              className="search-filter-select"
+              value={filters.brand}
+              onChange={(event) => handleFilterChange('brand', event.target.value)}
+            >
               <option value="">All brands</option>
-              {brands.map((b) => <option key={b} value={b}>{b}</option>)}
+              {brands.map((brand) => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -245,14 +336,14 @@ export default function SearchPage() {
                 type="number"
                 placeholder="Min $"
                 value={filters.minPrice}
-                onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                onChange={(event) => handleFilterChange('minPrice', event.target.value)}
                 className="search-filter-input"
               />
               <input
                 type="number"
                 placeholder="Max $"
                 value={filters.maxPrice}
-                onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                onChange={(event) => handleFilterChange('maxPrice', event.target.value)}
                 className="search-filter-input"
               />
             </div>
@@ -268,14 +359,15 @@ export default function SearchPage() {
           </button>
         </aside>
 
-        {/* ── results ── */}
         <div className="search-results">
           {loading ? (
-            <div className="search-loading"><span>Loading hotels…</span></div>
+            <div className="search-loading"><span>Loading hotels...</span></div>
           ) : error ? (
             <div className="search-error">
               <p>{error}</p>
-              <button className="ghost-button" type="button" onClick={() => navigate('/')}>Back to home</button>
+              <button className="ghost-button" type="button" onClick={() => navigate('/')}>
+                Back to home
+              </button>
             </div>
           ) : hotels.length === 0 ? (
             <div className="search-empty">
@@ -286,7 +378,9 @@ export default function SearchPage() {
                   ? `No results for "${activeQuery.destination}". Try a broader query.`
                   : 'Try entering a destination above.'}
               </p>
-              <button className="ghost-button" type="button" onClick={() => navigate('/')}>Back to home</button>
+              <button className="ghost-button" type="button" onClick={() => navigate('/')}>
+                Back to home
+              </button>
             </div>
           ) : (
             <>
@@ -295,10 +389,10 @@ export default function SearchPage() {
                 {activeQuery.destination ? ` for "${activeQuery.destination}"` : ''}
               </p>
               <div className="search-hotel-list">
-                {hotels.map((h) => (
+                {hotels.map((hotel) => (
                   <HotelCard
-                    key={h.hotel_id}
-                    hotel={h}
+                    key={hotel.hotel_id}
+                    hotel={hotel}
                     checkin={activeQuery.checkin}
                     checkout={activeQuery.checkout}
                     guests={activeQuery.guests}

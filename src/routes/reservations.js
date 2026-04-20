@@ -349,7 +349,16 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();
-    const { guest_id, email, status, limit = 20 } = req.query;
+    const {
+      guest_id,
+      email,
+      status,
+      hotel_id,
+      checkin_date,
+      checkout_date,
+      reservation_code,
+      limit = 20,
+    } = req.query;
 
     let where = [];
     const request = pool.request();
@@ -365,6 +374,22 @@ router.get('/', async (req, res) => {
     if (status) {
       where.push('r.reservation_status = @status');
       request.input('status', sql.VarChar(20), status.toUpperCase());
+    }
+    if (hotel_id) {
+      where.push('r.hotel_id = @hotelId');
+      request.input('hotelId', sql.BigInt, parseInt(hotel_id, 10));
+    }
+    if (checkin_date) {
+      where.push('CAST(r.checkin_date AS date) = @checkinDate');
+      request.input('checkinDate', sql.VarChar(10), String(checkin_date).slice(0, 10));
+    }
+    if (checkout_date) {
+      where.push('CAST(r.checkout_date AS date) = @checkoutDate');
+      request.input('checkoutDate', sql.VarChar(10), String(checkout_date).slice(0, 10));
+    }
+    if (reservation_code) {
+      where.push('r.reservation_code = @reservationCode');
+      request.input('reservationCode', sql.VarChar(50), String(reservation_code).trim());
     }
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';

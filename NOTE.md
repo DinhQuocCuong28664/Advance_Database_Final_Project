@@ -640,3 +640,75 @@ VNPAY_HASH_SECRET=MINP9SMER1Y06GDU2U57SJ7GB505OQ82
 ### 19.4 Duplicate Sign in button đã xóa
 
 - `ReservationPage.jsx`: Đã xóa nút Sign in inline trong `resv-header` (giữ lại nút ở SiteHeader toàn cục)
+
+---
+
+## 20. Session 20 – Admin Reports & Codebase Refactoring (2026-04-20)
+
+### 20.1 Admin Reports & Analytics
+
+**Backend:** Thêm endpoint `GET /api/admin/reports/summary` trong `src/routes/admin.js`:
+- 4 queries chạy song song (Promise.all): overview KPIs, by_status, top_hotels, payment_stats
+- File: `src/routes/admin.js`
+
+**Frontend – Reports section trong Admin Dashboard:**
+
+| Feature | Chi tiết |
+|---|---|
+| 4 KPI cards | Total / Active Reservations, Hotels with Bookings, Payment Methods |
+| Reservations by Status | Bảng với color-coded badges (CONFIRMED, CANCELLED...) |
+| Top 5 Hotels by Revenue | Bảng xếp hạng theo doanh thu |
+| Payment Breakdown | Theo phương thức thanh toán + tổng tiền |
+| Revenue Detail table | Dùng Window Functions — hotel × room type × quarter |
+| ⬇ Export Excel | `.xlsx` với 4 sheets: Summary, Top Hotels, Payments, Revenue Detail |
+| ⬇ Export PDF | Landscape PDF với tất cả tables, auto page break |
+
+**Thư viện sử dụng:** `xlsx`, `jspdf`, `jspdf-autotable`
+
+### 20.2 Refactor AdminPage.jsx → Sub-components
+
+**Trước:** `AdminPage.jsx` = **855 dòng** (34KB) chứa tất cả logic + JSX.
+
+**Sau:** Tách thành 4 files:
+
+| File | Dòng | Vai trò |
+|---|---|---|
+| `pages/AdminPage.jsx` | ~145 | Shell: load data, compose sub-components |
+| `pages/admin/AdminAccounts.jsx` | ~130 | Account management (system users + guests) |
+| `pages/admin/AdminInventory.jsx` | ~210 | Inventory control + optimistic locking |
+| `pages/admin/AdminReports.jsx` | ~220 | Reports + Export Excel/PDF |
+
+Mỗi sub-component tự quản lý state riêng, nhận data qua props.
+
+### 20.3 Refactor App.css → Per-page CSS files
+
+**Trước:** `App.css` = **2087 dòng** (50KB) chứa CSS cho toàn bộ app.
+
+**Sau:** Tách thành 6 files trong `src/styles/`:
+
+| File | Dòng | Nội dung |
+|---|---|---|
+| `styles/Home.css` | 250 | Homepage hero, destinations, featured, promos, trust, search form, stepper |
+| `styles/Search.css` | 68 | Search page layout, cards, sidebar, filters |
+| `styles/Hotel.css` | 66 | Hotel detail page, gallery, rooms, amenities |
+| `styles/Booking.css` | 109 | Booking flow, stepper, deposit notice |
+| `styles/Account.css` | 240 | Guest dashboard, account page, reservation page |
+| `styles/Admin.css` | 370 | Admin dashboard, inventory, reports, status pills |
+| `App.css` (giữ lại) | 453 | **Chỉ shared:** shell header/footer, auth forms, buttons, inputs, toast, responsive, VNPay, table globals |
+
+**Tổng giảm App.css:** 2087 → 453 dòng (**−78%**)
+
+Mỗi page chỉ import đúng CSS file nó cần:
+- `DashboardPage.jsx` → `import '../styles/Home.css'`
+- `SearchPage.jsx` → `import '../styles/Search.css'`
+- `HotelPage.jsx` → `import '../styles/Hotel.css'`
+- `BookingPage.jsx` → `import '../styles/Booking.css'`
+- `AccountPage.jsx` → `import '../styles/Account.css'`
+- `ReservationPage.jsx` → `import '../styles/Account.css'`
+- `AdminPage.jsx` → `import '../styles/Admin.css'`
+
+### 20.4 Build verification
+
+- `npx vite build` thành công, 0 lỗi
+- CSS output giảm từ 44.32 KB → 42.34 KB (bỏ duplicate/dead code tự nhiên)
+- Tất cả 256 modules transformed thành công
