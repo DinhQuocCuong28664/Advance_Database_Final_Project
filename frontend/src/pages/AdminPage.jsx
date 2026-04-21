@@ -7,16 +7,20 @@ import '../styles/Admin.css';
 
 import AdminAccounts from './admin/AdminAccounts';
 import AdminFrontDesk from './admin/AdminFrontDesk';
+import AdminHousekeeping from './admin/AdminHousekeeping';
 import AdminInventory from './admin/AdminInventory';
+import AdminInvoice from './admin/AdminInvoice';
 import AdminMaintenance from './admin/AdminMaintenance';
 import AdminReports from './admin/AdminReports';
 
 const ADMIN_TABS = [
-  { key: 'frontdesk',   label: 'Front Desk',   note: 'Arrivals, departures, transfers, and stay actions' },
-  { key: 'inventory',   label: 'Inventory',     note: 'Room availability and status control' },
-  { key: 'maintenance', label: 'Maintenance',   note: 'Issue tracking, repairs, and room status' },
-  { key: 'accounts',    label: 'Accounts',      note: 'System and guest login management' },
-  { key: 'reports',     label: 'Reports',       note: 'KPIs, exports, and revenue analytics' },
+  { key: 'frontdesk',   label: '🏨 Front Desk',    note: 'Arrivals, departures, transfers, and stay actions' },
+  { key: 'inventory',   label: '📦 Inventory',      note: 'Room availability and status control' },
+  { key: 'housekeeping',label: '🧹 Housekeeping',   note: 'Cleaning tasks, assignments, and room status' },
+  { key: 'maintenance', label: '🔧 Maintenance',    note: 'Issue tracking, repairs, and room status' },
+  { key: 'invoice',     label: '📄 Invoices',       note: 'Generate and issue guest invoices' },
+  { key: 'accounts',    label: '👤 Accounts',       note: 'System and guest login management' },
+  { key: 'reports',     label: '📊 Reports',        note: 'KPIs, exports, and revenue analytics' },
 ];
 
 export default function AdminPage() {
@@ -140,9 +144,11 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {activeTab === 'frontdesk' ? <AdminFrontDesk hotels={hotels} /> : null}
-        {activeTab === 'inventory' ? <AdminInventory hotels={hotels} loadingHotels={loadingHotels} /> : null}
-        {activeTab === 'maintenance' ? <AdminMaintenance hotels={hotels} /> : null}
+        {activeTab === 'frontdesk'    ? <AdminFrontDesk hotels={hotels} /> : null}
+        {activeTab === 'inventory'    ? <AdminInventory hotels={hotels} loadingHotels={loadingHotels} /> : null}
+        {activeTab === 'housekeeping' ? <AdminHousekeeping hotels={hotels} /> : null}
+        {activeTab === 'maintenance'  ? <AdminMaintenance hotels={hotels} /> : null}
+        {activeTab === 'invoice'      ? <AdminInvoice hotels={hotels} /> : null}
         {activeTab === 'accounts' ? (
           <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
         ) : null}
