@@ -69,7 +69,7 @@ export default function CashierPage() {
             Loading hotels…
           </p>
         ) : (
-          <div style={{ padding: '0 24px 48px' }}>
+          <div style={{ padding: '20px 24px 48px' }}>
             <AdminFrontDesk hotels={hotels} />
           </div>
         )}

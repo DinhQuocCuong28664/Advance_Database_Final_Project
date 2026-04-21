@@ -1,7 +1,108 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
 import { useAuth } from '../../context/AuthContext';
+
+// ── Payment methods available at check-in ──────────────────────────────────
+const PAYMENT_METHODS = [
+  {
+    key: 'CASH',
+    label: 'Tiền mặt',
+    sublabel: 'Cash',
+    icon: '💵',
+    note: 'Collect payment at the desk. Physical receipt required.',
+  },
+  {
+    key: 'BANK_TRANSFER',
+    label: 'Chuyển khoản ngân hàng',
+    sublabel: 'Bank Transfer / VNPay',
+    icon: '🏦',
+    note: 'Guest scans QR or transfers via VNPay. Verify before confirming.',
+  },
+  {
+    key: 'CREDIT_CARD',
+    label: 'Thẻ tín dụng / ghi nợ',
+    sublabel: 'Credit / Debit Card',
+    icon: '💳',
+    note: 'Swipe or tap card on the POS terminal. Confirm after approval.',
+  },
+];
+
+// ── Payment modal ──────────────────────────────────────────────────────────
+function PaymentModal({ reservation, onConfirm, onCancel, busy }) {
+  const [selected, setSelected] = useState('CASH');
+  const overlayRef = useRef(null);
+  const method     = PAYMENT_METHODS.find(m => m.key === selected);
+
+  // Close on overlay click
+  function handleOverlayClick(e) {
+    if (e.target === overlayRef.current) onCancel();
+  }
+
+  function formatMoney(value, currency = 'VND') {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency }).format(Number(value || 0));
+  }
+
+  return (
+    <div className="pm-overlay" ref={overlayRef} onClick={handleOverlayClick}>
+      <div className="pm-dialog" role="dialog" aria-modal="true">
+
+        <div className="pm-header">
+          <div>
+            <p className="pm-eyebrow">Check-in · Chọn phương thức thanh toán</p>
+            <h2 className="pm-title">{reservation.reservation_code}</h2>
+            <p className="pm-guest">{reservation.guest_name} · {reservation.hotel_name}</p>
+          </div>
+          <button type="button" className="pm-close" onClick={onCancel}>✕</button>
+        </div>
+
+        <div className="pm-amount-row">
+          <span>Balance due</span>
+          <strong className="pm-amount">
+            {formatMoney(reservation.balance_due ?? reservation.grand_total_amount, reservation.currency_code || 'VND')}
+          </strong>
+        </div>
+
+        <div className="pm-methods">
+          {PAYMENT_METHODS.map(m => (
+            <button
+              key={m.key}
+              type="button"
+              className={`pm-method-btn${selected === m.key ? ' pm-method-btn--active' : ''}`}
+              onClick={() => setSelected(m.key)}
+            >
+              <span className="pm-method-icon">{m.icon}</span>
+              <span className="pm-method-body">
+                <span className="pm-method-label">{m.label}</span>
+                <span className="pm-method-sub">{m.sublabel}</span>
+              </span>
+              {selected === m.key && <span className="pm-method-check">✓</span>}
+            </button>
+          ))}
+        </div>
+
+        {method && (
+          <p className="pm-method-note">{method.note}</p>
+        )}
+
+        <div className="pm-actions">
+          <button type="button" className="ghost-button" onClick={onCancel} disabled={busy}>
+            Huỷ
+          </button>
+          <button
+            type="button"
+            className="primary-button pm-confirm-btn"
+            onClick={() => onConfirm(selected)}
+            disabled={busy}
+          >
+            {busy ? 'Đang xử lý...' : `Xác nhận · ${method?.label}`}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
 
 function todayString() {
   const now = new Date();
@@ -121,6 +222,10 @@ export default function AdminFrontDesk({ hotels }) {
     reason: '',
   });
 
+  // Payment modal state
+  const [paymentTarget, setPaymentTarget] = useState(null); // reservation pending check-in
+  const [paymentBusy,   setPaymentBusy]   = useState(false);
+
   const selectedHotel = useMemo(
     () => hotels.find((hotel) => String(hotel.hotel_id) === String(hotelId)) || null,
     [hotels, hotelId],
@@ -191,6 +296,33 @@ export default function AdminFrontDesk({ hotels }) {
     }
   }
 
+  // Open payment modal before check-in
+  function initiateCheckin(reservation) {
+    setPaymentTarget(reservation);
+  }
+
+  // Called when cashier confirms payment method in modal
+  async function confirmCheckin(paymentMethod) {
+    if (!paymentTarget) return;
+    setPaymentBusy(true);
+    try {
+      await apiRequest(`/reservations/${paymentTarget.reservation_id}/checkin`, {
+        method: 'POST',
+        body: JSON.stringify({ agent_id: agentId, payment_method: paymentMethod }),
+      });
+      setFlash({ tone: 'success', text: `${paymentTarget.reservation_code} checked in · ${paymentMethod}.` });
+      setPaymentTarget(null);
+      if (lookupResult?.reservation_id === paymentTarget.reservation_id) {
+        await handleLookup({ preventDefault() {} });
+      }
+      await loadDesk();
+    } catch (error) {
+      setFlash({ tone: 'error', text: error.message });
+    } finally {
+      setPaymentBusy(false);
+    }
+  }
+
   async function runReservationAction(reservation, action) {
     const busyKey = `${action}-${reservation.reservation_id}`;
     setActionBusy(busyKey);
@@ -200,6 +332,7 @@ export default function AdminFrontDesk({ hotels }) {
       let body = {};
 
       if (action === 'checkin') {
+        // Should not reach here — check-in goes through initiateCheckin()
         path = `/reservations/${reservation.reservation_id}/checkin`;
         body = { agent_id: agentId };
       } else if (action === 'checkout') {
@@ -307,6 +440,15 @@ export default function AdminFrontDesk({ hotels }) {
 
   return (
     <section className="page-card page-card-wide" id="admin-front-desk">
+      {/* ── Payment modal ── */}
+      {paymentTarget && (
+        <PaymentModal
+          reservation={paymentTarget}
+          busy={paymentBusy}
+          onConfirm={confirmCheckin}
+          onCancel={() => setPaymentTarget(null)}
+        />
+      )}
       <div className="admin-section-head">
         <div>
           <p className="page-eyebrow">Front desk</p>
@@ -351,8 +493,8 @@ export default function AdminFrontDesk({ hotels }) {
               <ReservationMiniCard
                 key={reservation.reservation_id}
                 reservation={reservation}
-                actionLabel={actionBusy === `checkin-${reservation.reservation_id}` ? 'Checking in...' : 'Check in'}
-                onAction={(row) => runReservationAction(row, 'checkin')}
+                actionLabel="Check in"
+                onAction={(row) => initiateCheckin(row)}
                 secondaryAction={{ label: 'Load transfer', onClick: loadTransferOptions }}
               />
             ))
@@ -444,10 +586,9 @@ export default function AdminFrontDesk({ hotels }) {
                   <button
                     type="button"
                     className="primary-button"
-                    disabled={actionBusy === `checkin-${lookupResult.reservation_id}`}
-                    onClick={() => runReservationAction(lookupResult, 'checkin')}
+                    onClick={() => initiateCheckin(lookupResult)}
                   >
-                    {actionBusy === `checkin-${lookupResult.reservation_id}` ? 'Checking in...' : 'Check in'}
+                    Check in
                   </button>
                 ) : null}
 
