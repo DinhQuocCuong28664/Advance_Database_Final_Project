@@ -8,13 +8,15 @@ import '../styles/Admin.css';
 import AdminAccounts from './admin/AdminAccounts';
 import AdminFrontDesk from './admin/AdminFrontDesk';
 import AdminInventory from './admin/AdminInventory';
+import AdminMaintenance from './admin/AdminMaintenance';
 import AdminReports from './admin/AdminReports';
 
 const ADMIN_TABS = [
-  { key: 'frontdesk', label: 'Front Desk', note: 'Arrivals, departures, transfers, and stay actions' },
-  { key: 'inventory', label: 'Inventory', note: 'Room availability and status control' },
-  { key: 'accounts', label: 'Accounts', note: 'System and guest login management' },
-  { key: 'reports', label: 'Reports', note: 'KPIs, exports, and revenue analytics' },
+  { key: 'frontdesk',   label: 'Front Desk',   note: 'Arrivals, departures, transfers, and stay actions' },
+  { key: 'inventory',   label: 'Inventory',     note: 'Room availability and status control' },
+  { key: 'maintenance', label: 'Maintenance',   note: 'Issue tracking, repairs, and room status' },
+  { key: 'accounts',    label: 'Accounts',      note: 'System and guest login management' },
+  { key: 'reports',     label: 'Reports',       note: 'KPIs, exports, and revenue analytics' },
 ];
 
 export default function AdminPage() {
@@ -140,6 +142,7 @@ export default function AdminPage() {
 
         {activeTab === 'frontdesk' ? <AdminFrontDesk hotels={hotels} /> : null}
         {activeTab === 'inventory' ? <AdminInventory hotels={hotels} loadingHotels={loadingHotels} /> : null}
+        {activeTab === 'maintenance' ? <AdminMaintenance hotels={hotels} /> : null}
         {activeTab === 'accounts' ? (
           <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
         ) : null}

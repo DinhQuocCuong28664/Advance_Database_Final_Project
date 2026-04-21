@@ -992,3 +992,139 @@
 .svc-order-status-pill--confirmed  { background: #dcfce7; color: #14532d; }
 .svc-order-status-pill--delivered  { background: #dbeafe; color: #1e3a8a; }
 .svc-order-status-pill--cancelled  { background: #fee2e2; color: #7f1d1d; }
+
+/* ???????????????????????????????????????????
+   Maintenance Module
+??????????????????????????????????????????? */
+.maint-stats-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 20px;
+}
+.maint-stat {
+  background: #f3f4f6;
+  border-radius: 99px;
+  padding: 5px 14px;
+  font-size: 0.83rem;
+  color: var(--text-soft);
+}
+.maint-stat strong { color: var(--text-strong); margin-right: 3px; }
+.maint-stat--warn   { background: #fef3c7; color: #92400e; }
+.maint-stat--danger { background: #fee2e2; color: #7f1d1d; }
+.maint-stat--info   { background: #dbeafe; color: #1e3a8a; }
+
+.maint-new-form {
+  margin: 0 0 24px;
+  background: var(--bg-soft, #f9f5f0);
+  border: 1.5px solid var(--border, #e0d5c8);
+  border-radius: 14px;
+  padding: 22px 24px;
+}
+.maint-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.maint-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.maint-form-grid select,
+.maint-form-grid textarea,
+.maint-form-grid input {
+  padding: 9px 12px;
+  border: 1.5px solid var(--border, #d8cfc4);
+  border-radius: 9px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: var(--text-strong);
+  resize: vertical;
+}
+
+/* Ticket card */
+.maint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.maint-card {
+  background: #fff;
+  border: 1.5px solid var(--border, #e0d5c8);
+  border-left: 5px solid #ccc;
+  border-radius: 14px;
+  padding: 16px 20px;
+  transition: box-shadow 0.15s;
+}
+.maint-card:hover { box-shadow: 0 4px 18px rgba(20,61,66,0.08); }
+.maint-card--done { opacity: 0.6; }
+
+.maint-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+.maint-card-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.maint-sev-pill, .maint-status-pill, .maint-category-pill {
+  display: inline-block;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.maint-category-pill {
+  background: var(--bg-deep, #e7dccf);
+  color: var(--text-soft);
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.maint-ticket-id {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.maint-desc {
+  font-size: 0.96rem;
+  color: var(--text-strong);
+  margin: 6px 0 12px;
+  line-height: 1.5;
+}
+
+.maint-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  font-size: 0.83rem;
+  color: var(--text-soft);
+  padding: 8px 0;
+  border-top: 1px solid var(--border, #ece5db);
+  border-bottom: 1px solid var(--border, #ece5db);
+  margin-bottom: 12px;
+}
+.maint-resolution-note {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  background: var(--bg-soft, #f9f5f0);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+.maint-card-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
