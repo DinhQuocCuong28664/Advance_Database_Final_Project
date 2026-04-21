@@ -142,52 +142,90 @@ router.post('/order', async (req, res) => {
 
 // ═══════════════════════════════════════════════
 // GET /api/services/orders?reservation_id=1
-// List all service orders for a reservation
+//   or /api/services/orders?hotel_id=1&status=REQUESTED
+// List service orders (guest view or staff hotel-wide view)
 // ═══════════════════════════════════════════════
 router.get('/orders', async (req, res) => {
   try {
     const pool = getSqlPool();
-    const { reservation_id } = req.query;
+    const { reservation_id, hotel_id, status } = req.query;
 
-    if (!reservation_id) {
-      return res.status(400).json({ success: false, error: 'reservation_id query parameter is required' });
+    if (!reservation_id && !hotel_id) {
+      return res.status(400).json({ success: false, error: 'Provide reservation_id or hotel_id' });
     }
 
-    const result = await pool.request()
-      .input('resvId', sql.BigInt, parseInt(reservation_id))
-      .query(`
-        SELECT rs.reservation_service_id, rs.reservation_id,
-               rs.service_id, sc.service_name, sc.service_category, sc.pricing_model,
-               rs.scheduled_at, rs.quantity, rs.unit_price, rs.discount_amount,
-               rs.final_amount, rs.service_status, rs.special_instruction,
-               rs.created_at
-        FROM ReservationService rs
-        JOIN ServiceCatalog sc ON rs.service_id = sc.service_id
-        WHERE rs.reservation_id = @resvId
-        ORDER BY rs.created_at DESC
-      `);
+    // ── Guest view: single reservation ──────────────
+    if (reservation_id) {
+      const result = await pool.request()
+        .input('resvId', sql.BigInt, parseInt(reservation_id))
+        .query(`
+          SELECT rs.reservation_service_id, rs.reservation_id,
+                 rs.service_id, sc.service_name, sc.service_category, sc.pricing_model,
+                 rs.scheduled_at, rs.quantity, rs.unit_price, rs.discount_amount,
+                 rs.final_amount, rs.service_status, rs.special_instruction,
+                 rs.created_at
+          FROM ReservationService rs
+          JOIN ServiceCatalog sc ON rs.service_id = sc.service_id
+          WHERE rs.reservation_id = @resvId
+          ORDER BY rs.created_at DESC
+        `);
 
-    // Calculate totals
+      const orders = result.recordset;
+      const totalAmount   = orders.reduce((s, o) => s + parseFloat(o.final_amount), 0);
+      const activeOrders  = orders.filter(o => o.service_status !== 'CANCELLED');
+      const activeTotal   = activeOrders.reduce((s, o) => s + parseFloat(o.final_amount), 0);
+
+      return res.json({
+        success: true,
+        count: orders.length,
+        summary: { total_orders: orders.length, active_orders: activeOrders.length, total_amount: totalAmount, active_amount: activeTotal },
+        data: orders,
+      });
+    }
+
+    // ── Staff view: all orders for a hotel (optional status filter) ──
+    const request = pool.request().input('hotelId', sql.BigInt, parseInt(hotel_id));
+    let statusClause = '';
+    if (status) {
+      request.input('status', sql.VarChar(15), status.toUpperCase());
+      statusClause = 'AND rs.service_status = @status';
+    }
+
+    const result = await request.query(`
+      SELECT rs.reservation_service_id, rs.reservation_id,
+             r.reservation_code, r.reservation_status,
+             g.first_name + ' ' + g.last_name AS guest_name, g.email AS guest_email,
+             rm.room_number, rm.floor_number,
+             rs.service_id, sc.service_name, sc.service_category, sc.pricing_model,
+             rs.scheduled_at, rs.quantity, rs.unit_price,
+             rs.final_amount, rs.service_status, rs.special_instruction,
+             rs.created_at, rs.updated_at,
+             h.currency_code
+      FROM ReservationService rs
+      JOIN ServiceCatalog sc   ON rs.service_id       = sc.service_id
+      JOIN Reservation r       ON rs.reservation_id   = r.reservation_id
+      JOIN Guest g             ON r.guest_id           = g.guest_id
+      LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+      LEFT JOIN Room rm            ON rr.room_id        = rm.room_id
+      JOIN Hotel h             ON sc.hotel_id          = h.hotel_id
+      WHERE sc.hotel_id = @hotelId ${statusClause}
+      ORDER BY
+        CASE rs.service_status WHEN 'REQUESTED' THEN 0 WHEN 'CONFIRMED' THEN 1 ELSE 2 END,
+        rs.created_at DESC
+    `);
+
     const orders = result.recordset;
-    const totalAmount = orders.reduce((sum, o) => sum + parseFloat(o.final_amount), 0);
-    const activeOrders = orders.filter(o => o.service_status !== 'CANCELLED');
-    const activeTotal = activeOrders.reduce((sum, o) => sum + parseFloat(o.final_amount), 0);
-
-    res.json({
+    return res.json({
       success: true,
       count: orders.length,
-      summary: {
-        total_orders: orders.length,
-        active_orders: activeOrders.length,
-        total_amount: totalAmount,
-        active_amount: activeTotal
-      },
-      data: orders
+      data: orders,
     });
+
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
 
 // ═══════════════════════════════════════════════
 // PUT /api/services/orders/:id/status

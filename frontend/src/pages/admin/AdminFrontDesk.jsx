@@ -7,22 +7,22 @@ import { useAuth } from '../../context/AuthContext';
 const PAYMENT_METHODS = [
   {
     key: 'CASH',
-    label: 'Tiền mặt',
-    sublabel: 'Cash',
+    label: 'Cash',
+    sublabel: 'Physical currency',
     icon: '💵',
     note: 'Collect payment at the desk. Physical receipt required.',
   },
   {
     key: 'BANK_TRANSFER',
-    label: 'Chuyển khoản ngân hàng',
-    sublabel: 'Bank Transfer / VNPay',
+    label: 'Bank Transfer',
+    sublabel: 'VNPay / Online Transfer',
     icon: '🏦',
     note: 'Guest scans QR or transfers via VNPay. Verify before confirming.',
   },
   {
     key: 'CREDIT_CARD',
-    label: 'Thẻ tín dụng / ghi nợ',
-    sublabel: 'Credit / Debit Card',
+    label: 'Credit / Debit Card',
+    sublabel: 'Visa · Mastercard · JCB',
     icon: '💳',
     note: 'Swipe or tap card on the POS terminal. Confirm after approval.',
   },
@@ -49,7 +49,7 @@ function PaymentModal({ reservation, onConfirm, onCancel, busy }) {
 
         <div className="pm-header">
           <div>
-            <p className="pm-eyebrow">Check-in · Chọn phương thức thanh toán</p>
+            <p className="pm-eyebrow">Check-in · Select payment method</p>
             <h2 className="pm-title">{reservation.reservation_code}</h2>
             <p className="pm-guest">{reservation.guest_name} · {reservation.hotel_name}</p>
           </div>
@@ -223,8 +223,15 @@ export default function AdminFrontDesk({ hotels }) {
   });
 
   // Payment modal state
-  const [paymentTarget, setPaymentTarget] = useState(null); // reservation pending check-in
+  const [paymentTarget, setPaymentTarget] = useState(null);
   const [paymentBusy,   setPaymentBusy]   = useState(false);
+
+  // Service orders tab state
+  const [activeTab,      setActiveTab]      = useState('frontdesk'); // 'frontdesk' | 'orders'
+  const [svcOrders,      setSvcOrders]      = useState([]);
+  const [svcOrdersLoading, setSvcOrdersLoading] = useState(false);
+  const [svcStatusBusy,  setSvcStatusBusy]  = useState(null); // order id being updated
+  const [svcFilter,      setSvcFilter]      = useState('');   // '' | 'REQUESTED' | 'CONFIRMED'
 
   const selectedHotel = useMemo(
     () => hotels.find((hotel) => String(hotel.hotel_id) === String(hotelId)) || null,
@@ -269,6 +276,36 @@ export default function AdminFrontDesk({ hotels }) {
       setFlash({ tone: 'error', text: error.message });
     } finally {
       setLoadingDesk(false);
+    }
+  }
+
+  async function loadServiceOrders(filterStatus) {
+    if (!hotelId) { setFlash({ tone: 'error', text: 'Select a hotel first.' }); return; }
+    setSvcOrdersLoading(true);
+    try {
+      const qs = filterStatus ? `&status=${filterStatus}` : '';
+      const payload = await apiRequest(`/services/orders?hotel_id=${hotelId}${qs}`);
+      setSvcOrders(payload.data || []);
+    } catch (err) {
+      setFlash({ tone: 'error', text: err.message });
+    } finally {
+      setSvcOrdersLoading(false);
+    }
+  }
+
+  async function updateOrderStatus(orderId, newStatus) {
+    setSvcStatusBusy(orderId);
+    try {
+      await apiRequest(`/services/orders/${orderId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setFlash({ tone: 'success', text: `Order #${orderId} marked as ${newStatus.toLowerCase()}.` });
+      await loadServiceOrders(svcFilter);
+    } catch (err) {
+      setFlash({ tone: 'error', text: err.message });
+    } finally {
+      setSvcStatusBusy(null);
     }
   }
 
@@ -452,11 +489,37 @@ export default function AdminFrontDesk({ hotels }) {
       <div className="admin-section-head">
         <div>
           <p className="page-eyebrow">Front desk</p>
-          <h2>Arrivals, departures, and reservation actions</h2>
+          <h2>Arrivals, departures &amp; service requests</h2>
         </div>
         <span className="admin-status-pill">V1 live</span>
       </div>
 
+      {/* ── Tab switcher ── */}
+      <div className="fd-tab-bar">
+        <button
+          type="button"
+          className={`fd-tab-btn${activeTab === 'frontdesk' ? ' active' : ''}`}
+          onClick={() => setActiveTab('frontdesk')}
+        >
+          🏨 Arrivals &amp; Departures
+        </button>
+        <button
+          type="button"
+          className={`fd-tab-btn${activeTab === 'orders' ? ' active' : ''}`}
+          onClick={() => { setActiveTab('orders'); if (hotelId) loadServiceOrders(svcFilter); }}
+        >
+          🛎 Service Orders
+          {svcOrders.filter(o => o.service_status === 'REQUESTED').length > 0 && (
+            <span className="fd-tab-badge">
+              {svcOrders.filter(o => o.service_status === 'REQUESTED').length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ══ TAB: Front Desk (arrivals & departures) ══ */}
+      {activeTab === 'frontdesk' && (
+        <>
       <form className="inventory-toolbar" onSubmit={(event) => { event.preventDefault(); loadDesk(); }}>
         <label>
           Hotel
@@ -666,6 +729,139 @@ export default function AdminFrontDesk({ hotels }) {
           </div>
         ) : null}
       </section>
+      </> )}
+      {/* ══ TAB: Service Orders ══ */}
+      {activeTab === 'orders' && (
+        <div className="svc-orders-panel">
+          <div className="svc-orders-toolbar">
+            <div className="svc-orders-toolbar-left">
+              <label>
+                Hotel
+                <select value={hotelId} onChange={e => { setHotelId(e.target.value); setSvcOrders([]); }}
+                  style={{ marginLeft: 8 }}>
+                  <option value="">Select hotel</option>
+                  {hotels.map(h => (
+                    <option key={h.hotel_id} value={h.hotel_id}>{h.hotel_name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Filter status
+                <select value={svcFilter}
+                  onChange={e => { setSvcFilter(e.target.value); loadServiceOrders(e.target.value); }}
+                  style={{ marginLeft: 8 }}>
+                  <option value="">All</option>
+                  <option value="REQUESTED">Requested</option>
+                  <option value="CONFIRMED">Confirmed</option>
+                  <option value="DELIVERED">Delivered</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </label>
+            </div>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => loadServiceOrders(svcFilter)}
+              disabled={!hotelId || svcOrdersLoading}
+            >
+              {svcOrdersLoading ? 'Loading…' : '↺ Refresh'}
+            </button>
+          </div>
+
+          {svcOrdersLoading && <p className="fd-loading">Loading service orders…</p>}
+
+          {!svcOrdersLoading && svcOrders.length === 0 && (
+            <div className="svc-orders-empty">
+              <span>🛎</span>
+              <p>No service orders found.</p>
+              <small>Select a hotel and click Refresh to load requests.</small>
+            </div>
+          )}
+
+          {svcOrders.length > 0 && (
+            <div className="svc-orders-list">
+              {svcOrders.map(order => {
+                const isBusy = svcStatusBusy === order.reservation_service_id;
+                const statusClass = order.service_status.toLowerCase();
+                return (
+                  <article key={order.reservation_service_id} className={`svc-order-card svc-order-card--${statusClass}`}>
+                    <div className="svc-order-card-top">
+                      <div className="svc-order-card-info">
+                        <span className={`svc-order-status-pill svc-order-status-pill--${statusClass}`}>
+                          {order.service_status}
+                        </span>
+                        <strong>{order.service_name}</strong>
+                        <span className="svc-order-category">{order.service_category.replace(/_/g, ' ')}</span>
+                      </div>
+                      <div className="svc-order-card-meta">
+                        <span>#{order.reservation_service_id}</span>
+                        <strong>
+                          {new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency_code || 'USD' })
+                            .format(order.final_amount)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="svc-order-card-mid">
+                      <span>👤 {order.guest_name}</span>
+                      <span>🏠 Room {order.room_number || '—'}</span>
+                      <span>📋 {order.reservation_code}</span>
+                      {order.scheduled_at && (
+                        <span>🕐 {new Date(order.scheduled_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      )}
+                      {order.special_instruction && (
+                        <span>📝 {order.special_instruction}</span>
+                      )}
+                      <span style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>
+                        Ordered {new Date(order.created_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}
+                      </span>
+                    </div>
+
+                    <div className="svc-order-card-actions">
+                      {order.service_status === 'REQUESTED' && (
+                        <>
+                          <button
+                            type="button"
+                            className="primary-button"
+                            disabled={isBusy}
+                            onClick={() => updateOrderStatus(order.reservation_service_id, 'CONFIRMED')}
+                          >
+                            {isBusy ? '…' : '✓ Confirm Receipt'}
+                          </button>
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            disabled={isBusy}
+                            onClick={() => updateOrderStatus(order.reservation_service_id, 'CANCELLED')}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
+                      {order.service_status === 'CONFIRMED' && (
+                        <button
+                          type="button"
+                          className="primary-button"
+                          disabled={isBusy}
+                          onClick={() => updateOrderStatus(order.reservation_service_id, 'DELIVERED')}
+                        >
+                          {isBusy ? '…' : '🚀 Mark Delivered'}
+                        </button>
+                      )}
+                      {(order.service_status === 'DELIVERED' || order.service_status === 'CANCELLED') && (
+                        <span className="svc-order-done-label">
+                          {order.service_status === 'DELIVERED' ? '✅ Delivered' : '❌ Cancelled'}
+                        </span>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
     </section>
   );
 }
