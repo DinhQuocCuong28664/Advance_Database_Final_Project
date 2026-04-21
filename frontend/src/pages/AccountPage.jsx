@@ -19,6 +19,19 @@ const CATEGORY_ICONS = {
   OTHER: '✨',
 };
 
+// ── Issue categories guests can report ───────────────────────
+const ISSUE_CATEGORIES = [
+  { key: 'PLUMBING',   label: 'Plumbing',          icon: '🔧', example: 'Tap/pipe/shower issue' },
+  { key: 'ELECTRICAL', label: 'Electrical',         icon: '⚡', example: 'Light, socket, or power' },
+  { key: 'HVAC',       label: 'Air conditioning',   icon: '❄️', example: 'AC not cooling / too cold' },
+  { key: 'APPLIANCE',  label: 'Appliance',          icon: '📺', example: 'TV, fridge, kettle' },
+  { key: 'FURNITURE',  label: 'Furniture / fixtures',icon: '🛋️', example: 'Bed, chair, wardrobe' },
+  { key: 'CLEANING',   label: 'Housekeeping',       icon: '🧹', example: 'Extra towels, cleaning' },
+  { key: 'OTHER',      label: 'Other',              icon: '🔩', example: 'Anything else' },
+];
+
+const EMPTY_ISSUE = { issue_category: 'PLUMBING', issue_description: '' };
+
 const STATUS_COLORS = {
   REQUESTED: { bg: 'rgba(240,160,30,0.13)',  color: '#7a5500' },
   CONFIRMED: { bg: 'rgba(72,160,120,0.13)',  color: '#1a5c3a' },
@@ -73,6 +86,12 @@ function GuestServices({ guestId }) {
   const [quantity,        setQuantity]        = useState(1);
   const [instruction,     setInstruction]     = useState('');
   const [scheduledAt,     setScheduledAt]     = useState('');
+
+  // Report Issue state
+  const [showIssueForm,  setShowIssueForm]  = useState(false);
+  const [issueForm,      setIssueForm]      = useState(EMPTY_ISSUE);
+  const [issueBusy,      setIssueBusy]      = useState(false);
+  const [reportedIssues, setReportedIssues] = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -131,6 +150,40 @@ function GuestServices({ guestId }) {
       setFlash({ tone: 'error', text: e.message });
     } finally {
       setOrdering(false);
+    }
+  }
+
+  async function handleReportIssue(e) {
+    e.preventDefault();
+    if (!issueForm.issue_description.trim()) {
+      setFlash({ tone: 'error', text: 'Please describe the issue.' }); return;
+    }
+    setIssueBusy(true);
+    try {
+      await apiRequest('/maintenance', {
+        method: 'POST',
+        body: JSON.stringify({
+          hotel_id:          activeReservation.hotel_id,
+          room_id:           activeReservation.room_id || null,
+          issue_category:    issueForm.issue_category,
+          issue_description: issueForm.issue_description,
+          severity_level:    'MEDIUM',
+        }),
+      });
+      const cat = ISSUE_CATEGORIES.find(c => c.key === issueForm.issue_category);
+      setReportedIssues(prev => [{
+        category: cat?.label || issueForm.issue_category,
+        icon:     cat?.icon  || '🔩',
+        desc:     issueForm.issue_description,
+        at:       new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+      }, ...prev]);
+      setFlash({ tone: 'success', text: 'Issue reported — our team will attend to it shortly.' });
+      setIssueForm(EMPTY_ISSUE);
+      setShowIssueForm(false);
+    } catch (err) {
+      setFlash({ tone: 'error', text: err.message });
+    } finally {
+      setIssueBusy(false);
     }
   }
 
@@ -272,6 +325,77 @@ function GuestServices({ guestId }) {
           </div>
         </div>
       )}
+
+      {/* ── Report Room Issue ── */}
+      <div className="guest-issue-card">
+        <div className="guest-issue-header">
+          <div>
+            <h3>🔧 Report a room issue</h3>
+            <p>Something not working in your room? Let us know and we'll fix it right away.</p>
+          </div>
+          <button
+            type="button"
+            className={showIssueForm ? 'ghost-button' : 'primary-button'}
+            onClick={() => setShowIssueForm(v => !v)}
+          >
+            {showIssueForm ? 'Cancel' : 'Report issue'}
+          </button>
+        </div>
+
+        {showIssueForm && (
+          <form className="guest-issue-form" onSubmit={handleReportIssue}>
+            <div className="guest-issue-categories">
+              {ISSUE_CATEGORIES.map(cat => (
+                <button
+                  key={cat.key}
+                  type="button"
+                  className={`guest-issue-cat-btn${issueForm.issue_category === cat.key ? ' active' : ''}`}
+                  onClick={() => setIssueForm(f => ({ ...f, issue_category: cat.key }))}
+                  title={cat.example}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              ))}
+            </div>
+            <label className="guest-issue-label">
+              Describe the issue
+              <textarea
+                rows="3"
+                className="guest-issue-textarea"
+                value={issueForm.issue_description}
+                onChange={e => setIssueForm(f => ({ ...f, issue_description: e.target.value }))}
+                placeholder={`${ISSUE_CATEGORIES.find(c => c.key === issueForm.issue_category)?.example || ''}… Please describe what is wrong.`}
+                required
+              />
+            </label>
+            <div className="guest-issue-form-footer">
+              <span className="guest-issue-room-tag">
+                🏠 Room {activeReservation.room_number} · {activeReservation.hotel_name}
+              </span>
+              <button type="submit" className="primary-button" disabled={issueBusy}>
+                {issueBusy ? 'Sending…' : '📨 Submit report'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {reportedIssues.length > 0 && (
+          <div className="guest-issue-history">
+            <p className="guest-issue-history-title">Submitted this session</p>
+            {reportedIssues.map((issue, i) => (
+              <div key={i} className="guest-issue-history-row">
+                <span>{issue.icon}</span>
+                <div>
+                  <strong>{issue.category}</strong>
+                  <p>{issue.desc}</p>
+                </div>
+                <span className="guest-issue-time">{issue.at}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
     </div>
   );

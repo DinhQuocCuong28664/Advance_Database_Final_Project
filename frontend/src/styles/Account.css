@@ -479,3 +479,148 @@
 .guest-svc-empty-box span { font-size: 2.5rem; }
 .guest-svc-empty-box p    { margin: 0; font-size: 0.95rem; color: var(--text-strong); }
 .guest-svc-empty-box small { font-size: 0.82rem; }
+
+/* ???????????????????????????????????????????
+   Guest — Report Room Issue Card
+??????????????????????????????????????????? */
+.guest-issue-card {
+  margin-top: 28px;
+  background: #fff;
+  border: 1.5px solid var(--border, #e0d5c8);
+  border-radius: 18px;
+  padding: 22px 24px;
+}
+.guest-issue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.guest-issue-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--panel-strong, #143d42);
+  margin: 0 0 4px;
+}
+.guest-issue-header p {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+/* form */
+.guest-issue-form {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.guest-issue-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.guest-issue-cat-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  border: 1.5px solid var(--border, #d8cfc4);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  font-weight: 600;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  min-width: 80px;
+}
+.guest-issue-cat-btn span:first-child { font-size: 1.35rem; }
+.guest-issue-cat-btn:hover {
+  border-color: var(--panel-strong, #143d42);
+  color: var(--panel-strong, #143d42);
+  background: #f0faf9;
+}
+.guest-issue-cat-btn.active {
+  border-color: var(--panel-strong, #143d42);
+  background: var(--panel-strong, #143d42);
+  color: #fff;
+}
+
+.guest-issue-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.guest-issue-textarea {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border, #d8cfc4);
+  border-radius: 10px;
+  font-size: 0.92rem;
+  color: var(--text-strong);
+  resize: vertical;
+  background: #fff;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+.guest-issue-textarea:focus {
+  outline: none;
+  border-color: var(--panel-strong, #143d42);
+  box-shadow: 0 0 0 3px rgba(20,61,66,0.08);
+}
+
+.guest-issue-form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.guest-issue-room-tag {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  background: var(--bg-soft, #f4ede3);
+  border-radius: 99px;
+  padding: 5px 14px;
+}
+
+/* Submitted history */
+.guest-issue-history {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border, #e0d5c8);
+}
+.guest-issue-history-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-soft);
+  margin: 0 0 10px;
+}
+.guest-issue-history-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border, #f0e8de);
+  font-size: 0.86rem;
+}
+.guest-issue-history-row:last-child { border-bottom: none; }
+.guest-issue-history-row > span:first-child { font-size: 1.3rem; flex-shrink: 0; }
+.guest-issue-history-row div { flex: 1; }
+.guest-issue-history-row strong { display: block; color: var(--text-strong); margin-bottom: 2px; }
+.guest-issue-history-row p { margin: 0; color: var(--text-soft); line-height: 1.4; }
+.guest-issue-time {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
