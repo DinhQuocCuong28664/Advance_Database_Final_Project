@@ -413,14 +413,7 @@ export default function AccountPage() {
   const [stays,        setStays]        = useState([]);
   const [staysLoaded,  setStaysLoaded]  = useState(false);
 
-  if (!authSession) {
-    return <Navigate to="/login" replace state={{ nextUrl: '/account' }} />;
-  }
-  if (!isGuestUser) {
-    return <Navigate to="/admin" replace />;
-  }
-
-  const guestId = authSession.user?.guest_id;
+  const guestId = authSession?.user?.guest_id;
 
   // Load full profile once
   useEffect(() => {
@@ -441,6 +434,14 @@ export default function AccountPage() {
 
   const loyaltyAccounts = guestProfile?.loyalty_accounts || [];
   const preferences     = guestProfile?.preferences      || [];
+
+  // ── Auth guards (after hooks per Rules of Hooks) ──
+  if (!authSession) {
+    return <Navigate to="/login" replace state={{ nextUrl: '/account' }} />;
+  }
+  if (!isGuestUser) {
+    return <Navigate to="/admin" replace />;
+  }
 
   return (
     <main className="page-stack">
