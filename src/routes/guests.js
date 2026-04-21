@@ -102,4 +102,41 @@ router.post('/', async (req, res) => {
   }
 });
 
+// GET /api/guests/:id/stays — Stay history with hotel + room detail
+router.get('/:id/stays', async (req, res) => {
+  try {
+    const pool    = getSqlPool();
+    const guestId = parseInt(req.params.id);
+    if (isNaN(guestId)) {
+      return res.status(400).json({ success: false, error: 'Invalid guest ID' });
+    }
+
+    const result = await pool.request()
+      .input('id', sql.BigInt, guestId)
+      .query(`
+        SELECT
+          sr.stay_id, sr.stay_status,
+          sr.actual_checkin_at, sr.actual_checkout_at,
+          r.reservation_code, r.reservation_status,
+          r.checkin_date, r.checkout_date, r.nights,
+          r.grand_total_amount, r.currency_code,
+          h.hotel_name,
+          rm.room_number, rm.floor_number,
+          rt.room_type_name
+        FROM StayRecord sr
+        JOIN ReservationRoom rr ON sr.reservation_room_id = rr.reservation_room_id
+        JOIN Reservation     r  ON rr.reservation_id      = r.reservation_id
+        JOIN Hotel           h  ON r.hotel_id             = h.hotel_id
+        LEFT JOIN Room       rm ON rr.room_id             = rm.room_id
+        LEFT JOIN RoomType   rt ON rr.room_type_id        = rt.room_type_id
+        WHERE r.guest_id = @id
+        ORDER BY sr.actual_checkin_at DESC, sr.stay_id DESC
+      `);
+
+    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

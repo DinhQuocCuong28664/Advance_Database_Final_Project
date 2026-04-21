@@ -624,3 +624,115 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* ???????????????????????????????????????????
+   Account Page — Stay History
+??????????????????????????????????????????? */
+.acct-stays-list { display: flex; flex-direction: column; gap: 12px; }
+.acct-stay-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--bg-soft, #f9f5f0);
+  border-radius: 12px;
+  border: 1px solid var(--border, #e0d5c8);
+}
+.acct-stay-icon { font-size: 1.5rem; flex-shrink: 0; }
+.acct-stay-info { flex: 1; display: flex; flex-direction: column; gap: 3px; font-size: 0.86rem; }
+.acct-stay-info strong { font-size: 0.96rem; color: var(--text-strong); }
+.acct-stay-info span   { color: var(--text-soft); }
+.acct-stay-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.acct-stay-status {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  background: #f3f4f6; color: #374151;
+  border-radius: 99px; padding: 3px 10px;
+}
+.acct-stay-status.in-house { background: #dbeafe; color: #1e40af; }
+.acct-stay-right strong { font-size: 0.95rem; color: var(--text-strong); }
+
+/* ???????????????????????????????????????????
+   Account Page — Loyalty Card
+??????????????????????????????????????????? */
+.acct-loyalty-card {
+  border: 1.5px solid var(--border, #e0d5c8);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.acct-loyalty-tier {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+}
+.acct-loyalty-tier-label {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.acct-loyalty-chain { font-size: 0.88rem; opacity: 0.8; font-weight: 600; }
+.acct-loyalty-body { padding: 20px 22px; }
+.acct-loyalty-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+.acct-loyalty-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.acct-loyalty-stats span { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft); }
+.acct-loyalty-stats strong { font-size: 1.05rem; font-weight: 700; color: var(--text-strong); }
+
+/* ???????????????????????????????????????????
+   Account Page — Profile Tab
+??????????????????????????????????????????? */
+.acct-profile-section { }
+.acct-section-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-soft);
+  margin: 0 0 12px;
+}
+.acct-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+.acct-profile-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  background: var(--bg-soft, #f9f5f0);
+  border-radius: 10px;
+}
+.acct-profile-grid span   { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft); }
+.acct-profile-grid strong { font-size: 0.96rem; color: var(--text-strong); }
+
+.acct-pref-list { display: flex; flex-direction: column; gap: 10px; }
+.acct-pref-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--bg-soft, #f9f5f0);
+  border-radius: 10px;
+  border: 1px solid var(--border, #e8e0d8);
+  flex-wrap: wrap;
+}
+.acct-pref-type {
+  font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--panel-strong, #143d42);
+  background: rgba(20,61,66,0.08);
+  border-radius: 6px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.acct-pref-value { font-size: 0.9rem; color: var(--text-strong); flex: 1; }
+.acct-pref-note  { font-size: 0.82rem; color: var(--text-soft); width: 100%; }

@@ -1,33 +1,33 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useFlash } from '../context/FlashContext';
 import '../styles/Account.css';
 
-// ── Category icon map ────────────────────────────────────────
+// â”€â”€ Category icon map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CATEGORY_ICONS = {
-  SPA: '🧖',
-  AIRPORT_TRANSFER: '🚗',
-  DINING: '🍽️',
-  BUTLER: '🎩',
-  YACHT: '⛵',
-  TOUR: '🗺️',
-  BABYSITTING: '👶',
-  EVENT: '🎉',
-  WELLNESS: '💆',
-  OTHER: '✨',
+  SPA: 'đŸ§–',
+  AIRPORT_TRANSFER: 'đŸ—',
+  DINING: 'đŸ½ï¸',
+  BUTLER: 'đŸ©',
+  YACHT: 'â›µ',
+  TOUR: 'đŸ—ºï¸',
+  BABYSITTING: 'đŸ‘¶',
+  EVENT: 'đŸ‰',
+  WELLNESS: 'đŸ’†',
+  OTHER: 'âœ¨',
 };
 
-// ── Issue categories guests can report ───────────────────────
+// â”€â”€ Issue categories guests can report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ISSUE_CATEGORIES = [
-  { key: 'PLUMBING',   label: 'Plumbing',          icon: '🔧', example: 'Tap/pipe/shower issue' },
-  { key: 'ELECTRICAL', label: 'Electrical',         icon: '⚡', example: 'Light, socket, or power' },
-  { key: 'HVAC',       label: 'Air conditioning',   icon: '❄️', example: 'AC not cooling / too cold' },
-  { key: 'APPLIANCE',  label: 'Appliance',          icon: '📺', example: 'TV, fridge, kettle' },
-  { key: 'FURNITURE',  label: 'Furniture / fixtures',icon: '🛋️', example: 'Bed, chair, wardrobe' },
-  { key: 'CLEANING',   label: 'Housekeeping',       icon: '🧹', example: 'Extra towels, cleaning' },
-  { key: 'OTHER',      label: 'Other',              icon: '🔩', example: 'Anything else' },
+  { key: 'PLUMBING',   label: 'Plumbing',          icon: 'đŸ”§', example: 'Tap/pipe/shower issue' },
+  { key: 'ELECTRICAL', label: 'Electrical',         icon: 'â¡', example: 'Light, socket, or power' },
+  { key: 'HVAC',       label: 'Air conditioning',   icon: 'â„ï¸', example: 'AC not cooling / too cold' },
+  { key: 'APPLIANCE',  label: 'Appliance',          icon: 'đŸ“º', example: 'TV, fridge, kettle' },
+  { key: 'FURNITURE',  label: 'Furniture / fixtures',icon: 'đŸ›‹ï¸', example: 'Bed, chair, wardrobe' },
+  { key: 'CLEANING',   label: 'Housekeeping',       icon: 'đŸ§¹', example: 'Extra towels, cleaning' },
+  { key: 'OTHER',      label: 'Other',              icon: 'đŸ”©', example: 'Anything else' },
 ];
 
 const EMPTY_ISSUE = { issue_category: 'PLUMBING', issue_description: '' };
@@ -43,7 +43,7 @@ function formatMoney(value, currency = 'VND') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(value || 0));
 }
 function formatDateTime(val) {
-  if (!val) return '—';
+  if (!val) return 'â€”';
   return new Date(val).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' });
 }
 
@@ -70,7 +70,7 @@ const ACCOUNT_ACTIONS = [
   },
 ];
 
-// ── In-house Services Section ────────────────────────────────
+// â”€â”€ In-house Services Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function GuestServices({ guestId }) {
   const { setFlash } = useFlash();
 
@@ -173,11 +173,11 @@ function GuestServices({ guestId }) {
       const cat = ISSUE_CATEGORIES.find(c => c.key === issueForm.issue_category);
       setReportedIssues(prev => [{
         category: cat?.label || issueForm.issue_category,
-        icon:     cat?.icon  || '🔩',
+        icon:     cat?.icon  || 'đŸ”©',
         desc:     issueForm.issue_description,
         at:       new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
       }, ...prev]);
-      setFlash({ tone: 'success', text: 'Issue reported — our team will attend to it shortly.' });
+      setFlash({ tone: 'success', text: 'Issue reported â€” our team will attend to it shortly.' });
       setIssueForm(EMPTY_ISSUE);
       setShowIssueForm(false);
     } catch (err) {
@@ -187,12 +187,12 @@ function GuestServices({ guestId }) {
     }
   }
 
-  if (loading) return <p className="guest-svc-empty">Loading stay information…</p>;
+  if (loading) return <p className="guest-svc-empty">Loading stay informationâ€¦</p>;
 
   if (!activeReservation) {
     return (
       <div className="guest-svc-empty-box">
-        <span>🏨</span>
+        <span>đŸ¨</span>
         <p>You are not currently checked in.</p>
         <small>In-house services are only available during an active stay.</small>
       </div>
@@ -213,7 +213,7 @@ function GuestServices({ guestId }) {
         <div>
           <p className="page-eyebrow">Current stay</p>
           <h3>{activeReservation.hotel_name}</h3>
-          <p>Room {activeReservation.room_number || '—'} · {activeReservation.reservation_code}</p>
+          <p>Room {activeReservation.room_number || 'â€”'} Â· {activeReservation.reservation_code}</p>
         </div>
         {orderSummary && (
           <div className="guest-svc-stay-stats">
@@ -232,7 +232,7 @@ function GuestServices({ guestId }) {
           {Object.entries(grouped).map(([category, items]) => (
             <div key={category} className="guest-svc-category">
               <p className="guest-svc-category-label">
-                {CATEGORY_ICONS[category] || '✨'} {category.replace(/_/g, ' ')}
+                {CATEGORY_ICONS[category] || 'âœ¨'} {category.replace(/_/g, ' ')}
               </p>
               <div className="guest-svc-grid">
                 {items.map(svc => (
@@ -284,14 +284,14 @@ function GuestServices({ guestId }) {
             </label>
             <label className="guest-svc-wide">
               Special instructions
-              <input type="text" placeholder="e.g. allergies, preferences, time constraints…"
+              <input type="text" placeholder="e.g. allergies, preferences, time constraintsâ€¦"
                 value={instruction} onChange={e => setInstruction(e.target.value)} />
             </label>
           </div>
           <div className="guest-svc-order-footer">
             <span>Estimated total: <strong>{formatMoney(selectedService.base_price * quantity, selectedService.currency_code || hotelCurrency)}</strong></span>
             <button type="submit" className="primary-button" disabled={ordering}>
-              {ordering ? 'Sending…' : 'Send request'}
+              {ordering ? 'Sendingâ€¦' : 'Send request'}
             </button>
           </div>
         </form>
@@ -308,9 +308,9 @@ function GuestServices({ guestId }) {
                 <div key={o.reservation_service_id} className="guest-svc-order-row">
                   <div className="guest-svc-order-info">
                     <strong>{o.service_name}</strong>
-                    <span>{o.service_category.replace(/_/g, ' ')} · Qty: {o.quantity}</span>
-                    {o.special_instruction && <span>📝 {o.special_instruction}</span>}
-                    {o.scheduled_at && <span>🕐 {formatDateTime(o.scheduled_at)}</span>}
+                    <span>{o.service_category.replace(/_/g, ' ')} Â· Qty: {o.quantity}</span>
+                    {o.special_instruction && <span>đŸ“ {o.special_instruction}</span>}
+                    {o.scheduled_at && <span>đŸ• {formatDateTime(o.scheduled_at)}</span>}
                   </div>
                   <div className="guest-svc-order-right">
                     <strong>{formatMoney(o.final_amount, hotelCurrency)}</strong>
@@ -326,11 +326,11 @@ function GuestServices({ guestId }) {
         </div>
       )}
 
-      {/* ── Report Room Issue ── */}
+      {/* â”€â”€ Report Room Issue â”€â”€ */}
       <div className="guest-issue-card">
         <div className="guest-issue-header">
           <div>
-            <h3>🔧 Report a room issue</h3>
+            <h3>đŸ”§ Report a room issue</h3>
             <p>Something not working in your room? Let us know and we'll fix it right away.</p>
           </div>
           <button
@@ -365,16 +365,16 @@ function GuestServices({ guestId }) {
                 className="guest-issue-textarea"
                 value={issueForm.issue_description}
                 onChange={e => setIssueForm(f => ({ ...f, issue_description: e.target.value }))}
-                placeholder={`${ISSUE_CATEGORIES.find(c => c.key === issueForm.issue_category)?.example || ''}… Please describe what is wrong.`}
+                placeholder={`${ISSUE_CATEGORIES.find(c => c.key === issueForm.issue_category)?.example || ''}â€¦ Please describe what is wrong.`}
                 required
               />
             </label>
             <div className="guest-issue-form-footer">
               <span className="guest-issue-room-tag">
-                🏠 Room {activeReservation.room_number} · {activeReservation.hotel_name}
+                đŸ  Room {activeReservation.room_number} Â· {activeReservation.hotel_name}
               </span>
               <button type="submit" className="primary-button" disabled={issueBusy}>
-                {issueBusy ? 'Sending…' : '📨 Submit report'}
+                {issueBusy ? 'Sendingâ€¦' : 'đŸ“¨ Submit report'}
               </button>
             </div>
           </form>
@@ -401,11 +401,17 @@ function GuestServices({ guestId }) {
   );
 }
 
-// ── Main AccountPage ─────────────────────────────────────────
+// â”€â”€ Main AccountPage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function AccountPage() {
   const navigate = useNavigate();
-  const { authSession, isGuestUser, guestAccounts } = useAuth();
+  const { authSession, isGuestUser } = useAuth();
+  const { setFlash } = useFlash();
   const [activeTab, setActiveTab] = useState('Overview');
+
+  // Guest full profile (loyalty + preferences)
+  const [guestProfile, setGuestProfile] = useState(null);
+  const [stays,        setStays]        = useState([]);
+  const [staysLoaded,  setStaysLoaded]  = useState(false);
 
   if (!authSession) {
     return <Navigate to="/login" replace state={{ nextUrl: '/account' }} />;
@@ -415,6 +421,26 @@ export default function AccountPage() {
   }
 
   const guestId = authSession.user?.guest_id;
+
+  // Load full profile once
+  useEffect(() => {
+    if (!guestId) return;
+    apiRequest(`/guests/${guestId}`)
+      .then(p => setGuestProfile(p.data))
+      .catch(() => {});
+  }, [guestId]);
+
+  // Load stays lazily when Overview tab is opened
+  useEffect(() => {
+    if (activeTab !== 'Overview' || staysLoaded || !guestId) return;
+    setStaysLoaded(true);
+    apiRequest(`/guests/${guestId}/stays`)
+      .then(p => setStays(p.data || []))
+      .catch(() => {});
+  }, [activeTab, guestId, staysLoaded]);
+
+  const loyaltyAccounts = guestProfile?.loyalty_accounts || [];
+  const preferences     = guestProfile?.preferences      || [];
 
   return (
     <main className="page-stack">
@@ -451,7 +477,7 @@ export default function AccountPage() {
 
         <div className="guest-account-main">
 
-          {/* ── TAB: Overview ── */}
+          {/* â”€â”€ TAB: Overview â”€â”€ */}
           {activeTab === 'Overview' && (
             <>
               <section className="guest-account-hero">
@@ -465,18 +491,50 @@ export default function AccountPage() {
                 <div className="guest-account-stats">
                   <article className="guest-stat-card">
                     <span>Guest code</span>
-                    <strong>{authSession.user.guest_code || '—'}</strong>
+                    <strong>{authSession.user.guest_code || 'â€”'}</strong>
                   </article>
                   <article className="guest-stat-card">
                     <span>Loyalty tier</span>
-                    <strong>{guestAccounts.length ? guestAccounts[0].tier_code : 'None'}</strong>
+                    <strong>{loyaltyAccounts[0]?.tier_code || 'None'}</strong>
                   </article>
                   <article className="guest-stat-card">
-                    <span>Account type</span>
-                    <strong>Guest</strong>
+                    <span>Points balance</span>
+                    <strong>{loyaltyAccounts[0] ? Number(loyaltyAccounts[0].points_balance).toLocaleString('en-US') : 'â€”'}</strong>
                   </article>
                 </div>
               </section>
+
+              {/* Recent stays */}
+              {stays.length > 0 && (
+                <section className="page-card" style={{ marginBottom: 20 }}>
+                  <div className="guest-card-head" style={{ marginBottom: 16 }}>
+                    <div>
+                      <p className="page-eyebrow">Stay history</p>
+                      <h2>Recent visits</h2>
+                    </div>
+                  </div>
+                  <div className="acct-stays-list">
+                    {stays.slice(0, 5).map(s => (
+                      <div key={s.stay_id} className="acct-stay-row">
+                        <div className="acct-stay-icon">
+                          {s.stay_status === 'IN_HOUSE' ? 'đŸ ' : 'âœ…'}
+                        </div>
+                        <div className="acct-stay-info">
+                          <strong>{s.hotel_name}</strong>
+                          <span>{s.room_type_name} Â· Room {s.room_number}</span>
+                          <span>{s.checkin_date?.slice(0,10)} â†’ {s.checkout_date?.slice(0,10)} Â· {s.nights} nights</span>
+                        </div>
+                        <div className="acct-stay-right">
+                          <span className={`acct-stay-status${s.stay_status === 'IN_HOUSE' ? ' in-house' : ''}`}>
+                            {s.stay_status.replace(/_/g,' ')}
+                          </span>
+                          <strong>{new Intl.NumberFormat('en-US',{style:'currency',currency:s.currency_code||'USD'}).format(Number(s.grand_total_amount||0))}</strong>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               <section className="guest-account-grid">
                 <section className="page-card guest-account-card">
@@ -521,7 +579,7 @@ export default function AccountPage() {
                   <div className="guest-profile-grid">
                     <div><strong>Full name</strong><span>{authSession.user.full_name}</span></div>
                     <div><strong>Email</strong><span>{authSession.user.email}</span></div>
-                    <div><strong>Guest code</strong><span>{authSession.user.guest_code || '—'}</span></div>
+                    <div><strong>Guest code</strong><span>{authSession.user.guest_code || 'â€”'}</span></div>
                     <div><strong>Account type</strong><span>{authSession.user.user_type}</span></div>
                   </div>
                 </section>
@@ -529,7 +587,7 @@ export default function AccountPage() {
             </>
           )}
 
-          {/* ── TAB: In-house Services ── */}
+          {/* â”€â”€ TAB: In-house Services â”€â”€ */}
           {activeTab === 'In-house Services' && (
             <section className="page-card">
               <div className="guest-card-head" style={{ marginBottom: 20 }}>
@@ -545,51 +603,98 @@ export default function AccountPage() {
             </section>
           )}
 
-          {/* ── TAB: Loyalty ── */}
+          {/* ── TAB: Loyalty ── */
           {activeTab === 'Loyalty' && (
             <section className="page-card">
               <div className="guest-card-head" style={{ marginBottom: 20 }}>
                 <div>
                   <p className="page-eyebrow">Loyalty</p>
-                  <h2>Member benefits & points</h2>
+                  <h2>Member benefits &amp; points</h2>
                 </div>
               </div>
-              <div className="guest-loyalty-grid-expanded">
-                {guestAccounts.length ? guestAccounts.map((account) => (
-                  <article key={account.loyalty_account_id} className="guest-loyalty-card">
-                    <strong>{account.chain_name}</strong>
-                    <span>{account.tier_code}</span>
-                    <p>{Number(account.points_balance || 0).toLocaleString('en-US')} points</p>
-                  </article>
-                )) : (
-                  <article className="guest-loyalty-card">
-                    <strong>No loyalty account linked</strong>
-                    <span>Member offers and tier benefits will appear here when available.</span>
-                  </article>
-                )}
-              </div>
+              {loyaltyAccounts.length === 0 && (
+                <div className="svc-orders-empty" style={{ padding: '40px 0' }}>
+                  <span>🎖️</span>
+                  <p>No loyalty account linked yet.</p>
+                  <small>Your points and tier benefits will appear here once enrolled.</small>
+                </div>
+              )}
+              {loyaltyAccounts.map(acc => {
+                const tierColor = {
+                  BLACK:    { bg: '#1a1a2e', color: '#d4af37' },
+                  PLATINUM: { bg: '#e8e8f0', color: '#5a5a7a' },
+                  GOLD:     { bg: '#fef3c7', color: '#92400e' },
+                  SILVER:   { bg: '#f1f5f9', color: '#475569' },
+                }[acc.tier_code] || { bg: '#f3f4f6', color: '#374151' };
+                return (
+                  <div key={acc.loyalty_account_id} className="acct-loyalty-card">
+                    <div className="acct-loyalty-tier" style={{ background: tierColor.bg, color: tierColor.color }}>
+                      <span className="acct-loyalty-tier-label">✦ {acc.tier_code}</span>
+                      <span className="acct-loyalty-chain">{acc.chain_name}</span>
+                    </div>
+                    <div className="acct-loyalty-body">
+                      <div className="acct-loyalty-stats">
+                        <div><span>Points balance</span><strong>{Number(acc.points_balance).toLocaleString('en-US')}</strong></div>
+                        <div><span>Lifetime points</span><strong>{Number(acc.lifetime_points).toLocaleString('en-US')}</strong></div>
+                        <div><span>Membership no.</span><strong>{acc.membership_no}</strong></div>
+                        <div><span>Since</span><strong>{acc.enrollment_date?.slice(0,10) || '—'}</strong></div>
+                        <div><span>Status</span><strong>{acc.status}</strong></div>
+                        {acc.expiry_date && <div><span>Expires</span><strong>{acc.expiry_date.slice(0,10)}</strong></div>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </section>
           )}
 
-          {/* ── TAB: Profile ── */}
+          {/* â”€â”€ TAB: Profile â”€â”€ */}
           {activeTab === 'Profile' && (
             <section className="page-card">
               <div className="guest-card-head" style={{ marginBottom: 20 }}>
                 <div>
                   <p className="page-eyebrow">Profile</p>
-                  <h2>Personal information</h2>
+                  <h2>Personal information &amp; preferences</h2>
                 </div>
               </div>
-              <div className="guest-profile-grid">
-                <div><strong>Full name</strong><span>{authSession.user.full_name}</span></div>
-                <div><strong>Email</strong><span>{authSession.user.email}</span></div>
-                <div><strong>Guest code</strong><span>{authSession.user.guest_code || '—'}</span></div>
-                <div><strong>Account type</strong><span>{authSession.user.user_type}</span></div>
+
+              {/* Personal info */}
+              <div className="acct-profile-section">
+                <p className="acct-section-label">Personal details</p>
+                <div className="acct-profile-grid">
+                  <div><span>Full name</span><strong>{authSession.user.full_name}</strong></div>
+                  <div><span>Email</span><strong>{authSession.user.email}</strong></div>
+                  <div><span>Guest code</span><strong>{authSession.user.guest_code || 'â€”'}</strong></div>
+                  <div><span>Nationality</span><strong>{guestProfile?.nationality_country_code || 'â€”'}</strong></div>
+                  <div><span>Phone</span><strong>{guestProfile ? `${guestProfile.phone_country_code || ''}${guestProfile.phone_number || 'â€”'}` : 'â€”'}</strong></div>
+                  <div><span>VIP status</span><strong>{guestProfile?.vip_flag ? 'â­ VIP' : 'Standard'}</strong></div>
+                </div>
+              </div>
+
+              {/* Preferences */}
+              <div className="acct-profile-section" style={{ marginTop: 24 }}>
+                <p className="acct-section-label">Stay preferences</p>
+                {preferences.length === 0 && (
+                  <p style={{ fontSize: '0.88rem', color: 'var(--text-soft)', padding: '12px 0' }}>
+                    No preferences on file. Hotel staff will record your preferences during your stay.
+                  </p>
+                )}
+                {preferences.length > 0 && (
+                  <div className="acct-pref-list">
+                    {preferences.map(p => (
+                      <div key={p.preference_id} className="acct-pref-row">
+                        <span className="acct-pref-type">{p.preference_type.replace(/_/g,' ')}</span>
+                        <span className="acct-pref-value">{p.preference_value}</span>
+                        {p.note && <span className="acct-pref-note">đŸ“ {p.note}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
           )}
 
-          {/* ── TAB: Bookings ── */}
+          {/* â”€â”€ TAB: Bookings â”€â”€ */}
           {activeTab === 'Bookings' && (
             <section className="page-card">
               <div className="guest-card-head" style={{ marginBottom: 20 }}>
