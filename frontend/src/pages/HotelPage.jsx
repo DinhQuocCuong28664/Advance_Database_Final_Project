@@ -198,14 +198,33 @@ export default function HotelPage() {
               <h2 className="hotel-section-title">Amenities</h2>
               <div className="amenity-list">
                 {hotel.amenities.map((a, i) => (
-                  <span key={i} className="amenity-pill">
-                    {a.icon ? `${a.icon} ` : ''}{a.name || a.amenity_code}
+                  <span key={i} className={`amenity-pill${a.is_chargeable ? ' amenity-paid' : ''}`}
+                    title={a.description || ''}>
+                    {a.is_complimentary && <span className="amenity-free-dot" />}
+                    {a.name || a.amenity_code}
+                    {a.is_chargeable && <small> · paid</small>}
                   </span>
                 ))}
               </div>
             </div>
           )}
 
+          {/* ── policies ── */}
+          {hotel.policies && hotel.policies.length > 0 && (
+            <div className="hotel-policies">
+              <h2 className="hotel-section-title">Hotel Policies</h2>
+              <div className="policy-list">
+                {hotel.policies.map((p, i) => (
+                  <div key={i} className="policy-card">
+                    <div className="policy-card-head">
+                      <span className="policy-type-tag">{p.type}</span>
+                    </div>
+                    <p className="policy-text">{p.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── rooms ── */}
           <div className="hotel-rooms">

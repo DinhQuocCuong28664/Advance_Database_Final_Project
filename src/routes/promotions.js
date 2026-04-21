@@ -102,4 +102,125 @@ router.get('/', async (req, res) => {
   }
 });
 
+// POST /api/promotions — Create promotion
+router.post('/', async (req, res) => {
+  try {
+    const {
+      hotel_id, brand_id, promotion_code, promotion_name, promotion_type,
+      discount_value, currency_code, applies_to,
+      booking_start_date, booking_end_date, stay_start_date, stay_end_date,
+      member_only_flag, min_nights, description,
+    } = req.body;
+
+    if (!promotion_code || !promotion_name || !promotion_type || !booking_start_date || !booking_end_date) {
+      return res.status(400).json({ success: false, error: 'promotion_code, promotion_name, promotion_type, booking_start_date, booking_end_date are required' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('hotelId',    sql.BigInt,     hotel_id    || null)
+      .input('brandId',    sql.BigInt,     brand_id    || null)
+      .input('code',       sql.VarChar(50),  promotion_code)
+      .input('name',       sql.NVarChar(150),promotion_name)
+      .input('type',       sql.VarChar(20),  promotion_type)
+      .input('discount',   sql.Decimal(18,2),discount_value  || null)
+      .input('currency',   sql.Char(3),      currency_code   || 'USD')
+      .input('appliesTo',  sql.VarChar(20),  applies_to      || 'ROOM')
+      .input('bkStart',    sql.Date,         new Date(booking_start_date))
+      .input('bkEnd',      sql.Date,         new Date(booking_end_date))
+      .input('stStart',    sql.Date,         stay_start_date ? new Date(stay_start_date) : null)
+      .input('stEnd',      sql.Date,         stay_end_date   ? new Date(stay_end_date)   : null)
+      .input('memberOnly', sql.Bit,          member_only_flag ? 1 : 0)
+      .input('minNights',  sql.SmallInt,     min_nights || null)
+      .input('desc',       sql.NVarChar(sql.MAX), description || null)
+      .query(`
+        INSERT INTO Promotion (
+          hotel_id, brand_id, promotion_code, promotion_name, promotion_type,
+          discount_value, currency_code, applies_to,
+          booking_start_date, booking_end_date, stay_start_date, stay_end_date,
+          member_only_flag, min_nights, description, status
+        )
+        OUTPUT INSERTED.*
+        VALUES (
+          @hotelId, @brandId, @code, @name, @type,
+          @discount, @currency, @appliesTo,
+          @bkStart, @bkEnd, @stStart, @stEnd,
+          @memberOnly, @minNights, @desc, 'ACTIVE'
+        )
+      `);
+
+    res.status(201).json({ success: true, data: result.recordset[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /api/promotions/:id — Update promotion
+router.put('/:id', async (req, res) => {
+  try {
+    const promoId = parseInt(req.params.id, 10);
+    if (isNaN(promoId)) return res.status(400).json({ success: false, error: 'Invalid ID' });
+
+    const {
+      promotion_name, discount_value, booking_start_date, booking_end_date,
+      stay_start_date, stay_end_date, member_only_flag, min_nights, status,
+    } = req.body;
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('id',         sql.BigInt,    promoId)
+      .input('name',       sql.NVarChar(150), promotion_name || null)
+      .input('discount',   sql.Decimal(18,2), discount_value != null ? discount_value : null)
+      .input('bkStart',    sql.Date,          booking_start_date ? new Date(booking_start_date) : null)
+      .input('bkEnd',      sql.Date,          booking_end_date   ? new Date(booking_end_date)   : null)
+      .input('stStart',    sql.Date,          stay_start_date    ? new Date(stay_start_date)    : null)
+      .input('stEnd',      sql.Date,          stay_end_date      ? new Date(stay_end_date)      : null)
+      .input('memberOnly', sql.Bit,           member_only_flag != null ? (member_only_flag ? 1 : 0) : null)
+      .input('minNights',  sql.SmallInt,      min_nights || null)
+      .input('status',     sql.VarChar(15),   status || null)
+      .query(`
+        UPDATE Promotion SET
+          promotion_name   = ISNULL(@name,       promotion_name),
+          discount_value   = ISNULL(@discount,   discount_value),
+          booking_start_date = ISNULL(@bkStart,  booking_start_date),
+          booking_end_date   = ISNULL(@bkEnd,    booking_end_date),
+          stay_start_date    = ISNULL(@stStart,  stay_start_date),
+          stay_end_date      = ISNULL(@stEnd,    stay_end_date),
+          member_only_flag   = ISNULL(@memberOnly, member_only_flag),
+          min_nights         = ISNULL(@minNights, min_nights),
+          status             = ISNULL(@status,   status),
+          updated_at         = GETDATE()
+        OUTPUT INSERTED.*
+        WHERE promotion_id = @id
+      `);
+
+    if (result.recordset.length === 0) return res.status(404).json({ success: false, error: 'Promotion not found' });
+    res.json({ success: true, data: result.recordset[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /api/promotions/:id — Deactivate (soft delete)
+router.delete('/:id', async (req, res) => {
+  try {
+    const promoId = parseInt(req.params.id, 10);
+    if (isNaN(promoId)) return res.status(400).json({ success: false, error: 'Invalid ID' });
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('id', sql.BigInt, promoId)
+      .query(`
+        UPDATE Promotion SET status = 'INACTIVE', updated_at = GETDATE()
+        OUTPUT INSERTED.promotion_id, INSERTED.promotion_name, INSERTED.status
+        WHERE promotion_id = @id AND status = 'ACTIVE'
+      `);
+
+    if (result.recordset.length === 0) return res.status(404).json({ success: false, error: 'Promotion not found or already inactive' });
+    res.json({ success: true, message: 'Promotion deactivated', data: result.recordset[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

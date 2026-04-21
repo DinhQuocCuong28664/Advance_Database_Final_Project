@@ -164,3 +164,83 @@
     width: 100%;
   }
 }
+
+/* ???????????????????????????????????????????
+   Hotel Page — Amenity Enhancements
+??????????????????????????????????????????? */
+.amenity-pill.amenity-paid {
+  background: var(--bg-soft, #f9f5f0);
+  border-color: var(--border, #ddd);
+  color: var(--text-soft);
+}
+.amenity-free-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: #22c55e;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.amenity-pill small { font-size: 0.72em; color: var(--text-soft); margin-left: 2px; }
+
+/* ???????????????????????????????????????????
+   Hotel Page — Policies Section
+??????????????????????????????????????????? */
+.hotel-policies { margin: 32px 0; }
+.policy-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.policy-card {
+  background: #fff;
+  border: 1.5px solid var(--border, #e0d5c8);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: box-shadow 0.15s;
+}
+.policy-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.policy-card.policy-mandatory { border-left: 4px solid #d97706; }
+.policy-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.policy-card-head > div { display: flex; flex-direction: column; gap: 4px; }
+.policy-type-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-soft);
+}
+.policy-title {
+  font-size: 0.95rem;
+  color: var(--text-strong);
+  font-weight: 600;
+}
+.policy-mandatory-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 99px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.policy-text {
+  font-size: 0.86rem;
+  color: var(--text-soft);
+  line-height: 1.55;
+  margin: 0;
+}
+.policy-applies {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  font-style: italic;
+}

@@ -1293,3 +1293,142 @@
 .inv-list-left strong { color: var(--text-strong); font-size: 0.95rem; }
 .inv-list-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .inv-list-right strong { font-size: 1rem; color: var(--text-strong); }
+
+/* ???????????????????????????????????????????
+   Admin — Promotions Module
+??????????????????????????????????????????? */
+.promo-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 8px;
+}
+
+.promo-card {
+  background: #fff;
+  border: 1.5px solid var(--border, #e0d5c8);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: box-shadow 0.15s;
+}
+.promo-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.07); }
+
+.promo-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.promo-card-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.promo-type-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 99px;
+  padding: 3px 10px;
+}
+.promo-member-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #fef9c3;
+  color: #713f12;
+  border-radius: 99px;
+  padding: 3px 10px;
+}
+.promo-scope-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--bg-soft, #f5f0ea);
+  color: var(--text-soft);
+  border-radius: 99px;
+  padding: 3px 9px;
+}
+.promo-code-tag {
+  font-family: monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--bg-soft, #f5f0ea);
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+  color: var(--panel-strong, #143d42);
+  white-space: nowrap;
+}
+
+.promo-name {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 0;
+}
+.promo-discount {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--panel-strong, #143d42);
+  margin: 0;
+}
+.promo-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+.promo-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, #ece6de);
+}
+.maint-deactivate-btn {
+  background: transparent;
+  border: 1.5px solid #ef4444;
+  color: #ef4444;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.maint-deactivate-btn:hover { background: #ef4444; color: #fff; }
+.maint-deactivate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.promo-edit-form { display: flex; flex-direction: column; gap: 8px; }
+.promo-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.promo-form-wide { grid-column: 1 / -1; }
+.promo-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.promo-form-grid input,
+.promo-form-grid select,
+.promo-form-grid textarea {
+  border: 1.5px solid var(--border, #ddd);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.88rem;
+  outline: none;
+  background: #fff;
+}
+.promo-form-grid input:focus,
+.promo-form-grid select:focus,
+.promo-form-grid textarea:focus {
+  border-color: var(--panel-strong, #143d42);
+}

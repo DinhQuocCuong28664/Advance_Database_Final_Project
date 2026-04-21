@@ -102,6 +102,40 @@ router.get('/:id', async (req, res) => {
         FROM HotelAmenity WHERE hotel_id = @hotelId
       `);
 
+    // SQL: hotel policies (1 row per hotel, columnar schema)
+    const policiesResult = await pool.request()
+      .input('hotelId', sql.BigInt, hotelId)
+      .query(`
+        SELECT cancellation_policy_text, deposit_policy_text,
+               child_policy_text, pet_policy_text, smoking_policy_text,
+               extra_bed_policy_text, late_checkout_policy_text, early_checkin_policy_text,
+               identity_document_required, minimum_checkin_age
+        FROM HotelPolicy
+        WHERE hotel_id = @hotelId AND (effective_to IS NULL OR effective_to >= GETDATE())
+      `);
+
+    // Flatten columnar policies into [{type, text}]
+    const pRaw = policiesResult.recordset[0] || {};
+    const policyLabels = {
+      cancellation_policy_text:  'Cancellation',
+      deposit_policy_text:       'Deposit',
+      child_policy_text:         'Children',
+      pet_policy_text:           'Pets',
+      smoking_policy_text:       'Smoking',
+      extra_bed_policy_text:     'Extra bed',
+      late_checkout_policy_text: 'Late check-out',
+      early_checkin_policy_text: 'Early check-in',
+    };
+    const policies = Object.entries(policyLabels)
+      .filter(([col]) => pRaw[col])
+      .map(([col, label]) => ({ type: label, text: pRaw[col] }));
+    if (pRaw.identity_document_required) {
+      policies.push({ type: 'ID Required', text: 'A valid government-issued photo ID is required at check-in.' });
+    }
+    if (pRaw.minimum_checkin_age) {
+      policies.push({ type: 'Minimum age', text: `Guests must be at least ${pRaw.minimum_checkin_age} years old to check in.` });
+    }
+
     // MongoDB: rich content
     const mongoCatalog = await mongo.collection('Hotel_Catalog')
       .findOne({ hotel_id: hotelId });
@@ -150,6 +184,7 @@ router.get('/:id', async (req, res) => {
         contact: mongoCatalog?.contact || null,
         room_types: mergedRoomTypes,
         amenities: mergedAmenities,
+        policies: policies,
       },
     });
   } catch (err) {

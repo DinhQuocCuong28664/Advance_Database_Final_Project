@@ -11,6 +11,7 @@ import AdminHousekeeping from './admin/AdminHousekeeping';
 import AdminInventory from './admin/AdminInventory';
 import AdminInvoice from './admin/AdminInvoice';
 import AdminMaintenance from './admin/AdminMaintenance';
+import AdminPromotions from './admin/AdminPromotions';
 import AdminReports from './admin/AdminReports';
 
 const ADMIN_TABS = [
@@ -19,6 +20,7 @@ const ADMIN_TABS = [
   { key: 'housekeeping',label: '🧹 Housekeeping',   note: 'Cleaning tasks, assignments, and room status' },
   { key: 'maintenance', label: '🔧 Maintenance',    note: 'Issue tracking, repairs, and room status' },
   { key: 'invoice',     label: '📄 Invoices',       note: 'Generate and issue guest invoices' },
+  { key: 'promotions',  label: '🎁 Promotions',     note: 'Create and manage hotel promotions & offers' },
   { key: 'accounts',    label: '👤 Accounts',       note: 'System and guest login management' },
   { key: 'reports',     label: '📊 Reports',        note: 'KPIs, exports, and revenue analytics' },
 ];
@@ -149,6 +151,7 @@ export default function AdminPage() {
         {activeTab === 'housekeeping' ? <AdminHousekeeping hotels={hotels} /> : null}
         {activeTab === 'maintenance'  ? <AdminMaintenance hotels={hotels} /> : null}
         {activeTab === 'invoice'      ? <AdminInvoice hotels={hotels} /> : null}
+        {activeTab === 'promotions'   ? <AdminPromotions hotels={hotels} /> : null}
         {activeTab === 'accounts' ? (
           <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
         ) : null}
