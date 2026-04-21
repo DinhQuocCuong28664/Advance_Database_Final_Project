@@ -604,7 +604,7 @@ export default function AccountPage() {
             </section>
           )}
 
-          {/* ── TAB: Loyalty ── */
+          {/* -- TAB: Loyalty -- */}
           {activeTab === 'Loyalty' && (
             <section className="page-card">
               <div className="guest-card-head" style={{ marginBottom: 20 }}>
