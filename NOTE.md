@@ -792,3 +792,103 @@ File: `frontend/src/pages/AccountPage.jsx` (dong 65, 86-91, 157, 194, 208, 228)
 - Them state `hotelCurrency` lay tu `currency_code` cua ServiceCatalog (join Hotel)
 - Fix: W Bali hien IDR, Tokyo hien JPY, Singapore hien SGD (khong con dung currency cua reservation)
 - Stay banner total, order form price, estimated total, order history � tat ca dung `hotelCurrency`
+
+---
+
+## 22. Housekeeping, Invoice, Promotions & Guest Account Enhancements (2026-04-22)
+
+### 22.1 AdminHousekeeping — quan ly nhiem vu don phong
+File: `frontend/src/pages/admin/AdminHousekeeping.jsx` (file moi)
+- Vong doi nhiem vu: OPEN -> ASSIGNED -> IN_PROGRESS -> DONE -> VERIFIED
+- Tao nhiem vu moi: chon phong, loai, priority, lich hen, ghi chu
+- Modal gan nhan vien (staff assignment)
+- Thanh trang thai tong hop (stats bar)
+- Khi DONE/VERIFIED -> tu dong cap nhat Room.housekeeping_status = CLEAN/INSPECTED
+
+### 22.2 AdminInvoice — quan ly hoa don
+File: `frontend/src/pages/admin/AdminInvoice.jsx` (file moi)
+- Lookup reservation theo ma hoac reservation_id
+- Tao invoice (DRAFT) tu reservation
+- Modal xem chi tiet: line items (phong + dich vu), lich su thanh toan
+- Workflow: DRAFT -> ISSUED
+
+### 22.3 Backend — API moi
+- `GET/POST /api/housekeeping`, `PUT /api/housekeeping/:id/status`
+- `GET/POST /api/invoices`, `GET /api/invoices/:id`, `POST /api/invoices/:id/issue`
+- `GET /api/guests/:id/stays` — lich su luu tru qua StayRecord -> ReservationRoom -> Reservation -> Hotel
+  - Fix: bo cot `h.city` khong ton tai trong bang Hotel
+
+### 22.4 AdminPromotions — CRUD khuyen mai
+File: `frontend/src/pages/admin/AdminPromotions.jsx` (file moi)
+- Filter theo hotel, hien danh sach promotion dang ACTIVE
+- Form tao moi: code, name, type (PERCENTAGE/FIXED_AMOUNT/FREE_NIGHT...), discount, currency, applies_to, booking dates, stay dates, member_only, min_nights, description, hotel scope
+- Inline edit: name, discount, dates, member_only, min_nights
+- Soft-delete: chuyen status -> INACTIVE
+
+Backend (`src/routes/promotions.js`):
+- `POST /api/promotions` — tao moi
+- `PUT /api/promotions/:id` — cap nhat (ISNULL partial update)
+- `DELETE /api/promotions/:id` — soft deactivate
+
+### 22.5 AdminPage — dang ky module moi
+File: `frontend/src/pages/AdminPage.jsx`
+- Import + tab: Housekeeping (dung 10), Invoice (dung 12), Promotions (dung 14)
+- Tab Promotions them vao ADMIN_TABS voi icon 🎁
+
+### 22.6 AccountPage — Medium Priority: Loyalty, Profile, Stay History
+File: `frontend/src/pages/AccountPage.jsx`
+
+**Loyalty tab (viet lai):**
+- Fetch `GET /api/guests/:id` lay loyalty_accounts + preferences
+- Hien thi tier badge dong (BLACK/PLATINUM/GOLD/SILVER voi mau rieng)
+- Points balance, lifetime points, membership no., enrollment date, status, expiry
+
+**Profile tab (viet lai):**
+- Personal details: name, email, guest code, nationality, phone, VIP status
+- Stay preferences: tat ca GuestPreference rows hien thi theo type+value
+
+**Overview tab — Stay History:**
+- Lazy-load tu `GET /api/guests/:id/stays` khi vao Overview
+- Hien thi 5 stays gan nhat: hotel, room type, dates, total, status badge
+
+**Fix quan trong — Rules of Hooks:**
+- useEffect duoc goi SAU 2 early return (if !authSession, if !isGuestUser)
+- Vi pham React Rules of Hooks -> Vite/OXC PARSE_ERROR
+- Fix: chuyen tat ca useState + useEffect len truoc guard returns
+- Them optional chaining `authSession?.user?.guest_id` tranh crash
+
+**Fix JSX comment:**
+- PowerShell Set-Content lam garble emoji trong comment header Loyalty tab
+- Mat } dong -> parser bao loi PARSE_ERROR o dong ke tiep (===)
+- Fix: them lai } dong comment
+
+### 22.7 HotelPage — Policies & Amenity improvements
+File: `frontend/src/pages/HotelPage.jsx`, `src/routes/hotels.js`
+
+**Hotel Policies:**
+- Query `HotelPolicy` (schema columnar: moi loai la 1 cot)
+- Flatten thanh `[{type, text}]` array (cancellation, deposit, children, pets, smoking, extra bed, late checkout, early check-in, ID required, minimum age)
+- Fix: ban dau dung `policies.recordset` thay vi `policies` -> luon tra ve []
+- Hien thi grid cards voi type tag
+
+**Amenity pills:**
+- Badge "paid" (mau xam) va dot xanh "complimentary"
+- Tooltip voi description
+
+### 22.8 CSS additions
+- `Admin.css`: promo-list, promo-card, type badge, member badge, code tag, inline edit form, deactivate button
+- `Hotel.css`: amenity-paid, amenity-free-dot, policy-list, policy-card, policy-mandatory border
+- `Account.css`: acct-stays-list, acct-stay-row, acct-loyalty-card, acct-loyalty-tier, acct-loyalty-stats, acct-profile-grid, acct-pref-row
+
+### 22.9 Ket qua / Trang thai
+- Tat ca commit da push len main branch
+- Backend server: tranh xung dot port 3000 giua 2 nodemon process — nen dong terminal cu truoc khi mo terminal moi
+
+| Priority | Feature | Trang thai |
+|---|---|---|
+| Medium | AccountPage Loyalty tab (real data) | DONE |
+| Medium | AccountPage Profile tab (preferences) | DONE |
+| Medium | AccountPage Stay History | DONE |
+| Low | HotelPage Policies section | DONE |
+| Low | HotelPage Amenity pill improvements | DONE |
+| Low | AdminPromotions CRUD | DONE |
