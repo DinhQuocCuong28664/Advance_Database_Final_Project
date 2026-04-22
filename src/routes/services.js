@@ -200,7 +200,10 @@ router.get('/orders', async (req, res) => {
              rs.scheduled_at, rs.quantity, rs.unit_price,
              rs.final_amount, rs.service_status, rs.special_instruction,
              rs.created_at, rs.updated_at,
-             h.currency_code
+             h.currency_code,
+             CASE WHEN pay.payment_id IS NOT NULL THEN 1 ELSE 0 END AS is_paid,
+             pay.paid_at,
+             pay.payment_method AS paid_method
       FROM ReservationService rs
       JOIN ServiceCatalog sc   ON rs.service_id       = sc.service_id
       JOIN Reservation r       ON rs.reservation_id   = r.reservation_id
@@ -208,6 +211,9 @@ router.get('/orders', async (req, res) => {
       LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
       LEFT JOIN Room rm            ON rr.room_id        = rm.room_id
       JOIN Hotel h             ON sc.hotel_id          = h.hotel_id
+      LEFT JOIN Payment pay    ON pay.reservation_id   = r.reservation_id
+                               AND pay.payment_reference = 'INCIDENTAL-ORDER-' + CAST(rs.reservation_service_id AS VARCHAR(20))
+                               AND pay.payment_status  = 'CAPTURED'
       WHERE sc.hotel_id = @hotelId ${statusClause}
       ORDER BY
         CASE rs.service_status WHEN 'REQUESTED' THEN 0 WHEN 'CONFIRMED' THEN 1 ELSE 2 END,

@@ -1432,3 +1432,55 @@
 .promo-form-grid textarea:focus {
   border-color: var(--panel-strong, #143d42);
 }
+
+/* ═══════════════════════════════════════════════
+   Service Orders — Charge Guest button & Paid badge
+═══════════════════════════════════════════════ */
+.svc-charge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #0f4c54, #1a7a8a);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.svc-charge-btn:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+.svc-charge-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.svc-paid-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #dcfce7;
+  color: #14532d;
+  border: 1.5px solid #86efac;
+  border-radius: 99px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* Charge modal pm-actions row */
+.pm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border, #e0d5c8);
+}
+.pm-methods {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}

@@ -232,6 +232,9 @@ export default function AdminFrontDesk({ hotels }) {
   const [svcOrdersLoading, setSvcOrdersLoading] = useState(false);
   const [svcStatusBusy,  setSvcStatusBusy]  = useState(null); // order id being updated
   const [svcFilter,      setSvcFilter]      = useState('');   // '' | 'REQUESTED' | 'CONFIRMED'
+  const [chargeModal,    setChargeModal]    = useState(null); // order being charged
+  const [chargeMethod,   setChargeMethod]   = useState('CASH');
+  const [chargingId,     setChargingId]     = useState(null);
 
   const selectedHotel = useMemo(
     () => hotels.find((hotel) => String(hotel.hotel_id) === String(hotelId)) || null,
@@ -306,6 +309,26 @@ export default function AdminFrontDesk({ hotels }) {
       setFlash({ tone: 'error', text: err.message });
     } finally {
       setSvcStatusBusy(null);
+    }
+  }
+
+  async function chargeOrder(order, method) {
+    setChargingId(order.reservation_service_id);
+    try {
+      await apiRequest(`/services/orders/${order.reservation_service_id}/pay`, {
+        method: 'POST',
+        body: JSON.stringify({ payment_method: method }),
+      });
+      const fmt = new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: order.currency_code || 'USD',
+      }).format(order.final_amount);
+      setFlash({ tone: 'success', text: `Payment captured: ${fmt} for "${order.service_name}"` });
+      setChargeModal(null);
+      await loadServiceOrders(svcFilter);
+    } catch (err) {
+      setFlash({ tone: 'error', text: err.message });
+    } finally {
+      setChargingId(null);
     }
   }
 
@@ -848,10 +871,41 @@ export default function AdminFrontDesk({ hotels }) {
                           {isBusy ? '…' : '🚀 Mark Delivered'}
                         </button>
                       )}
-                      {(order.service_status === 'DELIVERED' || order.service_status === 'CANCELLED') && (
-                        <span className="svc-order-done-label">
-                          {order.service_status === 'DELIVERED' ? '✅ Delivered' : '❌ Cancelled'}
-                        </span>
+                      {order.service_status === 'CONFIRMED' && !order.is_paid && (
+                        <button
+                          type="button"
+                          className="svc-charge-btn"
+                          disabled={isBusy || chargingId === order.reservation_service_id}
+                          onClick={() => { setChargeModal(order); setChargeMethod('CASH'); }}
+                        >
+                          💳 Charge guest
+                        </button>
+                      )}
+                      {order.service_status === 'DELIVERED' && !order.is_paid && (
+                        <>
+                          <span className="svc-order-done-label">✅ Delivered</span>
+                          <button
+                            type="button"
+                            className="svc-charge-btn"
+                            disabled={chargingId === order.reservation_service_id}
+                            onClick={() => { setChargeModal(order); setChargeMethod('CASH'); }}
+                          >
+                            💳 Charge guest
+                          </button>
+                        </>
+                      )}
+                      {order.is_paid && (
+                        <>
+                          {order.service_status === 'DELIVERED' && (
+                            <span className="svc-order-done-label">✅ Delivered</span>
+                          )}
+                          <span className="svc-paid-badge">
+                            ✅ Paid · {order.paid_method?.replace(/_/g,' ')}
+                          </span>
+                        </>
+                      )}
+                      {order.service_status === 'CANCELLED' && (
+                        <span className="svc-order-done-label">❌ Cancelled</span>
                       )}
                     </div>
                   </article>
@@ -863,5 +917,49 @@ export default function AdminFrontDesk({ hotels }) {
       )}
 
     </section>
+
+    {/* ── Charge Guest Modal ── */}
+    {chargeModal && (
+      <div className="pm-overlay" onClick={() => setChargeModal(null)}>
+        <div className="pm-dialog" onClick={e => e.stopPropagation()}>
+          <h3 className="pm-title">Charge guest</h3>
+          <p className="pm-subtitle">
+            <strong>{chargeModal.service_name}</strong> —{' '}
+            {new Intl.NumberFormat('en-US', {
+              style: 'currency', currency: chargeModal.currency_code || 'USD',
+            }).format(chargeModal.final_amount)}
+          </p>
+          <p className="pm-subtitle" style={{ color: 'var(--text-soft)', fontSize: '0.82rem' }}>
+            Guest: {chargeModal.guest_name} · Room {chargeModal.room_number || '—'}
+          </p>
+
+          <p style={{ fontWeight: 700, marginBottom: 10, marginTop: 14 }}>Payment method</p>
+          <div className="pm-methods">
+            {[['CASH','💵 Cash'],['CREDIT_CARD','💳 Credit / Debit'],['BANK_TRANSFER','🏦 Bank Transfer']].map(([val, label]) => (
+              <button
+                key={val}
+                type="button"
+                className={`pm-method-btn${chargeMethod === val ? ' pm-method-btn--active' : ''}`}
+                onClick={() => setChargeMethod(val)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="pm-actions">
+            <button type="button" className="ghost-button" onClick={() => setChargeModal(null)}>Cancel</button>
+            <button
+              type="button"
+              className="primary-button"
+              disabled={chargingId === chargeModal.reservation_service_id}
+              onClick={() => chargeOrder(chargeModal, chargeMethod)}
+            >
+              {chargingId === chargeModal.reservation_service_id ? 'Processing…' : 'Confirm charge'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   );
 }
