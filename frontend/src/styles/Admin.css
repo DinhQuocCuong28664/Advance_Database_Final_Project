@@ -1525,3 +1525,128 @@
 .pm-dialog--light {
   padding: 28px;
 }
+
+/* ═══════════════════════════════════════════════
+   Payment History Module
+═══════════════════════════════════════════════ */
+.pay-hist-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border: 1px solid #e8e3dc;
+  border-radius: 14px;
+}
+.pay-hist-toolbar .fd-input,
+.pay-hist-toolbar .fd-select {
+  flex: 1 1 140px;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+/* KPI summary cards */
+.pay-hist-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.pay-hist-kpi {
+  background: #fff;
+  border: 1.5px solid #e8e3dc;
+  border-radius: 12px;
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+.pay-hist-kpi--main {
+  border-color: #143d42;
+  background: #f0f9fa;
+}
+.pay-hist-kpi-label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-soft, #888);
+  font-weight: 600;
+}
+.pay-hist-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f2830;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Table */
+.pay-hist-table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1.5px solid #e8e3dc;
+}
+.pay-hist-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+.pay-hist-table thead {
+  background: #f0f4f5;
+}
+.pay-hist-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #4a6670;
+  white-space: nowrap;
+  border-bottom: 1.5px solid #dde2e6;
+}
+.pay-hist-row {
+  border-bottom: 1px solid #f0ebe4;
+  transition: background 0.12s;
+}
+.pay-hist-row:last-child { border-bottom: none; }
+.pay-hist-row:hover { background: #faf8f5; }
+.pay-hist-table td { padding: 10px 14px; vertical-align: middle; }
+
+.pay-hist-id   { color: var(--text-soft, #888); font-size: 0.76rem; }
+.pay-hist-date { white-space: nowrap; color: #444; }
+.pay-hist-guest { display: flex; flex-direction: column; gap: 1px; }
+.pay-hist-meta  { font-size: 0.73rem; color: var(--text-soft, #999); }
+.pay-hist-hotel { color: #0f2830; font-weight: 600; }
+.pay-hist-method { white-space: nowrap; }
+.pay-hist-code {
+  background: #eef4f5;
+  color: #143d42;
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+.pay-hist-type-badge {
+  display: inline-block;
+  border-radius: 99px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pay-hist-status {
+  display: inline-block;
+  border-radius: 99px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pay-hist-ref {
+  font-size: 0.72rem;
+  color: var(--text-soft, #999);
+  font-family: monospace;
+}

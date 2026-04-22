@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +12,7 @@ import AdminInventory from './admin/AdminInventory';
 import AdminInvoice from './admin/AdminInvoice';
 import AdminMaintenance from './admin/AdminMaintenance';
 import AdminPromotions from './admin/AdminPromotions';
-import AdminReports from './admin/AdminReports';
+import AdminPayments  from './admin/AdminPayments';
 
 const ADMIN_TABS = [
   { key: 'frontdesk',   label: '🏨 Front Desk',    note: 'Arrivals, departures, transfers, and stay actions' },
@@ -21,8 +21,8 @@ const ADMIN_TABS = [
   { key: 'maintenance', label: '🔧 Maintenance',    note: 'Issue tracking, repairs, and room status' },
   { key: 'invoice',     label: '📄 Invoices',       note: 'Generate and issue guest invoices' },
   { key: 'promotions',  label: '🎁 Promotions',     note: 'Create and manage hotel promotions & offers' },
-  { key: 'accounts',    label: '👤 Accounts',       note: 'System and guest login management' },
-  { key: 'reports',     label: '📊 Reports',        note: 'KPIs, exports, and revenue analytics' },
+  { key: 'payments',    label: '💳 Payments',       note: 'Payment history, filters and transaction review' },
+  { key: 'accounts',    label: '?? Accounts',       note: 'System and guest login management' },
 ];
 
 export default function AdminPage() {
@@ -152,6 +152,7 @@ export default function AdminPage() {
         {activeTab === 'maintenance'  ? <AdminMaintenance hotels={hotels} /> : null}
         {activeTab === 'invoice'      ? <AdminInvoice hotels={hotels} /> : null}
         {activeTab === 'promotions'   ? <AdminPromotions hotels={hotels} /> : null}
+        {activeTab === 'payments'   ? <AdminPayments hotels={hotels} /> : null}
         {activeTab === 'accounts' ? (
           <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
         ) : null}

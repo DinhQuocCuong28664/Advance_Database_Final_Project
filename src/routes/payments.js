@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LuxeReserve — Payment Routes
  */
 
@@ -115,24 +115,89 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/payments?reservation_id=1
+// GET /api/payments
+// Supports: reservation_id, hotel_id, date_from, date_to,
+//           payment_type, payment_method, payment_status, limit
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();
-    const { reservation_id } = req.query;
+    const {
+      reservation_id, hotel_id,
+      date_from, date_to,
+      payment_type, payment_method, payment_status,
+      limit = 200,
+    } = req.query;
 
-    let query = 'SELECT * FROM Payment';
     const request = pool.request();
+    const conditions = [];
 
     if (reservation_id) {
-      query += ' WHERE reservation_id = @resvId';
       request.input('resvId', sql.BigInt, parseInt(reservation_id));
+      conditions.push('p.reservation_id = @resvId');
+    }
+    if (hotel_id) {
+      request.input('hotelId', sql.BigInt, parseInt(hotel_id));
+      conditions.push('h.hotel_id = @hotelId');
+    }
+    if (date_from) {
+      request.input('dateFrom', sql.Date, new Date(date_from));
+      conditions.push('CAST(p.paid_at AS DATE) >= @dateFrom');
+    }
+    if (date_to) {
+      request.input('dateTo', sql.Date, new Date(date_to));
+      conditions.push('CAST(p.paid_at AS DATE) <= @dateTo');
+    }
+    if (payment_type) {
+      request.input('payType', sql.VarChar(20), payment_type.toUpperCase());
+      conditions.push('p.payment_type = @payType');
+    }
+    if (payment_method) {
+      request.input('payMethod', sql.VarChar(20), payment_method.toUpperCase());
+      conditions.push('p.payment_method = @payMethod');
+    }
+    if (payment_status) {
+      request.input('payStatus', sql.VarChar(15), payment_status.toUpperCase());
+      conditions.push('p.payment_status = @payStatus');
     }
 
-    query += ' ORDER BY created_at DESC';
-    const result = await request.query(query);
+    request.input('limit', sql.Int, parseInt(limit));
+    const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
-    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+    const result = await request.query(`
+      SELECT TOP (@limit)
+        p.payment_id, p.reservation_id, p.payment_reference,
+        p.payment_type, p.payment_method, p.payment_status,
+        p.amount, p.currency_code, p.paid_at, p.created_at,
+        r.reservation_code, r.grand_total_amount,
+        g.guest_id, g.first_name + ' ' + g.last_name AS guest_name,
+        g.email AS guest_email,
+        h.hotel_id, h.hotel_name,
+        rm.room_number
+      FROM Payment p
+      JOIN Reservation r ON p.reservation_id = r.reservation_id
+      JOIN Guest g       ON r.guest_id        = g.guest_id
+      LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+      LEFT JOIN Room rm            ON rr.room_id        = rm.room_id
+      LEFT JOIN Hotel h            ON rm.hotel_id       = h.hotel_id
+      ${whereClause}
+      ORDER BY p.paid_at DESC, p.payment_id DESC
+    `);
+
+    const payments = result.recordset;
+    const totalAmount = payments
+      .filter(p => p.payment_status === 'CAPTURED' && p.payment_type !== 'REFUND')
+      .reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+    const byType = payments.reduce((acc, p) => {
+      acc[p.payment_type] = (acc[p.payment_type] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      count: payments.length,
+      summary: { total_captured: totalAmount, by_type: byType },
+      data: payments,
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
