@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
 import { useAuth } from '../../context/AuthContext';
@@ -499,6 +499,7 @@ export default function AdminFrontDesk({ hotels }) {
   }
 
   return (
+    <>
     <section className="page-card page-card-wide" id="admin-front-desk">
       {/* ── Payment modal ── */}
       {paymentTarget && (
@@ -961,5 +962,6 @@ export default function AdminFrontDesk({ hotels }) {
         </div>
       </div>
     )}
+    </>
   );
 }
