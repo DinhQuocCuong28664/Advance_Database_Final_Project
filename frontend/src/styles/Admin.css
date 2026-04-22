@@ -1484,3 +1484,44 @@
   flex-wrap: wrap;
   margin-bottom: 4px;
 }
+
+/* ═══════════════════════════════════════════════
+   pm-dialog--light override (Charge Guest Modal)
+═══════════════════════════════════════════════ */
+.pm-dialog--light {
+  background: #ffffff;
+  border: 1.5px solid #e0d5c8;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.14);
+}
+.pm-dialog--light .pm-title {
+  color: #0f2830;
+}
+.pm-dialog--light .pm-subtitle {
+  color: #3d3d3d;
+  font-size: 0.95rem;
+  margin: 4px 0 0;
+}
+.pm-dialog--light .pm-method-btn {
+  border: 1.5px solid #dde2e6;
+  background: #f8fafc;
+  color: #1a1a1a;
+}
+.pm-dialog--light .pm-method-btn:hover {
+  border-color: #143d42;
+  background: #eef7f7;
+}
+.pm-dialog--light .pm-method-btn--active {
+  border-color: #143d42 !important;
+  background: rgba(20,61,66,0.07) !important;
+  color: #143d42;
+  font-weight: 700;
+}
+.pm-dialog--light p[style] {
+  color: #0f2830 !important;
+}
+.pm-dialog--light .pm-actions {
+  border-top-color: #ede8e0;
+}
+.pm-dialog--light {
+  padding: 28px;
+}

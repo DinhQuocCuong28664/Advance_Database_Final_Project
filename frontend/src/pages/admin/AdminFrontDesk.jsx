@@ -922,7 +922,7 @@ export default function AdminFrontDesk({ hotels }) {
     {/* ── Charge Guest Modal ── */}
     {chargeModal && (
       <div className="pm-overlay" onClick={() => setChargeModal(null)}>
-        <div className="pm-dialog" onClick={e => e.stopPropagation()}>
+        <div className="pm-dialog pm-dialog--light" onClick={e => e.stopPropagation()}>
           <h3 className="pm-title">Charge guest</h3>
           <p className="pm-subtitle">
             <strong>{chargeModal.service_name}</strong> —{' '}
