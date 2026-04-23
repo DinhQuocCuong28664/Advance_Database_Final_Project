@@ -13,6 +13,8 @@ import AdminInvoice from './admin/AdminInvoice';
 import AdminMaintenance from './admin/AdminMaintenance';
 import AdminPromotions from './admin/AdminPromotions';
 import AdminPayments  from './admin/AdminPayments';
+import AdminReports   from './admin/AdminReports';
+import ToastContainer from '../components/layout/ToastContainer';
 
 const ADMIN_TABS = [
   { key: 'frontdesk', label: '🏨 Front Desk', note: 'Arrivals, departures, transfers, and stay actions' },
