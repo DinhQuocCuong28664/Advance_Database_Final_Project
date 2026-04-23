@@ -480,11 +480,11 @@ router.get('/rates', async (req, res) => {
       conditions.push('h.hotel_id = @hotelId');
     }
     if (date_from) {
-      request.input('dateFrom', sql.Date, new Date(date_from));
+      request.input('dateFrom', sql.VarChar(30), date_from);
       conditions.push('rr.rate_date >= @dateFrom');
     }
     if (date_to) {
-      request.input('dateTo', sql.Date, new Date(date_to));
+      request.input('dateTo', sql.VarChar(30), date_to);
       conditions.push('rr.rate_date <= @dateTo');
     }
     if (room_type_id) {
@@ -498,17 +498,19 @@ router.get('/rates', async (req, res) => {
     const result = await request.query(`
       SELECT TOP (@limit)
         rr.room_rate_id, rr.rate_date,
-        rr.base_rate, rr.final_rate, rr.currency_code,
-        rr.price_source, rr.is_override, rr.updated_at,
+        rr.base_rate, rr.final_rate,
+        rr.price_source, rr.demand_level, rr.updated_at,
+        CAST(CASE WHEN rr.price_source = 'MANUAL_OVERRIDE' THEN 1 ELSE 0 END AS BIT) AS is_override,
         rt.room_type_id, rt.room_type_name,
-        h.hotel_id, h.hotel_name,
-        -- Check if there's a recent alert for this rate
+        h.hotel_id, h.hotel_name, h.currency_code,
+        rp.rate_plan_code, rp.rate_plan_name,
+        -- Count any RateChangeLog entries for this rate (all entries = price guard triggered)
         (SELECT COUNT(*) FROM RateChangeLog rcl
-         WHERE rcl.room_rate_id = rr.room_rate_id
-           AND rcl.alert_triggered = 1) AS alert_count
+         WHERE rcl.room_rate_id = rr.room_rate_id) AS alert_count
       FROM RoomRate rr
       JOIN RoomType rt ON rr.room_type_id = rt.room_type_id
-      JOIN Hotel h     ON rt.hotel_id     = h.hotel_id
+      JOIN Hotel h     ON rr.hotel_id     = h.hotel_id
+      JOIN RatePlan rp ON rr.rate_plan_id = rp.rate_plan_id
       ${whereClause}
       ORDER BY rr.rate_date ASC, rt.room_type_name ASC
     `);
@@ -585,11 +587,11 @@ router.get('/history', async (req, res) => {
       conditions.push('rsh.new_status = @newStatus');
     }
     if (date_from) {
-      request.input('dateFrom', sql.Date, new Date(date_from));
+      request.input('dateFrom', sql.VarChar(30), date_from);
       conditions.push('CAST(rsh.changed_at AS DATE) >= @dateFrom');
     }
     if (date_to) {
-      request.input('dateTo', sql.Date, new Date(date_to));
+      request.input('dateTo', sql.VarChar(30), date_to);
       conditions.push('CAST(rsh.changed_at AS DATE) <= @dateTo');
     }
 
@@ -724,4 +726,296 @@ router.get('/location-tree', async (req, res) => {
   }
 });
 
+
+// ═══════════════════════════════════════════════════════════
+// GET /api/admin/rate-plans — List rate plans (filterable by hotel)
+// ═══════════════════════════════════════════════════════════
+router.get('/rate-plans', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const { hotel_id, status, type } = req.query;
+
+    const request = pool.request();
+    const conditions = [];
+
+    if (hotel_id) {
+      request.input('hotelId', sql.BigInt, parseInt(hotel_id, 10));
+      conditions.push('rp.hotel_id = @hotelId');
+    }
+    if (status) {
+      request.input('status', sql.VarChar(10), status.toUpperCase());
+      conditions.push('rp.status = @status');
+    }
+    if (type) {
+      request.input('type', sql.VarChar(20), type.toUpperCase());
+      conditions.push('rp.rate_plan_type = @type');
+    }
+
+    const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    const result = await request.query(`
+      SELECT
+        rp.rate_plan_id, rp.hotel_id, rp.rate_plan_code, rp.rate_plan_name,
+        rp.rate_plan_type, rp.meal_inclusion, rp.is_refundable,
+        rp.requires_prepayment, rp.min_advance_booking_days, rp.max_advance_booking_days,
+        rp.status, rp.effective_from, rp.effective_to,
+        rp.cancellation_policy_id, rp.created_at, rp.updated_at,
+        h.hotel_name,
+        COUNT(rr.room_rate_id) AS rate_count
+      FROM RatePlan rp
+      JOIN Hotel h ON rp.hotel_id = h.hotel_id
+      LEFT JOIN RoomRate rr ON rr.rate_plan_id = rp.rate_plan_id
+      ${where}
+      GROUP BY
+        rp.rate_plan_id, rp.hotel_id, rp.rate_plan_code, rp.rate_plan_name,
+        rp.rate_plan_type, rp.meal_inclusion, rp.is_refundable,
+        rp.requires_prepayment, rp.min_advance_booking_days, rp.max_advance_booking_days,
+        rp.status, rp.effective_from, rp.effective_to,
+        rp.cancellation_policy_id, rp.created_at, rp.updated_at,
+        h.hotel_name
+      ORDER BY h.hotel_name, rp.rate_plan_type, rp.rate_plan_name
+    `);
+
+    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// GET /api/admin/rate-plans/:id — Get single rate plan
+// ═══════════════════════════════════════════════════════════
+router.get('/rate-plans/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ success: false, error: 'Invalid rate plan ID' });
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('id', sql.BigInt, id)
+      .query(`
+        SELECT rp.*, h.hotel_name,
+               COUNT(rr.room_rate_id) AS rate_count
+        FROM RatePlan rp
+        JOIN Hotel h ON rp.hotel_id = h.hotel_id
+        LEFT JOIN RoomRate rr ON rr.rate_plan_id = rp.rate_plan_id
+        WHERE rp.rate_plan_id = @id
+        GROUP BY rp.rate_plan_id, rp.hotel_id, rp.rate_plan_code, rp.rate_plan_name,
+                 rp.rate_plan_type, rp.meal_inclusion, rp.is_refundable,
+                 rp.requires_prepayment, rp.min_advance_booking_days, rp.max_advance_booking_days,
+                 rp.status, rp.effective_from, rp.effective_to,
+                 rp.cancellation_policy_id, rp.created_at, rp.updated_at, h.hotel_name
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Rate plan not found' });
+    }
+    res.json({ success: true, data: result.recordset[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/admin/rate-plans — Create a new rate plan
+// ═══════════════════════════════════════════════════════════
+const VALID_RATE_PLAN_TYPES = ['BAR', 'NON_REFUNDABLE', 'MEMBER', 'PACKAGE', 'CORPORATE', 'PROMO'];
+const VALID_MEAL_INCLUSIONS = ['ROOM_ONLY', 'BREAKFAST', 'HALF_BOARD', 'FULL_BOARD', 'ALL_INCLUSIVE'];
+
+router.post('/rate-plans', async (req, res) => {
+  try {
+    const {
+      hotel_id, rate_plan_code, rate_plan_name, rate_plan_type,
+      meal_inclusion = 'ROOM_ONLY', is_refundable = true, requires_prepayment = false,
+      min_advance_booking_days, max_advance_booking_days,
+      cancellation_policy_id, effective_from, effective_to,
+    } = req.body;
+
+    // Required field validation
+    if (!hotel_id || !rate_plan_code || !rate_plan_name || !rate_plan_type) {
+      return res.status(400).json({
+        success: false,
+        error: 'hotel_id, rate_plan_code, rate_plan_name and rate_plan_type are required',
+      });
+    }
+    if (!VALID_RATE_PLAN_TYPES.includes(rate_plan_type.toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        error: `rate_plan_type must be one of: ${VALID_RATE_PLAN_TYPES.join(', ')}`,
+      });
+    }
+    if (!VALID_MEAL_INCLUSIONS.includes(meal_inclusion.toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        error: `meal_inclusion must be one of: ${VALID_MEAL_INCLUSIONS.join(', ')}`,
+      });
+    }
+
+    const pool = getSqlPool();
+
+    // Verify hotel exists
+    const hotelCheck = await pool.request()
+      .input('hid', sql.BigInt, parseInt(hotel_id, 10))
+      .query('SELECT hotel_id FROM Hotel WHERE hotel_id = @hid');
+    if (hotelCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Hotel not found' });
+    }
+
+    const insertResult = await pool.request()
+      .input('hotelId',        sql.BigInt,     parseInt(hotel_id, 10))
+      .input('code',           sql.VarChar(50),  rate_plan_code.toUpperCase())
+      .input('name',           sql.NVarChar(150), rate_plan_name)
+      .input('type',           sql.VarChar(20),  rate_plan_type.toUpperCase())
+      .input('meal',           sql.VarChar(20),  meal_inclusion.toUpperCase())
+      .input('refundable',     sql.Int,          is_refundable ? 1 : 0)
+      .input('prepay',         sql.Int,          requires_prepayment ? 1 : 0)
+      .input('minDays',        sql.Int,          min_advance_booking_days ?? null)
+      .input('maxDays',        sql.Int,          max_advance_booking_days ?? null)
+      .input('policyId',       sql.BigInt,       cancellation_policy_id || null)
+      .input('effectiveFrom',  sql.VarChar(30),  effective_from || new Date().toISOString().slice(0, 10))
+      .input('effectiveTo',    sql.VarChar(30),  effective_to || null)
+      .query(`
+        INSERT INTO RatePlan
+          (hotel_id, rate_plan_code, rate_plan_name, rate_plan_type, meal_inclusion,
+           is_refundable, requires_prepayment, min_advance_booking_days, max_advance_booking_days,
+           cancellation_policy_id, effective_from, effective_to, status)
+        OUTPUT INSERTED.*
+        VALUES (@hotelId, @code, @name, @type, @meal,
+                IIF(@refundable=1,1,0), IIF(@prepay=1,1,0), @minDays, @maxDays,
+                @policyId,
+                CONVERT(DATETIME, @effectiveFrom, 120),
+                CONVERT(DATETIME, @effectiveTo, 120),
+                'ACTIVE')
+      `);
+
+    res.status(201).json({
+      success: true,
+      message: 'Rate plan created',
+      data: insertResult.recordset[0],
+    });
+  } catch (err) {
+    // Unique constraint violation (duplicate code per hotel)
+    if (err.message?.includes('UQ_RatePlan_Code') || err.number === 2627) {
+      return res.status(409).json({ success: false, error: 'Rate plan code already exists for this hotel' });
+    }
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// PUT /api/admin/rate-plans/:id — Update rate plan
+// ═══════════════════════════════════════════════════════════
+router.put('/rate-plans/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ success: false, error: 'Invalid rate plan ID' });
+
+    const {
+      rate_plan_name, rate_plan_type, meal_inclusion, is_refundable,
+      requires_prepayment, min_advance_booking_days, max_advance_booking_days,
+      cancellation_policy_id, effective_from, effective_to, status,
+    } = req.body;
+
+    // Validate enums if provided
+    if (rate_plan_type && !VALID_RATE_PLAN_TYPES.includes(rate_plan_type.toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        error: `rate_plan_type must be one of: ${VALID_RATE_PLAN_TYPES.join(', ')}`,
+      });
+    }
+    if (meal_inclusion && !VALID_MEAL_INCLUSIONS.includes(meal_inclusion.toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        error: `meal_inclusion must be one of: ${VALID_MEAL_INCLUSIONS.join(', ')}`,
+      });
+    }
+    if (status && !['ACTIVE', 'INACTIVE'].includes(status.toUpperCase())) {
+      return res.status(400).json({ success: false, error: 'status must be ACTIVE or INACTIVE' });
+    }
+
+    const pool = getSqlPool();
+    const check = await pool.request()
+      .input('id', sql.BigInt, id)
+      .query('SELECT rate_plan_id FROM RatePlan WHERE rate_plan_id = @id');
+    if (check.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Rate plan not found' });
+    }
+
+    const updateResult = await pool.request()
+      .input('id',        sql.BigInt,     id)
+      .input('name',      sql.NVarChar(150), rate_plan_name ?? null)
+      .input('type',      sql.VarChar(20),   rate_plan_type ? rate_plan_type.toUpperCase() : null)
+      .input('meal',      sql.VarChar(20),   meal_inclusion ? meal_inclusion.toUpperCase() : null)
+      .input('refund',    sql.Int,           is_refundable != null ? (is_refundable ? 1 : 0) : null)
+      .input('prepay',    sql.Int,           requires_prepayment != null ? (requires_prepayment ? 1 : 0) : null)
+      .input('minDays',   sql.Int,           min_advance_booking_days ?? null)
+      .input('maxDays',   sql.Int,           max_advance_booking_days ?? null)
+      .input('policyId',  sql.BigInt,        cancellation_policy_id ?? null)
+      .input('effFrom',   sql.VarChar(30),   effective_from || null)
+      .input('effTo',     sql.VarChar(30),   effective_to || null)
+      .input('status',    sql.VarChar(10),   status ? status.toUpperCase() : null)
+      .query(`
+        UPDATE RatePlan SET
+          rate_plan_name           = COALESCE(@name,     rate_plan_name),
+          rate_plan_type           = COALESCE(@type,     rate_plan_type),
+          meal_inclusion           = COALESCE(@meal,     meal_inclusion),
+          is_refundable            = COALESCE(CAST(@refund AS BIT),  is_refundable),
+          requires_prepayment      = COALESCE(CAST(@prepay AS BIT), requires_prepayment),
+          min_advance_booking_days = COALESCE(@minDays,  min_advance_booking_days),
+          max_advance_booking_days = COALESCE(@maxDays,  max_advance_booking_days),
+          cancellation_policy_id   = COALESCE(@policyId, cancellation_policy_id),
+          effective_from           = COALESCE(CONVERT(DATETIME,@effFrom,120), effective_from),
+          effective_to             = COALESCE(CONVERT(DATETIME,@effTo,120),   effective_to),
+          status                   = COALESCE(@status,   status),
+          updated_at               = GETDATE()
+        OUTPUT INSERTED.*
+        WHERE rate_plan_id = @id
+      `);
+
+    res.json({ success: true, message: 'Rate plan updated', data: updateResult.recordset[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// DELETE /api/admin/rate-plans/:id — Soft-delete (INACTIVE)
+// ═══════════════════════════════════════════════════════════
+router.delete('/rate-plans/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ success: false, error: 'Invalid rate plan ID' });
+
+    const pool = getSqlPool();
+    const check = await pool.request()
+      .input('id', sql.BigInt, id)
+      .query('SELECT rate_plan_id, status FROM RatePlan WHERE rate_plan_id = @id');
+    if (check.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Rate plan not found' });
+    }
+
+    // Prevent deleting if it has active room rates linked
+    const rateCount = await pool.request()
+      .input('id', sql.BigInt, id)
+      .query('SELECT COUNT(*) AS cnt FROM RoomRate WHERE rate_plan_id = @id');
+    const cnt = rateCount.recordset[0].cnt;
+    if (cnt > 0) {
+      return res.status(409).json({
+        success: false,
+        error: `Cannot deactivate: rate plan has ${cnt} linked room rate(s). Remove the rates first.`,
+        linked_rate_count: cnt,
+      });
+    }
+
+    await pool.request()
+      .input('id', sql.BigInt, id)
+      .query("UPDATE RatePlan SET status='INACTIVE', updated_at=GETDATE() WHERE rate_plan_id=@id");
+
+    res.json({ success: true, message: 'Rate plan deactivated', rate_plan_id: id });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
+
