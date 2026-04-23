@@ -551,4 +551,89 @@ router.get('/rates', async (req, res) => {
   }
 });
 
+
+// ═══════════════════════════════════════════════
+// GET /api/admin/history
+// Reservation Status History — audit/timeline view
+// Filters: hotel_id, reservation_id, status, date_from, date_to, limit
+// ═══════════════════════════════════════════════
+router.get('/history', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const {
+      hotel_id, reservation_id, old_status, new_status,
+      date_from, date_to, limit = 100,
+    } = req.query;
+
+    const request = pool.request();
+    const conditions = [];
+
+    if (hotel_id) {
+      request.input('hotelId', sql.BigInt, parseInt(hotel_id));
+      conditions.push('h.hotel_id = @hotelId');
+    }
+    if (reservation_id) {
+      request.input('resvId', sql.BigInt, parseInt(reservation_id));
+      conditions.push('rsh.reservation_id = @resvId');
+    }
+    if (old_status) {
+      request.input('oldStatus', sql.VarChar(20), old_status.toUpperCase());
+      conditions.push('rsh.old_status = @oldStatus');
+    }
+    if (new_status) {
+      request.input('newStatus', sql.VarChar(20), new_status.toUpperCase());
+      conditions.push('rsh.new_status = @newStatus');
+    }
+    if (date_from) {
+      request.input('dateFrom', sql.Date, new Date(date_from));
+      conditions.push('CAST(rsh.changed_at AS DATE) >= @dateFrom');
+    }
+    if (date_to) {
+      request.input('dateTo', sql.Date, new Date(date_to));
+      conditions.push('CAST(rsh.changed_at AS DATE) <= @dateTo');
+    }
+
+    request.input('limit', sql.Int, parseInt(limit));
+    const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    const result = await request.query(`
+      SELECT TOP (@limit)
+        rsh.history_id, rsh.reservation_id, rsh.old_status, rsh.new_status,
+        rsh.changed_by, rsh.change_reason, rsh.changed_at,
+        r.reservation_code, r.checkin_date, r.checkout_date,
+        g.first_name + ' ' + g.last_name AS guest_name,
+        g.email AS guest_email,
+        su.full_name AS agent_name, su.role_code,
+        h.hotel_id, h.hotel_name,
+        rm.room_number
+      FROM ReservationStatusHistory rsh
+      JOIN Reservation r         ON rsh.reservation_id = r.reservation_id
+      JOIN Guest g               ON r.guest_id          = g.guest_id
+      LEFT JOIN SystemUser su    ON rsh.changed_by      = su.system_user_id
+      LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+      LEFT JOIN Room rm            ON rr.room_id        = rm.room_id
+      LEFT JOIN Hotel h            ON rm.hotel_id       = h.hotel_id
+      ${whereClause}
+      ORDER BY rsh.changed_at DESC, rsh.history_id DESC
+    `);
+
+    // Stats summary
+    const rows = result.recordset;
+    const byTransition = rows.reduce((acc, r) => {
+      const key = (r.old_status || 'NEW') + ' → ' + r.new_status;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      count: rows.length,
+      summary: { by_transition: byTransition },
+      data: rows,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

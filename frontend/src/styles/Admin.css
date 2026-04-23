@@ -1845,3 +1845,179 @@
   color: #143d42;
   white-space: nowrap;
 }
+
+/* ═══════════════════════════════════════════════
+   Reservation Status Timeline
+═══════════════════════════════════════════════ */
+
+/* Transition stats bar */
+.tl-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.tl-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid transparent;
+  border-radius: 99px;
+  padding: 5px 14px;
+}
+.tl-stat-label { font-size: 0.78rem; font-weight: 600; }
+.tl-stat-count { font-size: 0.82rem; font-weight: 800; }
+
+/* Day group */
+.tl-day-group { margin-bottom: 28px; }
+.tl-day-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.tl-day-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #143d42;
+  background: #eef7f7;
+  border: 1px solid #bde0e2;
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+.tl-day-count {
+  font-size: 0.75rem;
+  color: var(--text-soft, #888);
+}
+
+/* Spine */
+.tl-spine {
+  position: relative;
+  padding-left: 32px;
+}
+.tl-spine::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #bde0e2 0%, #e8e3dc 100%);
+}
+
+/* Timeline item */
+.tl-item {
+  position: relative;
+  margin-bottom: 16px;
+}
+.tl-item--last { margin-bottom: 0; }
+
+/* Spine dot */
+.tl-dot {
+  position: absolute;
+  left: -26px;
+  top: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  z-index: 1;
+  background: #fff;
+  border: 2px solid currentColor;
+  transition: transform 0.15s;
+}
+.tl-item:hover .tl-dot { transform: scale(1.15); }
+
+/* Card */
+.tl-card {
+  background: #fff;
+  border: 1.5px solid #e8e3dc;
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.tl-card:hover {
+  border-color: #143d42;
+  box-shadow: 0 4px 14px rgba(20,61,66,0.08);
+}
+
+.tl-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tl-transition { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tl-status-pill {
+  display: inline-block;
+  border-radius: 99px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.tl-status-pill--to { font-weight: 800; }
+.tl-arrow { color: #aaa; font-size: 0.9rem; }
+
+.tl-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.tl-time  { font-size: 0.75rem; color: var(--text-soft, #888); white-space: nowrap; }
+.tl-agent { font-size: 0.72rem; color: #1a7a8a; }
+
+.tl-card-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+.tl-code  { background: #eef4f5; color: #143d42; border-radius: 5px; padding: 2px 8px; font-family: monospace; }
+.tl-guest { font-weight: 600; color: #0f2830; }
+.tl-hotel { color: var(--text-soft, #888); }
+.tl-room  { background: #f1f5f9; color: #334155; border-radius: 5px; padding: 2px 7px; font-size: 0.75rem; }
+
+.tl-reason {
+  font-size: 0.8rem;
+  color: #555;
+  font-style: italic;
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  background: #faf8f5;
+  border-left: 3px solid #e8e3dc;
+  border-radius: 0 6px 6px 0;
+}
+
+/* Expandable details */
+.tl-details {
+  margin-top: 10px;
+  border-top: 1px dashed #e8e3dc;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tl-detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #555;
+}
+.tl-detail-row span:first-child { color: var(--text-soft, #888); }
+.tl-detail-row span:last-child  { font-weight: 600; color: #0f2830; }
+
+.tl-expand-btn {
+  background: none;
+  border: none;
+  color: #1a7a8a;
+  font-size: 0.73rem;
+  cursor: pointer;
+  padding: 4px 0 0;
+  display: block;
+  margin-top: 6px;
+}
+.tl-expand-btn:hover { text-decoration: underline; }

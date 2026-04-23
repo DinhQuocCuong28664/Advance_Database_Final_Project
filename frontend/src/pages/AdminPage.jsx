@@ -14,6 +14,7 @@ import AdminMaintenance from './admin/AdminMaintenance';
 import AdminPromotions from './admin/AdminPromotions';
 import AdminPayments  from './admin/AdminPayments';
 import AdminRates     from './admin/AdminRates';
+import AdminTimeline  from './admin/AdminTimeline';
 import AdminReports   from './admin/AdminReports';
 import ToastContainer from '../components/layout/ToastContainer';
 
@@ -27,7 +28,8 @@ const ADMIN_TABS = [
   { key: 'promotions', label: '🎁 Promotions', note: 'Create and manage hotel promotions & offers' },
   { key: 'payments', label: '💳 Payments', note: 'Payment history, filters and transaction review' },
   { key: 'accounts', label: '👤 Accounts', note: 'System and guest login management' },
-  { key: 'reports', label: '📊 Reports', note: 'KPIs, exports, and revenue analytics' },
+  { key: 'timeline', label: '📋 Timeline', note: 'Reservation status audit trail and history' },
+  { key: 'reports',  label: '📊 Reports',  note: 'KPIs, exports, and revenue analytics' },
 ];
 
 export default function AdminPage() {
@@ -166,6 +168,7 @@ const [brandRevenueData, setBrandRevenueData] = useState([]);
         {activeTab === 'accounts' ? (
           <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
         ) : null}
+        {activeTab === 'timeline' ? <AdminTimeline hotels={hotels} /> : null}
         {activeTab === 'reports' ? (
           <AdminReports reportSummary={reportSummary} revenueData={revenueData} brandRevenueData={brandRevenueData} loading={loadingReport} />
         ) : null}
