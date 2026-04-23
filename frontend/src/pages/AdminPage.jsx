@@ -15,14 +15,15 @@ import AdminPromotions from './admin/AdminPromotions';
 import AdminPayments  from './admin/AdminPayments';
 
 const ADMIN_TABS = [
-  { key: 'frontdesk',   label: '🏨 Front Desk',    note: 'Arrivals, departures, transfers, and stay actions' },
-  { key: 'inventory',   label: '📦 Inventory',      note: 'Room availability and status control' },
-  { key: 'housekeeping',label: '🧹 Housekeeping',   note: 'Cleaning tasks, assignments, and room status' },
-  { key: 'maintenance', label: '🔧 Maintenance',    note: 'Issue tracking, repairs, and room status' },
-  { key: 'invoice',     label: '📄 Invoices',       note: 'Generate and issue guest invoices' },
-  { key: 'promotions',  label: '🎁 Promotions',     note: 'Create and manage hotel promotions & offers' },
-  { key: 'payments',    label: '💳 Payments',       note: 'Payment history, filters and transaction review' },
-  { key: 'accounts',    label: '?? Accounts',       note: 'System and guest login management' },
+  { key: 'frontdesk', label: '🏨 Front Desk', note: 'Arrivals, departures, transfers, and stay actions' },
+  { key: 'inventory', label: '⚙️ Inventory', note: 'Room availability and status control' },
+  { key: 'housekeeping', label: '🧹 Housekeeping', note: 'Cleaning tasks, assignments, and room status' },
+  { key: 'maintenance', label: '🔧 Maintenance', note: 'Issue tracking, repairs, and room status' },
+  { key: 'invoice', label: '📋 Invoices', note: 'Generate and issue guest invoices' },
+  { key: 'promotions', label: '🎁 Promotions', note: 'Create and manage hotel promotions & offers' },
+  { key: 'payments', label: '💳 Payments', note: 'Payment history, filters and transaction review' },
+  { key: 'accounts', label: '👤 Accounts', note: 'System and guest login management' },
+  { key: 'reports', label: '📊 Reports', note: 'KPIs, exports, and revenue analytics' },
 ];
 
 export default function AdminPage() {
