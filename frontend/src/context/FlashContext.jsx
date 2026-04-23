@@ -16,12 +16,14 @@ export function FlashProvider({ children }) {
     }
   }, []);
 
+  const clearToasts = useCallback(() => { setToasts([]); }, []);
+
   const dismiss = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   return (
-    <FlashContext.Provider value={{ setFlash, toasts, dismiss }}>
+    <FlashContext.Provider value={{ setFlash, toasts, dismiss, clearToasts }}>
       {children}
     </FlashContext.Provider>
   );

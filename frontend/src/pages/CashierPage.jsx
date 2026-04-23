@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
+import ToastContainer from '../components/layout/ToastContainer';
 import { useAuth } from '../context/AuthContext';
 import { useFlash } from '../context/FlashContext';
 import AdminFrontDesk from './admin/AdminFrontDesk';
@@ -75,6 +76,8 @@ export default function CashierPage() {
         )}
 
       </main>
+    
+      <ToastContainer />
     </div>
   );
 }

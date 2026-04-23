@@ -7,7 +7,7 @@ export default function LoginPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const { login, logout, authBusy, authSession, isSystemUser, isAdminUser, isCashierUser } = useAuth();
-  const { setFlash } = useFlash();
+  const { setFlash, clearToasts } = useFlash();
   const [form, setForm] = useState({ login: '', password: '' });
 
   // ── Already signed in as GUEST → go home ────────────────────

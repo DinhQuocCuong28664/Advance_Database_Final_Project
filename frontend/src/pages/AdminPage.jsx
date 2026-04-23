@@ -29,7 +29,7 @@ const ADMIN_TABS = [
 export default function AdminPage() {
   const navigate = useNavigate();
   const { isSystemUser, isAdminUser, authSession, logout } = useAuth();
-  const { setFlash } = useFlash();
+  const { setFlash, clearToasts } = useFlash();
 
   const [hotels, setHotels] = useState([]);
   const [rateAlerts, setRateAlerts] = useState([]);
@@ -81,9 +81,10 @@ export default function AdminPage() {
   }, [setFlash]);
 
   function handleLogout() {
+    clearToasts();
     logout();
-    setFlash({ tone: 'success', text: 'Signed out.' });
     navigate('/');
+    setTimeout(() => setFlash({ tone: 'success', text: 'Signed out.' }), 80);
   }
 
   return (
@@ -160,7 +161,8 @@ export default function AdminPage() {
         {activeTab === 'reports' ? (
           <AdminReports reportSummary={reportSummary} revenueData={revenueData} loading={loadingReport} />
         ) : null}
-      </main>
+      <ToastContainer />
+    </main>
     </div>
   );
 }
