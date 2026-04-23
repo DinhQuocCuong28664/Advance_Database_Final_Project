@@ -109,8 +109,8 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(body.data.reservation_code).toBe(reservation.reservation_code);
     expect(body.data).toHaveProperty('rooms');
     expect(body.data).toHaveProperty('status_history');
-    // vw_ReservationTotal fields
-    expect(body.data).toHaveProperty('grand_total');
+    // vw_ReservationTotal fields (view uses grand_total_amount)
+    expect(body.data).toHaveProperty('grand_total_amount');
     expect(body.data).toHaveProperty('total_paid');
     expect(body.data).toHaveProperty('balance_due');
   });
@@ -128,8 +128,13 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
+    // Response: { success, message, reservation_id } — no data field
     expect(body.success).toBe(true);
-    expect(body.data.reservation_status).toBe('CHECKED_IN');
+    expect(body.message).toBe('Check-in successful');
+    expect(body.reservation_id).toBe(reservation.reservation_id);
+    // Verify status via GET
+    const det = await (await request.get(`/api/reservations/${reservation.reservation_code}`)).json();
+    expect(det.data.reservation_status).toBe('CHECKED_IN');
   });
 
   test('POST /checkin — already checked in → 409', async ({ request }) => {
@@ -141,25 +146,79 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
   });
 
   // ── POST /reservations/:id/checkout ────────────────────────
-  test('POST /reservations/:id/checkout — check out + auto housekeeping task', async ({ request }) => {
+  test('POST /reservations/:id/checkout — full checkout lifecycle', async ({ request }) => {
     if (!reservation) return test.skip();
     const res = await request.post(`/api/reservations/${reservation.reservation_id}/checkout`, {
       data: { agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
+
+    // ── Response shape ────────────────────────────────────────
     expect(body.success).toBe(true);
-    expect(body.data.reservation_status).toBe('CHECKED_OUT');
-    // vw_ReservationTotal should be in financials
+    expect(body.message).toBe('Check-out successful');
+    expect(body.reservation_id).toBe(reservation.reservation_id);
+
+    // ── Financial summary from vw_ReservationTotal ────────────
+    expect(body.financials).not.toBeNull();
+    // checkout endpoint queries: grand_total, total_paid, balance_due
     expect(body.financials).toHaveProperty('grand_total');
+    expect(body.financials).toHaveProperty('total_paid');
+    expect(body.financials).toHaveProperty('balance_due');
+    expect(Number(body.financials.grand_total)).toBeGreaterThanOrEqual(0);
+
+    // ── Verify: Reservation status changed to CHECKED_OUT ─────
+    const detailRes = await request.get(`/api/reservations/${reservation.reservation_code}`);
+    expect(detailRes.status()).toBe(200);
+    const detail = await detailRes.json();
+    expect(detail.data.reservation_status).toBe('CHECKED_OUT');
+
+    // ── Verify: Status history has CHECKED_IN → CHECKED_OUT ───
+    const history = detail.data.status_history || [];
+    const checkoutEntry = history.find(
+      h => h.old_status === 'CHECKED_IN' && h.new_status === 'CHECKED_OUT'
+    );
+    expect(checkoutEntry).toBeTruthy();
+    expect(checkoutEntry.change_reason).toBe('Guest checked out');
+
+    // ── Verify: Housekeeping task auto-created (CLEANING/HIGH) ─
+    const hkRes = await request.get('/api/housekeeping', {
+      params: { hotel_id: SEED.hotel.id },
+    });
+    expect(hkRes.status()).toBe(200);
+    const hkBody = await hkRes.json();
+    const autoTask = hkBody.data?.find(
+      t => t.task_type === 'CLEANING' && t.priority_level === 'HIGH'
+    );
+    expect(autoTask).toBeTruthy();
   });
 
-  test('POST /checkout — already checked out → 409', async ({ request }) => {
+  test('POST /checkout — not in CHECKED_IN status → 409', async ({ request }) => {
     if (!reservation) return test.skip();
+    // Already CHECKED_OUT, attempt again
     const res = await request.post(`/api/reservations/${reservation.reservation_id}/checkout`, {
       data: { agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(409);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/not in CHECKED_IN/i);
+  });
+
+  test('POST /checkout — invalid reservation ID → 400', async ({ request }) => {
+    const res = await request.post('/api/reservations/not-a-number/checkout', {
+      data: { agent_id: SEED.staff.id },
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  test('POST /checkout — nonexistent ID → 409', async ({ request }) => {
+    const res = await request.post('/api/reservations/999999/checkout', {
+      data: { agent_id: SEED.staff.id },
+    });
+    expect(res.status()).toBe(409);
+    const body = await res.json();
+    expect(body.success).toBe(false);
   });
 
   // ── POST /reservations/:id/guest-cancel ───────────────────
