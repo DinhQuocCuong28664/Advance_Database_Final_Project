@@ -244,3 +244,38 @@
   color: var(--text-soft);
   font-style: italic;
 }
+
+/* ═══════════════════════════════════════════════
+   Room Feature Pills (HotelPage room cards)
+═══════════════════════════════════════════════ */
+.room-feature-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+.room-feature-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 99px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+.room-feature-pill:hover { background: #e2e8f0; }
+.room-feature-pill--premium {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+.room-feature-pill--premium:hover { background: #fde68a; }
+.room-feature-pill--more {
+  background: transparent;
+  color: #1a7a8a;
+  font-weight: 700;
+}

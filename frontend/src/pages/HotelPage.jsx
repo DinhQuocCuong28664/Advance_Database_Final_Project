@@ -55,6 +55,22 @@ function RoomCard({ room, checkin, checkout, hotelId, onSelect }) {
               {room.availability_status || 'OPEN'}
             </strong>
           </p>
+          {/* SQL Room Features */}
+          {room.sql_features?.length > 0 && (
+            <div className="room-feature-pills">
+              {room.sql_features.slice(0, 6).map(f => (
+                <span key={f.code} className={`room-feature-pill ${f.is_premium ? 'room-feature-pill--premium' : ''}`}
+                  title={f.value || f.name}>
+                  {f.is_premium && '⭐ '}{f.name}
+                </span>
+              ))}
+              {room.sql_features.length > 6 && (
+                <span className="room-feature-pill room-feature-pill--more">
+                  +{room.sql_features.length - 6} more
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="room-card-price-block">
           {nightlyRate > 0 ? (

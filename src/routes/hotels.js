@@ -94,6 +94,28 @@ router.get('/:id', async (req, res) => {
                  rt.room_size_sqm, rt.view_type
       `);
 
+    // SQL: room features (per room type)
+    const roomFeatures = await pool.request()
+      .input('hotelId2', sql.BigInt, hotelId)
+      .query(`
+        SELECT rf.room_type_id, rf.feature_code, rf.feature_name,
+               rf.feature_category, rf.feature_value, rf.is_premium
+        FROM RoomFeature rf
+        JOIN RoomType rt ON rf.room_type_id = rt.room_type_id
+        WHERE rt.hotel_id = @hotelId2
+        ORDER BY rf.is_premium DESC, rf.feature_category, rf.feature_name
+      `);
+    // Group by room_type_id
+    const featuresByType = {};
+    roomFeatures.recordset.forEach(f => {
+      if (!featuresByType[f.room_type_id]) featuresByType[f.room_type_id] = [];
+      featuresByType[f.room_type_id].push({
+        code: f.feature_code, name: f.feature_name,
+        category: f.feature_category, value: f.feature_value,
+        is_premium: f.is_premium,
+      });
+    });
+
     // SQL: amenities (operational)
     const amenities = await pool.request()
       .input('hotelId', sql.BigInt, hotelId)
@@ -161,6 +183,7 @@ router.get('/:id', async (req, res) => {
       ...rt,
       description: rtMap[rt.room_type_code]?.description || null,
       features: rtMap[rt.room_type_code]?.features || null,
+      sql_features: featuresByType[rt.room_type_id] || [],
       images: rtMap[rt.room_type_code]?.images || [],
       highlight: rtMap[rt.room_type_code]?.highlight || null,
     }));
