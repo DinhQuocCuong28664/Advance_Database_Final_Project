@@ -15,6 +15,7 @@ import AdminPromotions from './admin/AdminPromotions';
 import AdminPayments  from './admin/AdminPayments';
 import AdminRates     from './admin/AdminRates';
 import AdminTimeline  from './admin/AdminTimeline';
+import AdminLocationChannels from './admin/AdminLocationChannels';
 import AdminReports   from './admin/AdminReports';
 import ToastContainer from '../components/layout/ToastContainer';
 
@@ -24,12 +25,13 @@ const ADMIN_TABS = [
   { key: 'housekeeping', label: '🧹 Housekeeping', note: 'Cleaning tasks, assignments, and room status' },
   { key: 'maintenance', label: '🔧 Maintenance', note: 'Issue tracking, repairs, and room status' },
   { key: 'invoice', label: '📋 Invoices', note: 'Generate and issue guest invoices' },
-  { key: 'rates',      label: '💰 Rates',      note: 'Manage nightly room rates with Price Guard protection' },
+  { key: 'rates', label: '💰 Rates', note: 'Manage nightly room rates with Price Guard protection' },
   { key: 'promotions', label: '🎁 Promotions', note: 'Create and manage hotel promotions & offers' },
+  { key: 'channels', label: '🌐 Channels', note: 'Booking channel stats and location hierarchy tree' },
   { key: 'payments', label: '💳 Payments', note: 'Payment history, filters and transaction review' },
   { key: 'accounts', label: '👤 Accounts', note: 'System and guest login management' },
   { key: 'timeline', label: '📋 Timeline', note: 'Reservation status audit trail and history' },
-  { key: 'reports',  label: '📊 Reports',  note: 'KPIs, exports, and revenue analytics' },
+  { key: 'reports', label: '📊 Reports', note: 'KPIs, exports, and revenue analytics' },
 ];
 
 export default function AdminPage() {
@@ -164,6 +166,7 @@ const [brandRevenueData, setBrandRevenueData] = useState([]);
         {activeTab === 'invoice'      ? <AdminInvoice hotels={hotels} /> : null}
         {activeTab === 'rates'        ? <AdminRates hotels={hotels} /> : null}
         {activeTab === 'promotions'   ? <AdminPromotions hotels={hotels} /> : null}
+        {activeTab === 'channels'   ? <AdminLocationChannels /> : null}
         {activeTab === 'payments'   ? <AdminPayments hotels={hotels} /> : null}
         {activeTab === 'accounts' ? (
           <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />

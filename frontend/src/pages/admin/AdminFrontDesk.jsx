@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import AdditionalGuests from './AdditionalGuests';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
 import { useAuth } from '../../context/AuthContext';

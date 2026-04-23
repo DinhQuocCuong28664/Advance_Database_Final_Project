@@ -636,4 +636,92 @@ router.get('/history', async (req, res) => {
   }
 });
 
+
+// ═══════════════════════════════════════════════
+// GET /api/admin/channels
+// BookingChannel list + reservation/revenue stats
+// ═══════════════════════════════════════════════
+router.get('/channels', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const result = await pool.request().query(`
+      SELECT
+        bc.booking_channel_id, bc.channel_code, bc.channel_name,
+        bc.channel_type, bc.commission_percent, bc.contact_email, bc.status,
+        COUNT(r.reservation_id)     AS total_reservations,
+        COUNT(CASE WHEN r.reservation_status NOT IN ('CANCELLED','NO_SHOW') THEN 1 END) AS active_reservations,
+        SUM(rr.final_amount)        AS total_revenue,
+        AVG(rr.nightly_rate_snapshot) AS avg_nightly_rate
+      FROM BookingChannel bc
+      LEFT JOIN Reservation r  ON bc.booking_channel_id = r.booking_channel_id
+      LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+      GROUP BY bc.booking_channel_id, bc.channel_code, bc.channel_name,
+               bc.channel_type, bc.commission_percent, bc.contact_email, bc.status
+      ORDER BY total_reservations DESC
+    `);
+
+    const totalRev = result.recordset.reduce((s, r) => s + (Number(r.total_revenue) || 0), 0);
+    const data = result.recordset.map(r => ({
+      ...r,
+      revenue_share_pct: totalRev > 0
+        ? ((Number(r.total_revenue) || 0) / totalRev * 100).toFixed(1)
+        : '0.0',
+    }));
+
+    res.json({ success: true, count: data.length, total_revenue: totalRev, data });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════
+// GET /api/admin/location-tree
+// Full location hierarchy with hotel counts
+// Uses Recursive CTE (from Location table)
+// ═══════════════════════════════════════════════
+router.get('/location-tree', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const result = await pool.request().query(`
+      WITH LocationTree AS (
+        SELECT location_id, parent_location_id, location_code,
+               location_name, location_type, level, iso_code, 0 AS depth
+        FROM Location WHERE parent_location_id IS NULL
+        UNION ALL
+        SELECT c.location_id, c.parent_location_id, c.location_code,
+               c.location_name, c.location_type, c.level, c.iso_code, p.depth + 1
+        FROM Location c
+        INNER JOIN LocationTree p ON c.parent_location_id = p.location_id
+      )
+      SELECT
+        lt.location_id, lt.parent_location_id, lt.location_code,
+        lt.location_name, lt.location_type, lt.level AS schema_level,
+        lt.depth AS tree_depth, lt.iso_code,
+        COUNT(h.hotel_id) AS hotel_count
+      FROM LocationTree lt
+      LEFT JOIN Hotel h ON h.city_location_id = lt.location_id
+      GROUP BY lt.location_id, lt.parent_location_id, lt.location_code,
+               lt.location_name, lt.location_type, lt.level, lt.iso_code, lt.depth
+      ORDER BY lt.depth, lt.location_name
+    `);
+
+    // Build nested tree structure
+    const rows = result.recordset;
+    const map = {};
+    rows.forEach(r => { map[r.location_id] = { ...r, children: [] }; });
+    const roots = [];
+    rows.forEach(r => {
+      if (r.parent_location_id && map[r.parent_location_id]) {
+        map[r.parent_location_id].children.push(map[r.location_id]);
+      } else {
+        roots.push(map[r.location_id]);
+      }
+    });
+
+    res.json({ success: true, count: rows.length, data: roots });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

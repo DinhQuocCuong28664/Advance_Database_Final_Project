@@ -1084,4 +1084,117 @@ router.post('/:id/transfer', async (req, res) => {
   }
 });
 
+
+// ═══════════════════════════════════════════════
+// GET /api/reservations/:id/guests
+// List additional guests for a reservation
+// ═══════════════════════════════════════════════
+router.get('/:id/guests', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const resvId = parseInt(req.params.id);
+    if (isNaN(resvId)) return res.status(400).json({ success: false, error: 'Invalid reservation ID' });
+
+    const result = await pool.request()
+      .input('resvId', sql.BigInt, resvId)
+      .query(`
+        SELECT rg.*, g.email AS linked_email, g.guest_code
+        FROM ReservationGuest rg
+        LEFT JOIN Guest g ON rg.guest_id = g.guest_id
+        WHERE rg.reservation_id = @resvId
+        ORDER BY rg.is_primary_guest DESC, rg.created_at ASC
+      `);
+
+    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════
+// POST /api/reservations/:id/guests
+// Add an additional guest to a reservation
+// Body: full_name, age_category, nationality_country_code, document_type, document_no, special_note
+// ═══════════════════════════════════════════════
+router.post('/:id/guests', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const resvId = parseInt(req.params.id);
+    if (isNaN(resvId)) return res.status(400).json({ success: false, error: 'Invalid reservation ID' });
+
+    const {
+      full_name, age_category = 'ADULT',
+      nationality_country_code = null,
+      document_type = null, document_no = null,
+      special_note = null,
+    } = req.body;
+
+    if (!full_name?.trim()) {
+      return res.status(400).json({ success: false, error: 'full_name is required' });
+    }
+    const validAges = ['ADULT', 'CHILD', 'INFANT'];
+    if (!validAges.includes(age_category.toUpperCase())) {
+      return res.status(400).json({ success: false, error: 'age_category must be ADULT, CHILD, or INFANT' });
+    }
+
+    // Check reservation exists
+    const check = await pool.request()
+      .input('resvId', sql.BigInt, resvId)
+      .query('SELECT reservation_id FROM Reservation WHERE reservation_id = @resvId');
+    if (!check.recordset.length) return res.status(404).json({ success: false, error: 'Reservation not found' });
+
+    const insert = await pool.request()
+      .input('resvId',      sql.BigInt,     resvId)
+      .input('fullName',    sql.NVarChar(220), full_name.trim())
+      .input('ageCat',      sql.VarChar(10),   age_category.toUpperCase())
+      .input('natCode',     sql.Char(2),        nationality_country_code)
+      .input('docType',     sql.VarChar(30),    document_type)
+      .input('docNo',       sql.VarChar(80),    document_no)
+      .input('note',        sql.NVarChar(255),  special_note)
+      .query(`
+        INSERT INTO ReservationGuest
+          (reservation_id, full_name, is_primary_guest, age_category,
+           nationality_country_code, document_type, document_no, special_note)
+        OUTPUT INSERTED.*
+        VALUES (@resvId, @fullName, 0, @ageCat, @natCode, @docType, @docNo, @note)
+      `);
+
+    res.json({ success: true, data: insert.recordset[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════
+// DELETE /api/reservations/:id/guests/:guestId
+// Remove an additional guest (non-primary only)
+// ═══════════════════════════════════════════════
+router.delete('/:id/guests/:guestId', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const resvId   = parseInt(req.params.id);
+    const guestRowId = parseInt(req.params.guestId);
+    if (isNaN(resvId) || isNaN(guestRowId)) {
+      return res.status(400).json({ success: false, error: 'Invalid IDs' });
+    }
+
+    // Cannot delete primary guest
+    const check = await pool.request()
+      .input('id', sql.BigInt, guestRowId)
+      .input('resvId', sql.BigInt, resvId)
+      .query('SELECT is_primary_guest FROM ReservationGuest WHERE reservation_guest_id = @id AND reservation_id = @resvId');
+
+    if (!check.recordset.length) return res.status(404).json({ success: false, error: 'Guest record not found' });
+    if (check.recordset[0].is_primary_guest) return res.status(400).json({ success: false, error: 'Cannot remove the primary guest' });
+
+    await pool.request()
+      .input('id', sql.BigInt, guestRowId)
+      .query('DELETE FROM ReservationGuest WHERE reservation_guest_id = @id');
+
+    res.json({ success: true, message: 'Additional guest removed' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
