@@ -2141,3 +2141,168 @@
 .chan-share-bar  { height: 6px; border-radius: 99px; background: linear-gradient(90deg, #143d42, #1a7a8a); min-width: 2px; }
 .chan-share-label { font-size: 0.78rem; font-weight: 700; color: #143d42; white-space: nowrap; }
 .chan-name { font-weight: 600; color: #0f2830; }
+
+/* ═══════════════════════════════════════════════
+   AdminAccounts — Premium Account Management UI
+═══════════════════════════════════════════════ */
+
+/* KPI Strip */
+.acct-kpi-strip {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 16px 20px;
+  background: #faf8f5;
+  border: 1.5px solid #e8e3dc;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.acct-kpi { display: flex; flex-direction: column; gap: 2px; }
+.acct-kpi-num { font-size: 1.6rem; font-weight: 800; color: #0f2830; line-height: 1; }
+.acct-kpi-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .06em; color: #9aabb0; font-weight: 600; }
+
+/* Toolbar */
+.acct-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  justify-content: space-between;
+}
+.acct-section-toggle { display: flex; gap: 8px; }
+.acct-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* Account List */
+.acct-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1.5px solid #e8e3dc;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Account Row */
+.acct-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f0ebe4;
+  background: #fff;
+  transition: background 0.12s;
+}
+.acct-row:last-child { border-bottom: none; }
+.acct-row:hover { background: #fdf9f5; }
+.acct-row--busy { opacity: 0.65; pointer-events: none; }
+
+/* Avatar */
+.acct-row-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  color: #fff;
+}
+.acct-row-avatar--system { background: linear-gradient(135deg, #143d42, #1a7a8a); }
+.acct-row-avatar--guest  { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+
+/* Row Info */
+.acct-row-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.acct-row-name {
+  font-weight: 700;
+  color: #0f2830;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.acct-row-meta {
+  font-size: 0.77rem;
+  color: var(--text-soft, #888);
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.acct-row-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+/* Status Pill */
+.acct-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+
+/* Tier Badge */
+.acct-tier-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* VIP + Self badges */
+.acct-vip-badge {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  color: #78350f;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-radius: 99px;
+  padding: 2px 7px;
+}
+.acct-self-badge {
+  background: #143d42;
+  color: #fff;
+  font-size: 0.62rem;
+  border-radius: 99px;
+  padding: 2px 7px;
+  font-weight: 700;
+}
+
+/* Last Login */
+.acct-last-login { font-size: 0.7rem; color: #bbb; }
+
+/* Quick Actions */
+.acct-quick-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.acct-action-btn {
+  background: #f8f8f8;
+  border: 1.5px solid #e8e3dc;
+  color: #666;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.acct-action-btn:hover:not(:disabled) { background: #f0ebe4; border-color: #ccc; }
+.acct-action-btn--active {
+  font-weight: 800;
+  cursor: default;
+}
+.acct-action-btn:disabled:not(.acct-action-btn--active) { opacity: 0.35; cursor: not-allowed; }
