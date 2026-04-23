@@ -215,4 +215,165 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════
+// GET /api/hotels/:id/features — List all RoomFeatures for a hotel
+// ═══════════════════════════════════════════════════════════
+router.get('/:id/features', async (req, res) => {
+  try {
+    const hotelId = parseInt(req.params.id, 10);
+    if (isNaN(hotelId)) {
+      return res.status(400).json({ success: false, error: 'Invalid hotel ID' });
+    }
+    const pool = getSqlPool();
+
+    // Verify hotel exists
+    const hotelCheck = await pool.request()
+      .input('hid', sql.BigInt, hotelId)
+      .query('SELECT hotel_id FROM Hotel WHERE hotel_id = @hid');
+    if (hotelCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Hotel not found' });
+    }
+
+    const result = await pool.request()
+      .input('hid', sql.BigInt, hotelId)
+      .query(`
+        SELECT rf.room_feature_id, rf.room_type_id, rf.room_id,
+               rf.feature_code, rf.feature_name, rf.feature_category,
+               rf.feature_value, rf.is_premium, rf.created_at,
+               rt.room_type_name, rt.room_type_code
+        FROM RoomFeature rf
+        LEFT JOIN RoomType rt ON rf.room_type_id = rt.room_type_id
+        WHERE rt.hotel_id = @hid OR rf.room_id IN (
+          SELECT room_id FROM Room WHERE hotel_id = @hid
+        )
+        ORDER BY rf.is_premium DESC, rf.feature_category, rf.feature_name
+      `);
+
+    res.json({
+      success: true,
+      hotel_id: hotelId,
+      count: result.recordset.length,
+      data: result.recordset,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// POST /api/hotels/:id/features — Add a RoomFeature
+// ═══════════════════════════════════════════════════════════
+const VALID_FEATURE_CATEGORIES = ['VIEW', 'BED', 'BATH', 'TECH', 'AMENITY', 'SPACE'];
+
+router.post('/:id/features', async (req, res) => {
+  try {
+    const hotelId = parseInt(req.params.id, 10);
+    if (isNaN(hotelId)) {
+      return res.status(400).json({ success: false, error: 'Invalid hotel ID' });
+    }
+
+    const { room_type_id, room_id, feature_code, feature_name, feature_category, feature_value, is_premium } = req.body;
+
+    // Validate required fields
+    if (!feature_code || !feature_name) {
+      return res.status(400).json({ success: false, error: 'feature_code and feature_name are required' });
+    }
+    if (!room_type_id && !room_id) {
+      return res.status(400).json({ success: false, error: 'room_type_id or room_id is required' });
+    }
+    if (feature_category && !VALID_FEATURE_CATEGORIES.includes(feature_category)) {
+      return res.status(400).json({
+        success: false,
+        error: `feature_category must be one of: ${VALID_FEATURE_CATEGORIES.join(', ')}`,
+      });
+    }
+
+    const pool = getSqlPool();
+
+    // Verify hotel exists
+    const hotelCheck = await pool.request()
+      .input('hid', sql.BigInt, hotelId)
+      .query('SELECT hotel_id FROM Hotel WHERE hotel_id = @hid');
+    if (hotelCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Hotel not found' });
+    }
+
+    // Verify room_type belongs to this hotel if provided
+    if (room_type_id) {
+      const rtCheck = await pool.request()
+        .input('rtid', sql.BigInt, room_type_id)
+        .input('hid', sql.BigInt, hotelId)
+        .query('SELECT room_type_id FROM RoomType WHERE room_type_id = @rtid AND hotel_id = @hid');
+      if (rtCheck.recordset.length === 0) {
+        return res.status(404).json({ success: false, error: 'RoomType not found for this hotel' });
+      }
+    }
+
+    const insertResult = await pool.request()
+      .input('rtid',     sql.BigInt,       room_type_id || null)
+      .input('rid',      sql.BigInt,       room_id || null)
+      .input('code',     sql.VarChar(50),  feature_code)
+      .input('name',     sql.NVarChar(150),feature_name)
+      .input('cat',      sql.VarChar(50),  feature_category || null)
+      .input('val',      sql.NVarChar(255),feature_value || null)
+      .input('premium',  sql.Bit,          is_premium ? 1 : 0)
+      .query(`
+        INSERT INTO RoomFeature
+          (room_type_id, room_id, feature_code, feature_name, feature_category, feature_value, is_premium)
+        OUTPUT INSERTED.*
+        VALUES (@rtid, @rid, @code, @name, @cat, @val, @premium)
+      `);
+
+    res.status(201).json({
+      success: true,
+      message: 'Room feature created',
+      data: insertResult.recordset[0],
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// DELETE /api/hotels/:id/features/:fid — Remove a RoomFeature
+// ═══════════════════════════════════════════════════════════
+router.delete('/:id/features/:fid', async (req, res) => {
+  try {
+    const hotelId  = parseInt(req.params.id, 10);
+    const featureId = parseInt(req.params.fid, 10);
+
+    if (isNaN(hotelId) || isNaN(featureId)) {
+      return res.status(400).json({ success: false, error: 'Invalid hotel or feature ID' });
+    }
+
+    const pool = getSqlPool();
+
+    // Verify feature belongs to this hotel (via room_type or room)
+    const check = await pool.request()
+      .input('fid', sql.BigInt, featureId)
+      .input('hid', sql.BigInt, hotelId)
+      .query(`
+        SELECT rf.room_feature_id
+        FROM RoomFeature rf
+        LEFT JOIN RoomType rt ON rf.room_type_id = rt.room_type_id
+        LEFT JOIN Room r ON rf.room_id = r.room_id
+        WHERE rf.room_feature_id = @fid
+          AND (rt.hotel_id = @hid OR r.hotel_id = @hid)
+      `);
+
+    if (check.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Room feature not found for this hotel' });
+    }
+
+    await pool.request()
+      .input('fid', sql.BigInt, featureId)
+      .query('DELETE FROM RoomFeature WHERE room_feature_id = @fid');
+
+    res.json({ success: true, message: 'Room feature deleted', room_feature_id: featureId });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
+

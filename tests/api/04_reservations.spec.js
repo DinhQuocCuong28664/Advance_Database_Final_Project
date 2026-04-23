@@ -18,6 +18,7 @@ const { SEED, DATES, futureDate } = require('./helpers');
 let reservation = null;       // created in first test, used by all
 let cancelReservation = null; // for guest-cancel test
 let hotelCancelReservation = null; // for hotel-cancel test
+let guestToken = null;        // JWT for guest-cancel (requires auth)
 
 // ─────────────────────────────────────────────────────────────
 // Helper: find an available room for the given hotel + dates
@@ -228,6 +229,14 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     const room = await findAvailableRoom(request, SEED.hotel.id, cin, cout);
     if (!room) return test.skip();
 
+    // Get guest JWT token (guest-cancel requires requireAuth)
+    if (!guestToken) {
+      const loginRes = await request.post('/api/auth/guest/login', {
+        data: { login: SEED.guestLogin2.email, password: SEED.guestLogin2.password },
+      });
+      if (loginRes.status() === 200) guestToken = (await loginRes.json()).token;
+    }
+
     const res = await request.post('/api/reservations', {
       data: {
         hotel_id: SEED.hotel.id,
@@ -245,19 +254,27 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
 
   test('POST /reservations/:id/guest-cancel — cancel and forfeit deposit', async ({ request }) => {
     if (!cancelReservation) return test.skip();
+    // guest-cancel requires Bearer token (requireAuth middleware)
+    const headers = guestToken ? { Authorization: `Bearer ${guestToken}` } : {};
     const res = await request.post(`/api/reservations/${cancelReservation.reservation_id}/guest-cancel`, {
+      headers,
       data: { reason: 'Change of travel plans - Playwright test' },
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.data.reservation_status).toBe('CANCELLED');
+    // Response uses data.new_status (not data.reservation_status)
+    expect(body.data.new_status).toBe('CANCELLED');
+    expect(body.data.cancelled_by).toBe('GUEST');
+    expect(body.data.refund_amount).toBe(0); // deposit forfeited
   });
 
   test('POST /guest-cancel — not in CONFIRMED → 409', async ({ request }) => {
     if (!cancelReservation) return test.skip();
-    // Already cancelled, try again
+    // Already cancelled, try again (still needs auth)
+    const headers = guestToken ? { Authorization: `Bearer ${guestToken}` } : {};
     const res = await request.post(`/api/reservations/${cancelReservation.reservation_id}/guest-cancel`, {
+      headers,
       data: { reason: 'Again' },
     });
     expect(res.status()).toBe(409);
@@ -285,15 +302,37 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     if (res.status() === 201) hotelCancelReservation = (await res.json()).data;
   });
 
-  test('POST /reservations/:id/hotel-cancel — cancel by hotel', async ({ request }) => {
+  test('POST /reservations/:id/hotel-cancel — full cancellation lifecycle', async ({ request }) => {
     if (!hotelCancelReservation) return test.skip();
     const res = await request.post(`/api/reservations/${hotelCancelReservation.reservation_id}/hotel-cancel`, {
       data: { reason: 'Room issue - Playwright test', agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
+
+    // ── Response shape ─────────────────────────────────
     expect(body.success).toBe(true);
-    expect(body.data.reservation_status).toBe('CANCELLED');
+    expect(body.message).toMatch(/cancelled by hotel/i);
+    // Response uses data.new_status (not data.reservation_status)
+    expect(body.data.new_status).toBe('CANCELLED');
+    expect(body.data.old_status).toBe('CONFIRMED');
+    expect(body.data.cancelled_by).toBe('HOTEL');
+    expect(body.data.reason).toBe('Room issue - Playwright test');
+    expect(body.data.reservation_id).toBe(hotelCancelReservation.reservation_id);
+    expect(body.data).toHaveProperty('refund_amount');
+
+    // ── Verify: reservation now CANCELLED via GET ─────────
+    const detailRes = await request.get(`/api/reservations/${hotelCancelReservation.reservation_code}`);
+    expect(detailRes.status()).toBe(200);
+    const detail = (await detailRes.json()).data;
+    expect(detail.reservation_status).toBe('CANCELLED');
+
+    // ── Verify: status history has CONFIRMED → CANCELLED with reason ─
+    const hcEntry = detail.status_history?.find(
+      h => h.old_status === 'CONFIRMED' && h.new_status === 'CANCELLED'
+    );
+    expect(hcEntry).toBeTruthy();
+    expect(hcEntry.change_reason).toMatch(/HOTEL CANCEL/i);
   });
 
   test('POST /hotel-cancel — missing reason → 400', async ({ request }) => {
@@ -302,6 +341,35 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
       data: { agent_id: 1 }, // missing reason
     });
     expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/reason/i);
+  });
+
+  test('POST /hotel-cancel — already CANCELLED → 409', async ({ request }) => {
+    if (!hotelCancelReservation) return test.skip();
+    // Already cancelled above, try again
+    const res = await request.post(`/api/reservations/${hotelCancelReservation.reservation_id}/hotel-cancel`, {
+      data: { reason: 'Duplicate cancel attempt', agent_id: SEED.staff.id },
+    });
+    expect(res.status()).toBe(409);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/Cannot cancel/i);
+  });
+
+  test('POST /hotel-cancel — invalid ID → 400', async ({ request }) => {
+    const res = await request.post('/api/reservations/not-a-number/hotel-cancel', {
+      data: { reason: 'test', agent_id: 1 },
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  test('POST /hotel-cancel — nonexistent reservation → 404', async ({ request }) => {
+    const res = await request.post('/api/reservations/999999/hotel-cancel', {
+      data: { reason: 'test', agent_id: 1 },
+    });
+    expect(res.status()).toBe(404);
   });
 
   // ── POST /reservations/:id/transfer ───────────────────────
