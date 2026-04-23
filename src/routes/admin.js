@@ -462,4 +462,93 @@ router.put('/availability/:id', async (req, res) => {
   }
 });
 
+
+// ═══════════════════════════════════════════════
+// GET /api/admin/rates?hotel_id=&date_from=&date_to=&room_type_id=
+// List RoomRate rows for rate management UI
+// ═══════════════════════════════════════════════
+router.get('/rates', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const { hotel_id, date_from, date_to, room_type_id, limit = 300 } = req.query;
+
+    const request = pool.request();
+    const conditions = [];
+
+    if (hotel_id) {
+      request.input('hotelId', sql.BigInt, parseInt(hotel_id));
+      conditions.push('h.hotel_id = @hotelId');
+    }
+    if (date_from) {
+      request.input('dateFrom', sql.Date, new Date(date_from));
+      conditions.push('rr.rate_date >= @dateFrom');
+    }
+    if (date_to) {
+      request.input('dateTo', sql.Date, new Date(date_to));
+      conditions.push('rr.rate_date <= @dateTo');
+    }
+    if (room_type_id) {
+      request.input('roomTypeId', sql.BigInt, parseInt(room_type_id));
+      conditions.push('rt.room_type_id = @roomTypeId');
+    }
+
+    request.input('limit', sql.Int, parseInt(limit));
+    const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    const result = await request.query(`
+      SELECT TOP (@limit)
+        rr.room_rate_id, rr.rate_date,
+        rr.base_rate, rr.final_rate, rr.currency_code,
+        rr.price_source, rr.is_override, rr.updated_at,
+        rt.room_type_id, rt.room_type_name,
+        h.hotel_id, h.hotel_name,
+        -- Check if there's a recent alert for this rate
+        (SELECT COUNT(*) FROM RateChangeLog rcl
+         WHERE rcl.room_rate_id = rr.room_rate_id
+           AND rcl.alert_triggered = 1) AS alert_count
+      FROM RoomRate rr
+      JOIN RoomType rt ON rr.room_type_id = rt.room_type_id
+      JOIN Hotel h     ON rt.hotel_id     = h.hotel_id
+      ${whereClause}
+      ORDER BY rr.rate_date ASC, rt.room_type_name ASC
+    `);
+
+    // Group by room_type for easier frontend rendering
+    const rates = result.recordset;
+    const byRoomType = rates.reduce((acc, r) => {
+      const key = r.room_type_id;
+      if (!acc[key]) {
+        acc[key] = {
+          room_type_id: r.room_type_id,
+          room_type_name: r.room_type_name,
+          hotel_id: r.hotel_id,
+          hotel_name: r.hotel_name,
+          currency_code: r.currency_code,
+          rates: [],
+        };
+      }
+      acc[key].rates.push({
+        room_rate_id: r.room_rate_id,
+        rate_date: r.rate_date,
+        base_rate: r.base_rate,
+        final_rate: r.final_rate,
+        is_override: r.is_override,
+        price_source: r.price_source,
+        updated_at: r.updated_at,
+        alert_count: r.alert_count,
+      });
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      count: rates.length,
+      room_types: Object.values(byRoomType),
+      data: rates,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

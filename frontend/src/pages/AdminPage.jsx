@@ -13,6 +13,7 @@ import AdminInvoice from './admin/AdminInvoice';
 import AdminMaintenance from './admin/AdminMaintenance';
 import AdminPromotions from './admin/AdminPromotions';
 import AdminPayments  from './admin/AdminPayments';
+import AdminRates     from './admin/AdminRates';
 import AdminReports   from './admin/AdminReports';
 import ToastContainer from '../components/layout/ToastContainer';
 
@@ -22,6 +23,7 @@ const ADMIN_TABS = [
   { key: 'housekeeping', label: '🧹 Housekeeping', note: 'Cleaning tasks, assignments, and room status' },
   { key: 'maintenance', label: '🔧 Maintenance', note: 'Issue tracking, repairs, and room status' },
   { key: 'invoice', label: '📋 Invoices', note: 'Generate and issue guest invoices' },
+  { key: 'rates',      label: '💰 Rates',      note: 'Manage nightly room rates with Price Guard protection' },
   { key: 'promotions', label: '🎁 Promotions', note: 'Create and manage hotel promotions & offers' },
   { key: 'payments', label: '💳 Payments', note: 'Payment history, filters and transaction review' },
   { key: 'accounts', label: '👤 Accounts', note: 'System and guest login management' },
@@ -155,6 +157,7 @@ export default function AdminPage() {
         {activeTab === 'housekeeping' ? <AdminHousekeeping hotels={hotels} /> : null}
         {activeTab === 'maintenance'  ? <AdminMaintenance hotels={hotels} /> : null}
         {activeTab === 'invoice'      ? <AdminInvoice hotels={hotels} /> : null}
+        {activeTab === 'rates'        ? <AdminRates hotels={hotels} /> : null}
         {activeTab === 'promotions'   ? <AdminPromotions hotels={hotels} /> : null}
         {activeTab === 'payments'   ? <AdminPayments hotels={hotels} /> : null}
         {activeTab === 'accounts' ? (

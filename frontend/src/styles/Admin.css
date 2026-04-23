@@ -1650,3 +1650,151 @@
   color: var(--text-soft, #999);
   font-family: monospace;
 }
+
+/* ═══════════════════════════════════════════════
+   Rate Management Module
+═══════════════════════════════════════════════ */
+
+/* Alerts pill + panel */
+.rate-alerts-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1.5px solid #fcd34d;
+  border-radius: 99px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  align-self: center;
+}
+.rate-alerts-panel {
+  background: #fffbeb;
+  border: 1.5px solid #fcd34d;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.rate-alerts-title {
+  font-weight: 700;
+  color: #92400e;
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+.rate-alerts-list { display: flex; flex-direction: column; gap: 6px; }
+.rate-alert-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.83rem;
+  padding: 6px 0;
+  border-bottom: 1px dashed #fde68a;
+}
+.rate-alert-row:last-child { border-bottom: none; }
+.rate-alert-hotel { font-weight: 600; color: #1a1a1a; }
+.rate-alert-type  { color: #555; }
+.rate-alert-date  { color: #888; }
+.rate-alert-change { color: #b45309; font-weight: 600; }
+.rate-alert-change em { font-style: normal; font-weight: 400; color: #888; margin-left: 4px; }
+
+/* Rate type block */
+.rate-type-block {
+  margin-bottom: 32px;
+  border: 1.5px solid #e8e3dc;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.rate-type-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #f5f1eb;
+  border-bottom: 1px solid #e8e3dc;
+}
+.rate-type-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f2830;
+  margin: 0;
+}
+.rate-type-meta {
+  font-size: 0.78rem;
+  color: var(--text-soft, #888);
+}
+
+/* Rate grid table */
+.rate-grid-wrap { overflow-x: auto; }
+.rate-grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+.rate-grid-table th {
+  padding: 9px 14px;
+  text-align: left;
+  font-size: 0.71rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #4a6670;
+  background: #faf8f5;
+  border-bottom: 1.5px solid #e8e3dc;
+}
+.rate-grid-row { border-bottom: 1px solid #f0ebe4; transition: background 0.1s; }
+.rate-grid-row:last-child { border-bottom: none; }
+.rate-grid-row:hover { background: #fdf9f5; }
+.rate-grid-row--alert { background: #fffdf0; }
+.rate-grid-table td { padding: 9px 14px; vertical-align: middle; }
+
+.rate-date-cell   { color: #333; font-weight: 600; white-space: nowrap; }
+.rate-base-cell   { color: var(--text-soft, #888); font-variant-numeric: tabular-nums; }
+.rate-source-cell { color: #888; font-size: 0.77rem; }
+.rate-updated-cell{ color: #aaa; font-size: 0.77rem; }
+
+/* Inline rate cell */
+.rate-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  color: #0f2830;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px 8px;
+  transition: background 0.12s;
+  font-variant-numeric: tabular-nums;
+}
+.rate-cell:hover { background: #eef4f5; }
+.rate-cell--override { color: #1a7a8a; }
+.rate-cell--alert   { color: #b45309; }
+.rate-cell--saving  { color: #aaa; font-style: italic; padding: 3px 8px; }
+.rate-cell--editing { display: inline-block; }
+.rate-alert-dot { font-size: 0.8rem; }
+
+/* Edit input */
+.rate-input {
+  width: 110px;
+  border: 2px solid #143d42;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  outline: none;
+  background: #fff;
+  color: #0f2830;
+}
+.rate-input:focus { box-shadow: 0 0 0 3px rgba(20,61,66,0.12); }
+
+/* Badge */
+.rate-badge {
+  display: inline-block;
+  border-radius: 99px;
+  padding: 2px 9px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.rate-badge--override { background: #dbeafe; color: #1e40af; }
+.rate-badge--auto     { background: #f1f5f9; color: #475569; }
