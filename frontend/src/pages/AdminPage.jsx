@@ -43,6 +43,7 @@ export default function AdminPage() {
 
   const [reportSummary, setReportSummary] = useState(null);
   const [revenueData, setRevenueData] = useState([]);
+const [brandRevenueData, setBrandRevenueData] = useState([]);
   const [loadingReport, setLoadingReport] = useState(false);
 
   // Not logged in → login
@@ -59,13 +60,14 @@ export default function AdminPage() {
       setLoadingHotels(true);
       setLoadingReport(true);
       try {
-        const [hotelsPayload, alertsPayload, accountsPayload, summaryPayload, revenuePayload] =
+        const [hotelsPayload, alertsPayload, accountsPayload, summaryPayload, revenuePayload, brandRevenuePayload] =
           await Promise.all([
             apiRequest('/hotels'),
             apiRequest('/admin/rates/alerts').catch(() => ({ data: [] })),
             apiRequest('/admin/accounts').catch(() => ({ data: { system_users: [], guest_accounts: [] } })),
             apiRequest('/admin/reports/summary').catch(() => ({ data: null })),
             apiRequest('/admin/reports/revenue').catch(() => ({ data: [] })),
+            apiRequest('/admin/reports/revenue-by-brand').catch(() => ({ data: [] })),
           ]);
 
         setHotels(hotelsPayload.data || []);
@@ -73,6 +75,7 @@ export default function AdminPage() {
         setAccountSnapshot(accountsPayload.data || { system_users: [], guest_accounts: [] });
         setReportSummary(summaryPayload.data || null);
         setRevenueData(revenuePayload.data || []);
+        setBrandRevenueData(brandRevenuePayload.data || []);
       } catch (err) {
         setFlash({ tone: 'error', text: err.message });
       } finally {
@@ -164,7 +167,7 @@ export default function AdminPage() {
           <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
         ) : null}
         {activeTab === 'reports' ? (
-          <AdminReports reportSummary={reportSummary} revenueData={revenueData} loading={loadingReport} />
+          <AdminReports reportSummary={reportSummary} revenueData={revenueData} brandRevenueData={brandRevenueData} loading={loadingReport} />
         ) : null}
       <ToastContainer />
     </main>

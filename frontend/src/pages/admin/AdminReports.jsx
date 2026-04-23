@@ -9,7 +9,7 @@ function formatCurrency(value, currency = 'VND') {
   );
 }
 
-export default function AdminReports({ reportSummary, revenueData, loading }) {
+export default function AdminReports({ reportSummary, revenueData, brandRevenueData = [], loading }) {
   const { setFlash } = useFlash();
 
   function exportExcel() {
@@ -50,6 +50,21 @@ export default function AdminReports({ reportSummary, revenueData, loading }) {
         ]),
       ];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(revRows), 'Revenue Detail');
+    }
+
+
+    if (brandRevenueData.length) {
+      const brandRows = [
+        ['Chain', 'Brand', 'Hotel', 'Year', 'Q', 'Bookings', 'Revenue', 'Avg Rate/Night', 'Rank in Brand', 'Cumul. Brand Rev.', 'Chain Share %', 'Brand Share %'],
+        ...brandRevenueData.map((r) => [
+          r.chain_name, r.brand_name, r.hotel_name, r.year, r.quarter,
+          r.booking_count, Number(r.total_revenue), Number(r.avg_nightly_rate),
+          r.revenue_rank_in_brand, Number(r.cumulative_brand_revenue),
+          Number(r.revenue_share_in_chain_pct).toFixed(2) + '%',
+          Number(r.revenue_share_in_brand_pct).toFixed(2) + '%',
+        ]),
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(brandRows), 'Revenue by Brand');
     }
 
     XLSX.writeFile(wb, `LuxeReserve_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -243,6 +258,69 @@ export default function AdminReports({ reportSummary, revenueData, loading }) {
               </div>
             </div>
           )}
+
+
+          {/* Revenue by Brand (Chain → Brand → Hotel hierarchy + Window Functions) */}
+          {brandRevenueData.length > 0 && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <h3 className="report-table-title">
+                Revenue by Brand &amp; Chain
+                <span className="report-tag">Window Functions</span>
+                <span className="report-tag report-tag--blue">Hierarchy</span>
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginBottom: 10 }}>
+                HotelChain → Brand → Hotel · DENSE_RANK, cumulative revenue &amp; share % within brand and chain
+              </p>
+              <div className="report-table-scroll">
+                <table className="report-table">
+                  <thead>
+                    <tr>
+                      <th>Chain</th>
+                      <th>Brand</th>
+                      <th>Hotel</th>
+                      <th>Year</th>
+                      <th>Q</th>
+                      <th>Bookings</th>
+                      <th>Revenue</th>
+                      <th>Avg Rate/Night</th>
+                      <th title="DENSE_RANK within Brand">Rank in Brand</th>
+                      <th title="Cumulative revenue within Brand over time">Cumul. Brand Rev.</th>
+                      <th title="Revenue share % within entire Chain">Chain Share %</th>
+                      <th title="Revenue share % within Brand">Brand Share %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {brandRevenueData.map((row, i) => (
+                      <tr key={i}>
+                        <td><strong>{row.chain_name}</strong></td>
+                        <td>{row.brand_name}</td>
+                        <td>{row.hotel_name}</td>
+                        <td>{row.year}</td>
+                        <td>Q{row.quarter}</td>
+                        <td>{row.booking_count}</td>
+                        <td>{formatCurrency(row.total_revenue)}</td>
+                        <td>{formatCurrency(row.avg_nightly_rate)}</td>
+                        <td>
+                          <span className={`brand-rank-badge brand-rank-badge--${row.revenue_rank_in_brand <= 3 ? row.revenue_rank_in_brand : 'other'}`}>
+                            #{row.revenue_rank_in_brand}
+                          </span>
+                        </td>
+                        <td>{formatCurrency(row.cumulative_brand_revenue)}</td>
+                        <td>
+                          <span className="brand-share-bar-wrap" title={`${Number(row.revenue_share_in_chain_pct).toFixed(1)}% of chain`}>
+                            <span className="brand-share-bar" style={{ width: Math.min(Number(row.revenue_share_in_chain_pct), 100) + '%' }} />
+                            <span className="brand-share-label">{Number(row.revenue_share_in_chain_pct).toFixed(1)}%</span>
+                          </span>
+                        </td>
+                        <td>{Number(row.revenue_share_in_brand_pct).toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
         </>
       ) : (
         <p className="admin-empty">No report data available.</p>

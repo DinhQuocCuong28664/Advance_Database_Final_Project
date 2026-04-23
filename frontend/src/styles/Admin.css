@@ -1798,3 +1798,50 @@
 }
 .rate-badge--override { background: #dbeafe; color: #1e40af; }
 .rate-badge--auto     { background: #f1f5f9; color: #475569; }
+
+/* ═══════════════════════════════════════════════
+   Revenue by Brand section
+═══════════════════════════════════════════════ */
+.report-tag--blue {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* Rank badge */
+.brand-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.brand-rank-badge--1 { background: #fef08a; color: #713f12; }
+.brand-rank-badge--2 { background: #e2e8f0; color: #334155; }
+.brand-rank-badge--3 { background: #fed7aa; color: #7c2d12; }
+.brand-rank-badge--other { background: #f1f5f9; color: #64748b; }
+
+/* Share bar */
+.brand-share-bar-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 90px;
+}
+.brand-share-bar {
+  display: inline-block;
+  height: 6px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #143d42, #1a7a8a);
+  min-width: 2px;
+  flex-shrink: 0;
+  transition: width 0.3s;
+}
+.brand-share-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #143d42;
+  white-space: nowrap;
+}
