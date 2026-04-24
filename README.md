@@ -82,12 +82,18 @@ Run SQL scripts in order (located in `/database/sql/`):
 04_create_triggers.sql
 05_create_procedures.sql
 06_seed_data.sql
-07_seed_guests.sql
-08_seed_rooms.sql
-09_seed_reservations.sql
+07_auth_extension.sql
+08_demo_promotions.sql
+09_expand_network_seed.sql
 10_reset_accounts.sql
 11_email_verification.sql
+13_add_cashier_account.sql
+14_seed_service_catalog.sql
+15_seed_room_features.sql
+16_fix_admin_password.sql
 ```
+
+The current repo does not include a `12_*.sql` script.
 
 Seed MongoDB Atlas:
 ```bash
@@ -176,8 +182,8 @@ Frontend is at **http://localhost:5173** — proxies all `/api` requests to the 
 | Type | Login | Password |
 |---|---|---|
 | Admin | `admin` | `admin` |
+| Cashier | `cashier` | `cashier` |
 | Guest (dqc) | `dqc` | `dqc` |
-| Guest | `user` | `user` |
 
 ---
 
@@ -190,7 +196,7 @@ The system sends transactional emails via SMTP (Nodemailer):
 | Guest registration | OTP verification code |
 | Booking confirmed | Reservation code, dates, deposit paid |
 | Booking cancelled | Cancellation confirmation |
-| Check-in reminder | Sent before check-in date |
+| Check-in reminder | Mail template available; automatic scheduling is not wired yet |
 
 Configure `SMTP_*` variables in `.env` to activate.  
 Uses **fire-and-forget** — email failures never block the main API response.
@@ -251,7 +257,7 @@ HCSDLNC/
 │   ├── config/
 │   │   └── database.js         SQL + MongoDB connection pool
 │   ├── middleware/
-│   │   └── auth.js             JWT auth middleware (requireAuth, requireAdmin)
+│   │   └── auth.js             JWT auth middleware (requireAuth, requireSystemUser)
 │   ├── routes/
 │   │   ├── hotels.js
 │   │   ├── rooms.js
@@ -275,7 +281,7 @@ HCSDLNC/
 │       ├── context/            AuthContext, FlashContext (toast system)
 │       └── lib/api.js          Fetch wrapper with auth headers
 ├── database/
-│   ├── sql/                    SQL setup scripts (01–11)
+│   ├── sql/                    SQL setup scripts (01-16; no 12_*.sql in current repo)
 │   └── mongodb/                MongoDB seed scripts
 ├── .env                        Environment variables (not committed)
 └── NOTE.md                     Developer session notes

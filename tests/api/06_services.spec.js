@@ -117,8 +117,8 @@ test.describe('🛎️ Services API', () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.data.service_status).toBe('REQUESTED');
-    expect(body.data).toHaveProperty('order_id');
-    createdOrderId = body.data.order_id;
+    expect(body.data).toHaveProperty('reservation_service_id');
+    createdOrderId = body.data.reservation_service_id;
   });
 
   // ── GET /services/orders ───────────────────────────────────
@@ -180,7 +180,7 @@ test.describe('🛎️ Services API', () => {
     expect(res.status()).toBe(201);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.data.payment_type).toBe('INCIDENTAL_HOLD');
+    expect(body.data.payment.payment_type).toBe('INCIDENTAL_HOLD');
   });
 
   test('POST /services/orders/:id/pay — already paid → 400', async ({ request }) => {

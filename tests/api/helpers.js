@@ -17,10 +17,10 @@ const SEED = {
   ratePlan: { id: 1 },
   service: { id: 1 },         // A service in hotel 1
   staff: { id: 1 },           // SystemUser agent
-  admin: { username: 'admin', password: 'admin123' },
-  // Guest login credentials (actual GuestAuth login_email values in DB)
-  guestLogin:  { email: 'dqc',  password: 'guest12345' },
-  guestLogin2: { email: 'user', password: 'member12345' },
+  admin:      { username: 'admin',   password: 'admin'   },
+  cashier:    { username: 'cashier', password: 'cashier' },
+  // Guest login credentials currently available in seeded auth data
+  guestLogin: { email: 'dqc', password: 'dqc' },
 };
 
 // Future dates to avoid conflicts with existing data

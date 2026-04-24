@@ -232,15 +232,16 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     // Get guest JWT token (guest-cancel requires requireAuth)
     if (!guestToken) {
       const loginRes = await request.post('/api/auth/guest/login', {
-        data: { login: SEED.guestLogin2.email, password: SEED.guestLogin2.password },
+        data: { login: SEED.guestLogin.email, password: SEED.guestLogin.password },
       });
-      if (loginRes.status() === 200) guestToken = (await loginRes.json()).token;
+      expect(loginRes.status()).toBe(200);
+      guestToken = (await loginRes.json()).token;
     }
 
     const res = await request.post('/api/reservations', {
       data: {
         hotel_id: SEED.hotel.id,
-        guest_id: SEED.guest2.id,
+        guest_id: SEED.guest.id,
         room_id: room.room_id,
         checkin_date: cin,
         checkout_date: cout,

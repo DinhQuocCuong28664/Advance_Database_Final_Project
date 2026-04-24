@@ -12,9 +12,15 @@
 const { test, expect } = require('@playwright/test');
 const { SEED } = require('./helpers');
 
-let adminToken = null;
-let guestToken = null;
 const testEmail = `playwright_${Date.now()}@test.com`;
+
+async function loginAsAdmin(request) {
+  const res = await request.post('/api/auth/admin/login', {
+    data: { username: SEED.admin.username, password: SEED.admin.password },
+  });
+  expect(res.status()).toBe(200);
+  return (await res.json()).token;
+}
 
 test.describe('🔐 Auth API', () => {
 
@@ -28,7 +34,6 @@ test.describe('🔐 Auth API', () => {
     expect(body.success).toBe(true);
     expect(body.token).toBeTruthy();
     expect(body.user.user_type).toBe('SYSTEM_USER');
-    adminToken = body.token;
   });
 
   test('POST /auth/admin/login — wrong password → 401', async ({ request }) => {
@@ -60,9 +65,9 @@ test.describe('🔐 Auth API', () => {
     expect(res.status()).toBe(201);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.token).toBeTruthy();
-    expect(body.user.user_type).toBe('GUEST');
-    guestToken = body.token;
+    expect(body.verification_required).toBe(true);
+    expect(body.login_email).toBe(testEmail);
+    expect(body.message).toMatch(/verification code/i);
   });
 
   test('POST /auth/guest/register — duplicate email → 409', async ({ request }) => {
@@ -89,7 +94,7 @@ test.describe('🔐 Auth API', () => {
   // ── Guest Login ────────────────────────────────────────────
   test('POST /auth/guest/login — success', async ({ request }) => {
     const res = await request.post('/api/auth/guest/login', {
-      data: { login: testEmail, password: 'Test12345' },
+      data: { login: SEED.guestLogin.email, password: SEED.guestLogin.password },
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -100,7 +105,7 @@ test.describe('🔐 Auth API', () => {
 
   test('POST /auth/guest/login — wrong password → 401', async ({ request }) => {
     const res = await request.post('/api/auth/guest/login', {
-      data: { login: testEmail, password: 'wrongpass' },
+      data: { login: SEED.guestLogin.email, password: 'wrongpass' },
     });
     expect(res.status()).toBe(401);
   });
@@ -117,7 +122,7 @@ test.describe('🔐 Auth API', () => {
 
   test('POST /auth/login — guest via universal endpoint', async ({ request }) => {
     const res = await request.post('/api/auth/login', {
-      data: { login: testEmail, password: 'Test12345' },
+      data: { login: SEED.guestLogin.email, password: SEED.guestLogin.password },
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -131,6 +136,7 @@ test.describe('🔐 Auth API', () => {
 
   // ── GET /auth/me ───────────────────────────────────────────
   test('GET /auth/me — returns current admin user', async ({ request }) => {
+    const adminToken = await loginAsAdmin(request);
     const res = await request.get('/api/auth/me', {
       headers: { Authorization: `Bearer ${adminToken}` },
     });

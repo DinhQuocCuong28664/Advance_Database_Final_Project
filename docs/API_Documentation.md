@@ -98,6 +98,16 @@ Register a new guest account.
 
 **Note:** New accounts are `LOCKED` until email is verified.
 
+**Response**
+```json
+{
+  "success": true,
+  "verification_required": true,
+  "login_email": "john@example.com",
+  "message": "Account created. Check your email for the verification code."
+}
+```
+
 ---
 
 ### POST `/auth/guest/verify-email`
@@ -536,34 +546,38 @@ Create a housekeeping task.
   "room_id": 10,
   "task_type": "CLEANING",
   "priority_level": "HIGH",
-  "notes": "Deep clean required"
+  "note": "Deep clean required",
+  "scheduled_for": "2026-05-10T09:00:00",
+  "assigned_staff_id": 5
 }
 ```
 
-**Task types:** `CLEANING`, `TURNDOWN`, `INSPECTION`, `MAINTENANCE`
+**Task types:** `CLEANING`, `TURN_DOWN`, `INSPECTION`, `DEEP_CLEAN`
 
 ---
 
 ### GET `/housekeeping`
 List housekeeping tasks.
 
-**Query Parameters:** `hotel_id`, `status`, `room_id`
+**Query Parameters:** `hotel_id`, `status`, `priority`
 
 ---
 
 ### PUT `/housekeeping/:id/assign`
 Assign a task to a staff member.
 
-**Request Body:** `{ "assigned_to": 5 }` (user_id)
+**Request Body:** `{ "staff_id": 5, "scheduled_for": "2026-05-10T09:00:00" }`
 
 ---
 
 ### PUT `/housekeeping/:id/status`
 Update task status.
 
-**Request Body:** `{ "status": "COMPLETED" }`
+**Request Body:** `{ "status": "DONE" }`
 
-**Valid statuses:** `OPEN`, `IN_PROGRESS`, `COMPLETED`, `VERIFIED`
+**Flow:** `OPEN` -> `ASSIGNED` -> `IN_PROGRESS` -> `DONE` -> `VERIFIED`
+
+**Valid status updates for this endpoint:** `IN_PROGRESS`, `DONE`, `VERIFIED`
 
 ---
 
@@ -577,9 +591,10 @@ Create a maintenance ticket.
 {
   "hotel_id": 1,
   "room_id": 10,
-  "issue_type": "PLUMBING",
-  "description": "Sink is leaking",
-  "priority": "HIGH"
+  "reported_by": 1,
+  "issue_category": "PLUMBING",
+  "issue_description": "Sink is leaking",
+  "severity_level": "HIGH"
 }
 ```
 
@@ -588,7 +603,7 @@ Create a maintenance ticket.
 ### GET `/maintenance`
 List maintenance tickets.
 
-**Query Parameters:** `hotel_id`, `status`, `room_id`
+**Query Parameters:** `hotel_id`, `status`, `severity`
 
 ---
 
@@ -642,7 +657,7 @@ Get location hierarchy as a tree (Country → City → District).
 
 ## 13. Admin
 
-> All endpoints require `ADMIN` role (Bearer token + ADMIN system role).
+> Current backend middleware requires an authenticated `SYSTEM_USER` token via `requireSystemUser`.
 
 ### GET `/admin/accounts`
 List all accounts (system users + guests).
@@ -763,7 +778,6 @@ All errors follow this format:
 | `admin` | `admin` | System | ADMIN | `/admin` |
 | `cashier` | `cashier` | System | CASHIER, FRONT_DESK | `/cashier` |
 | `dqc` | `dqc` | Guest | — (PLATINUM member) | `/` |
-| `user` | `user` | Guest | — (new member) | `/` |
 
 ---
 
@@ -778,8 +792,8 @@ All errors follow this format:
 - **Optimistic Lock**: `version_no` check for inventory updates
 
 ### Security
-- JWT Bearer tokens (24h expiry)
-- Role-based middleware: `requireSystemRole(['ADMIN', 'CASHIER', 'FRONT_DESK'])`
+- JWT Bearer tokens (configurable; default `8h`)
+- Middleware in current code: `requireAuth`, `requireSystemUser`
 - Guest-cancel restricted to reservation owner only
 
 *Last updated: 2026-04-20 | LuxeReserve v1.0*
