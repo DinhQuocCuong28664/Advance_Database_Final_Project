@@ -1,8 +1,8 @@
 /**
  * VNPay Payment Routes
- * POST /api/vnpay/create-payment  — tạo URL thanh toán
- * GET  /api/vnpay/return          — VNPay redirect về (browser)
- * GET  /api/vnpay/ipn             — VNPay IPN callback (server-to-server)
+ * POST /api/vnpay/create-payment   create payment URL
+ * GET  /api/vnpay/return           VNPay redirects here (browser)
+ * GET  /api/vnpay/ipn              VNPay IPN callback (server-to-server)
  */
 const express = require('express');
 const router  = express.Router();
@@ -10,11 +10,11 @@ const { getSqlPool, sql } = require('../config/database');
 const { createPaymentUrl, verifyReturn, isConfigured } = require('../services/vnpay');
 const { sendBookingConfirmation } = require('../services/mail');
 
-// ─────────────────────────────────────────────────────────────
+// 
 // POST /api/vnpay/create-payment
 // Body: { reservation_id, amount, order_info, locale?, ip? }
 // Returns: { paymentUrl }
-// ─────────────────────────────────────────────────────────────
+// 
 router.post('/create-payment', async (req, res) => {
   try {
     if (!isConfigured()) {
@@ -61,11 +61,11 @@ router.post('/create-payment', async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────
+// 
 // GET /api/vnpay/return
 // VNPay redirects user browser here after payment
 // We redirect the user to frontend with result params
-// ─────────────────────────────────────────────────────────────
+// 
 router.get('/return', async (req, res) => {
   try {
     const result = verifyReturn(req.query);
@@ -98,11 +98,11 @@ router.get('/return', async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────
+// 
 // GET /api/vnpay/ipn
 // VNPay server-to-server callback (background, no redirect)
 // Must respond { RspCode: '00', Message: 'Confirm Success' }
-// ─────────────────────────────────────────────────────────────
+// 
 router.get('/ipn', async (req, res) => {
   try {
     const result = verifyReturn(req.query);
@@ -137,7 +137,7 @@ router.get('/ipn', async (req, res) => {
     if (Math.abs(result.amount - serverAmount) > 1) {
       // Small rounding tolerance of 1 VND
       console.warn(`[VNPay IPN] Amount mismatch: got ${result.amount}, expected ~${serverAmount}`);
-      // Don't reject — just log and accept (VNPay requirement)
+      // Don't reject  just log and accept (VNPay requirement)
     }
 
     if (result.responseCode === '00') {
@@ -169,7 +169,7 @@ router.get('/ipn', async (req, res) => {
   }
 });
 
-// ─── Helper: upsert payment record ───────────────────────────
+//  Helper: upsert payment record 
 async function _recordVnpayPayment(result, source) {
   try {
     const pool = getSqlPool();

@@ -1,5 +1,5 @@
 -- ============================================================
--- LuxeReserve — 01: Create Database
+-- LuxeReserve - 01: Create Database
 -- Engine: SQL Server 2022 Express
 -- ============================================================
 
@@ -20,5 +20,5 @@ GO
 USE LuxeReserve;
 GO
 
-PRINT '✅ Database LuxeReserve created successfully.';
+PRINT 'OK Database LuxeReserve created successfully.';
 GO

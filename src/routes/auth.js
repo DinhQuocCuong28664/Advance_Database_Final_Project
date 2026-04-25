@@ -3,7 +3,12 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 const { attachAuthContext, requireAuth, issueAuthToken } = require('../middleware/auth');
-const { isMailConfigured, sendGuestVerificationOtp } = require('../services/mail');
+const {
+  isMailConfigured,
+  sendGuestVerificationOtp,
+  sendGuestBookingAccessOtp,
+  sendGuestPasswordResetOtp,
+} = require('../services/mail');
 
 function buildAuthResponse(token, user) {
   return {
@@ -192,23 +197,26 @@ function generateOtpCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-async function createVerificationOtp(pool, guestAuthId) {
+async function createVerificationOtp(pool, guestAuthId, purpose = 'ACTIVATE') {
   const otpCode = generateOtpCode();
   await pool.request()
     .input('guestAuthId', sql.BigInt, guestAuthId)
+    .input('purpose', sql.VarChar(20), purpose)
     .query(`
       UPDATE EmailVerificationOtp
       SET consumed_at = GETDATE()
       WHERE guest_auth_id = @guestAuthId
+        AND purpose = @purpose
         AND consumed_at IS NULL
     `);
 
   await pool.request()
     .input('guestAuthId', sql.BigInt, guestAuthId)
     .input('otpCode', sql.VarChar(10), otpCode)
+    .input('purpose', sql.VarChar(20), purpose)
     .query(`
       INSERT INTO EmailVerificationOtp (guest_auth_id, otp_code, purpose, expires_at)
-      VALUES (@guestAuthId, @otpCode, 'ACTIVATE', DATEADD(MINUTE, 10, GETDATE()))
+      VALUES (@guestAuthId, @otpCode, @purpose, DATEADD(MINUTE, 10, GETDATE()))
     `);
 
   return otpCode;
@@ -233,8 +241,70 @@ async function sendVerificationForGuestAuth(pool, guestAuthId) {
   }
 
   const account = result.recordset[0];
-  const otpCode = await createVerificationOtp(pool, guestAuthId);
+  const otpCode = await createVerificationOtp(pool, guestAuthId, 'ACTIVATE');
   await sendGuestVerificationOtp({
+    to: account.login_email,
+    fullName: account.full_name,
+    otpCode,
+  });
+
+  return account;
+}
+
+async function sendBookingOtpForGuestAuth(pool, guestAuthId) {
+  if (!isMailConfigured()) {
+    throw new Error('Mail service is not configured');
+  }
+
+  const result = await pool.request()
+    .input('guestAuthId', sql.BigInt, guestAuthId)
+    .query(`
+      SELECT ga.guest_auth_id, ga.login_email, g.full_name
+      FROM GuestAuth ga
+      JOIN Guest g ON ga.guest_id = g.guest_id
+      WHERE ga.guest_auth_id = @guestAuthId
+    `);
+
+  if (result.recordset.length === 0) {
+    throw new Error('Guest account not found for booking verification');
+  }
+
+  const account = result.recordset[0];
+  const otpCode = await createVerificationOtp(pool, guestAuthId, 'BOOKING_ACCESS');
+  await sendGuestBookingAccessOtp({
+    to: account.login_email,
+    fullName: account.full_name,
+    otpCode,
+  });
+
+  return account;
+}
+
+async function sendPasswordResetOtpForGuestAuth(pool, guestAuthId) {
+  if (!isMailConfigured()) {
+    throw new Error('Mail service is not configured');
+  }
+
+  const result = await pool.request()
+    .input('guestAuthId', sql.BigInt, guestAuthId)
+    .query(`
+      SELECT ga.guest_auth_id, ga.login_email, ga.account_status, ga.email_verified_at, g.full_name
+      FROM GuestAuth ga
+      JOIN Guest g ON ga.guest_id = g.guest_id
+      WHERE ga.guest_auth_id = @guestAuthId
+    `);
+
+  if (result.recordset.length === 0) {
+    throw new Error('Guest account not found for password reset');
+  }
+
+  const account = result.recordset[0];
+  if (!account.email_verified_at) {
+    throw new Error('Email verification required before password reset');
+  }
+
+  const otpCode = await createVerificationOtp(pool, guestAuthId, 'PASSWORD_RESET');
+  await sendGuestPasswordResetOtp({
     to: account.login_email,
     fullName: account.full_name,
     otpCode,
@@ -429,6 +499,168 @@ router.post('/guest/register', async (req, res) => {
   }
 });
 
+router.post('/guest/booking-email-status', async (req, res) => {
+  try {
+    const loginEmail = String(req.body?.login_email || '').trim();
+    if (!loginEmail) {
+      return res.status(400).json({ success: false, error: 'login_email is required' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('loginEmail', sql.VarChar(150), loginEmail)
+      .query(`
+        SELECT TOP 1 guest_auth_id, guest_id, account_status, email_verified_at
+        FROM GuestAuth
+        WHERE login_email = @loginEmail
+      `);
+
+    const account = result.recordset[0] || null;
+    return res.json({
+      success: true,
+      data: {
+        exists: Boolean(account),
+        requires_booking_otp: Boolean(account),
+        account_status: account?.account_status || null,
+        email_verified: Boolean(account?.email_verified_at),
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/guest/booking-email-otp', async (req, res) => {
+  try {
+    const loginEmail = String(req.body?.login_email || '').trim();
+    if (!loginEmail) {
+      return res.status(400).json({ success: false, error: 'login_email is required' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('loginEmail', sql.VarChar(150), loginEmail)
+      .query(`
+        SELECT TOP 1 guest_auth_id
+        FROM GuestAuth
+        WHERE login_email = @loginEmail
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'No existing guest account found for this email' });
+    }
+
+    await sendBookingOtpForGuestAuth(pool, result.recordset[0].guest_auth_id);
+    return res.json({
+      success: true,
+      message: 'A booking verification code has been sent to the email address.',
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/guest/forgot-password', async (req, res) => {
+  try {
+    const loginEmail = String(req.body?.login_email || '').trim();
+    if (!loginEmail) {
+      return res.status(400).json({ success: false, error: 'login_email is required' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('loginEmail', sql.VarChar(150), loginEmail)
+      .query(`
+        SELECT TOP 1 guest_auth_id
+        FROM GuestAuth
+        WHERE login_email = @loginEmail
+      `);
+
+    if (result.recordset.length > 0) {
+      try {
+        await sendPasswordResetOtpForGuestAuth(pool, result.recordset[0].guest_auth_id);
+      } catch (_) {
+        // Keep the public response generic to avoid leaking account state.
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'If the email exists in our system, a password reset code has been sent.',
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/guest/reset-password', async (req, res) => {
+  try {
+    const loginEmail = String(req.body?.login_email || '').trim();
+    const otpCode = String(req.body?.otp_code || '').trim();
+    const newPassword = String(req.body?.new_password || '');
+
+    if (!loginEmail || !otpCode || !newPassword) {
+      return res.status(400).json({ success: false, error: 'login_email, otp_code and new_password are required' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, error: 'new_password must be at least 8 characters' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('loginEmail', sql.VarChar(150), loginEmail)
+      .input('otpCode', sql.VarChar(10), otpCode)
+      .query(`
+        SELECT TOP 1 ga.guest_auth_id, evo.email_otp_id
+        FROM GuestAuth ga
+        JOIN EmailVerificationOtp evo ON ga.guest_auth_id = evo.guest_auth_id
+        WHERE ga.login_email = @loginEmail
+          AND ga.email_verified_at IS NOT NULL
+          AND evo.otp_code = @otpCode
+          AND evo.purpose = 'PASSWORD_RESET'
+          AND evo.consumed_at IS NULL
+          AND evo.expires_at >= GETDATE()
+        ORDER BY evo.created_at DESC
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired reset code' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      await new sql.Request(transaction)
+        .input('otpId', sql.BigInt, result.recordset[0].email_otp_id)
+        .query(`
+          UPDATE EmailVerificationOtp
+          SET consumed_at = GETDATE()
+          WHERE email_otp_id = @otpId
+        `);
+
+      await new sql.Request(transaction)
+        .input('guestAuthId', sql.BigInt, result.recordset[0].guest_auth_id)
+        .input('passwordHash', sql.VarChar(255), passwordHash)
+        .query(`
+          UPDATE GuestAuth
+          SET password_hash = @passwordHash,
+              updated_at = GETDATE()
+          WHERE guest_auth_id = @guestAuthId
+        `);
+
+      await transaction.commit();
+      return res.json({ success: true, message: 'Password reset successful. You can sign in with your new password.' });
+    } catch (innerErr) {
+      try { await transaction.rollback(); } catch (_) { /* ignore */ }
+      throw innerErr;
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.post('/guest/resend-verification', async (req, res) => {
   try {
     const { login_email } = req.body;
@@ -554,6 +786,92 @@ router.post('/guest/login', async (req, res) => {
     res.json(auth);
   } catch (err) {
     res.status(err.message.startsWith('Guest account is') ? 403 : 401).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/guest/change-password', requireAuth, async (req, res) => {
+  try {
+    const currentPassword = String(req.body?.current_password || '');
+    const newPassword = String(req.body?.new_password || '');
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: 'current_password and new_password are required' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, error: 'new_password must be at least 8 characters' });
+    }
+
+    const pool = getSqlPool();
+
+    if (req.auth.user_type === 'GUEST') {
+      const result = await pool.request()
+        .input('guestId', sql.BigInt, Number(req.auth.sub))
+        .query(`
+          SELECT ga.guest_auth_id, ga.password_hash
+          FROM GuestAuth ga
+          WHERE ga.guest_id = @guestId
+        `);
+
+      if (result.recordset.length === 0) {
+        return res.status(404).json({ success: false, error: 'Guest account not found' });
+      }
+
+      const account = result.recordset[0];
+      const validPassword = await bcrypt.compare(currentPassword, account.password_hash);
+      if (!validPassword) {
+        return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await pool.request()
+        .input('guestAuthId', sql.BigInt, account.guest_auth_id)
+        .input('passwordHash', sql.VarChar(255), passwordHash)
+        .query(`
+          UPDATE GuestAuth
+          SET password_hash = @passwordHash,
+              updated_at = GETDATE()
+          WHERE guest_auth_id = @guestAuthId
+        `);
+
+      return res.json({ success: true, message: 'Password updated successfully.' });
+    }
+
+    if (req.auth.user_type === 'SYSTEM_USER') {
+      const result = await pool.request()
+        .input('userId', sql.BigInt, Number(req.auth.sub))
+        .query(`
+          SELECT user_id, password_hash
+          FROM SystemUser
+          WHERE user_id = @userId
+        `);
+
+      if (result.recordset.length === 0) {
+        return res.status(404).json({ success: false, error: 'System user not found' });
+      }
+
+      const account = result.recordset[0];
+      const validPassword = await bcrypt.compare(currentPassword, account.password_hash);
+      if (!validPassword) {
+        return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await pool.request()
+        .input('userId', sql.BigInt, account.user_id)
+        .input('passwordHash', sql.VarChar(255), passwordHash)
+        .query(`
+          UPDATE SystemUser
+          SET password_hash = @passwordHash,
+              updated_at = GETDATE()
+          WHERE user_id = @userId
+        `);
+
+      return res.json({ success: true, message: 'Password updated successfully.' });
+    }
+
+    return res.status(403).json({ success: false, error: 'Unsupported user type for password change' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

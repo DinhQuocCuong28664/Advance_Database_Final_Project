@@ -14,7 +14,7 @@ BEGIN
         created_at        DATETIME      NOT NULL DEFAULT GETDATE(),
 
         CONSTRAINT FK_EmailOtp_GuestAuth FOREIGN KEY (guest_auth_id) REFERENCES GuestAuth(guest_auth_id),
-        CONSTRAINT CK_EmailOtp_Purpose CHECK (purpose IN ('ACTIVATE'))
+        CONSTRAINT CK_EmailOtp_Purpose CHECK (purpose IN ('ACTIVATE', 'BOOKING_ACCESS', 'PASSWORD_RESET'))
     );
 
     CREATE INDEX IX_EmailOtp_GuestAuth ON EmailVerificationOtp(guest_auth_id, created_at DESC);

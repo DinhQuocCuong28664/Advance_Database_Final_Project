@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — Room Routes
+ * LuxeReserve  Room Routes
  * Room availability, search by date range
  */
 

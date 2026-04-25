@@ -1,11 +1,11 @@
 /**
- * LuxeReserve — Shared Test Helpers & Seed Data
+ * LuxeReserve  Shared Test Helpers & Seed Data
  * Used across all API spec files.
  */
 
 const BASE_URL = 'http://localhost:3000/api';
 
-// ─── Known seed data (matches database/sql/06_seed_data.sql) ──────────────────
+//  Known seed data (matches database/sql/06_seed_data.sql) 
 const SEED = {
   hotel: { id: 1 },           // LuxeReserve Saigon
   hotel2: { id: 2 },          // W Bangkok

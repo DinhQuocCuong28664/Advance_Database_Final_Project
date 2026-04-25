@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — Housekeeping Routes
+ * LuxeReserve  Housekeeping Routes
  * Manage housekeeping tasks: assign, track, complete
  * Activates: HousekeepingTask (assigned_staff_id, scheduled_for, started_at, completed_at, note)
  *            Room (housekeeping_status)
@@ -9,10 +9,10 @@ const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 
-// ═══════════════════════════════════════════════
+// 
 // GET /api/housekeeping?hotel_id=1&status=OPEN
 // List housekeeping tasks with filters
-// ═══════════════════════════════════════════════
+// 
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -73,10 +73,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // POST /api/housekeeping
 // Create housekeeping task manually
-// ═══════════════════════════════════════════════
+// 
 router.post('/', async (req, res) => {
   try {
     const { hotel_id, room_id, task_type, priority_level, note, scheduled_for, assigned_staff_id } = req.body;
@@ -106,10 +106,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // PUT /api/housekeeping/:id/assign
 // Assign staff to task
-// ═══════════════════════════════════════════════
+// 
 router.put('/:id/assign', async (req, res) => {
   try {
     const taskId = parseInt(req.params.id);
@@ -144,11 +144,11 @@ router.put('/:id/assign', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // PUT /api/housekeeping/:id/status
 // Update task status with Room sync
-// ASSIGNED → IN_PROGRESS → DONE → VERIFIED
-// ═══════════════════════════════════════════════
+// ASSIGNED  IN_PROGRESS  DONE  VERIFIED
+// 
 router.put('/:id/status', async (req, res) => {
   try {
     const taskId = parseInt(req.params.id);
@@ -167,7 +167,7 @@ router.put('/:id/status', async (req, res) => {
     if (!status || !validFlow[status]) {
       return res.status(400).json({
         success: false,
-        error: `Invalid status. Allowed transitions: ASSIGNED→IN_PROGRESS→DONE→VERIFIED`
+        error: `Invalid status. Allowed transitions: ASSIGNEDIN_PROGRESSDONEVERIFIED`
       });
     }
 
@@ -226,7 +226,7 @@ router.put('/:id/status', async (req, res) => {
 
       res.json({
         success: true,
-        message: `Task ${status}. Room housekeeping_status → ${hkStatusMap[status]}`,
+        message: `Task ${status}. Room housekeeping_status  ${hkStatusMap[status]}`,
         data: task
       });
     } catch (innerErr) {

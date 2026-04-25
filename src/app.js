@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — Express Application Entry Point
+ * LuxeReserve  Express Application Entry Point
  * Global Luxury Hotel Reservation Engine
  */
 
@@ -28,21 +28,21 @@ const vnpayRoutes  = require('./routes/vnpay');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ═══════════════════════════════════
+// 
 // Middleware
-// ═══════════════════════════════════
+// 
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-// ═══════════════════════════════════
+// 
 // Routes
-// ═══════════════════════════════════
+// 
 app.get('/api', (req, res) => {
   res.json({
     name: 'LuxeReserve API',
     version: '1.0.0',
-    description: 'Global Luxury Hotel Reservation Engine — Polyglot Persistence',
+    description: 'Global Luxury Hotel Reservation Engine  Polyglot Persistence',
     engines: {
       sql: 'SQL Server 2022 Express (ACID transactions)',
       nosql: 'MongoDB Atlas (Flexible content)',
@@ -71,14 +71,14 @@ app.get('/api', (req, res) => {
         'GET /api/promotions?hotel_id=&guest_id=': 'List active promotions, with guest eligibility when a guest context is present',
       },
       reservations: {
-        'GET /api/reservations': 'List reservations — filter by guest_id, email, status, limit',
+        'GET /api/reservations': 'List reservations  filter by guest_id, email, status, limit',
         'GET /api/reservations/by-guest/:guestCode': 'List all reservations for a guest code (e.g. G-DQC)',
         'GET /api/reservations/:code': 'Get reservation by confirmation code',
         'POST /api/reservations': 'Create reservation with direct pessimistic locking on RoomAvailability (body: hotel_id, guest_id, room_id, checkin_date, checkout_date, nightly_rate, ...)',
         'POST /api/reservations/:id/checkin': 'Check-in process (body: agent_id)',
         'POST /api/reservations/:id/checkout': 'Check-out process (body: agent_id)',
-        'POST /api/reservations/:id/guest-cancel': 'Guest cancellation — forfeit deposit, no refund (body: reason)',
-        'POST /api/reservations/:id/hotel-cancel': 'Hotel cancellation — full refund issued (body: reason, agent_id)',
+        'POST /api/reservations/:id/guest-cancel': 'Guest cancellation  forfeit deposit, no refund (body: reason)',
+        'POST /api/reservations/:id/hotel-cancel': 'Hotel cancellation  full refund issued (body: reason, agent_id)',
         'POST /api/reservations/:id/transfer': 'Room transfer via sp_TransferRoom with Pessimistic Locking (body: new_room_id, reason, agent_id)',
       },
       payments: {
@@ -93,7 +93,7 @@ app.get('/api', (req, res) => {
         'POST /api/services/orders/:id/pay': 'Pay for incidental service (body: payment_method)',
       },
       admin: {
-        'PUT /api/admin/rates/:id': 'Update room rate — triggers Price Guard if change > 50% (body: final_rate)',
+        'PUT /api/admin/rates/:id': 'Update room rate  triggers Price Guard if change > 50% (body: final_rate)',
         'GET /api/admin/rates/alerts': 'View Price Integrity Guard alerts',
         'GET /api/admin/reports/revenue': 'Revenue analytics with Window Functions (per hotel)',
         'GET /api/admin/reports/revenue-by-brand': 'Revenue analytics by Brand & Chain hierarchy (Window Functions)',
@@ -107,19 +107,19 @@ app.get('/api', (req, res) => {
       },
       maintenance: {
         'GET /api/maintenance?hotel_id=&status=': 'List maintenance tickets',
-        'POST /api/maintenance': 'Create ticket → auto Room.maintenance_status (body: hotel_id, room_id, issue_category, issue_description)',
-        'PUT /api/maintenance/:id': 'Update ticket — resolve restores Room status (body: status, resolution_note)',
+        'POST /api/maintenance': 'Create ticket  auto Room.maintenance_status (body: hotel_id, room_id, issue_category, issue_description)',
+        'PUT /api/maintenance/:id': 'Update ticket  resolve restores Room status (body: status, resolution_note)',
       },
       invoices: {
         'GET /api/invoices?reservation_id=': 'List invoices, optionally filtered by reservation',
         'POST /api/invoices': 'Generate invoice from vw_ReservationTotal (body: reservation_id)',
         'GET /api/invoices/:id': 'Get invoice with line items (rooms + services + payments)',
-        'POST /api/invoices/:id/issue': 'Issue invoice: DRAFT → ISSUED',
+        'POST /api/invoices/:id/issue': 'Issue invoice: DRAFT  ISSUED',
       },
       vnpay: {
         'POST /api/vnpay/create-payment': 'Create VNPay payment URL (body: reservation_id, amount, order_info)',
-        'GET /api/vnpay/return': 'VNPay return URL — verifies signature and redirects to frontend',
-        'GET /api/vnpay/ipn': 'VNPay IPN server callback — records payment status',
+        'GET /api/vnpay/return': 'VNPay return URL  verifies signature and redirects to frontend',
+        'GET /api/vnpay/ipn': 'VNPay IPN server callback  records payment status',
       },
       locations: {
         'GET /api/locations': 'List all locations (flat)',
@@ -144,37 +144,37 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/vnpay',   vnpayRoutes);
 
-// ═══════════════════════════════════
+// 
 // Error Handler
-// ═══════════════════════════════════
+// 
 app.use((err, req, res, next) => {
-  console.error('❌ Unhandled Error:', err);
+  console.error(' Unhandled Error:', err);
   res.status(500).json({
     success: false,
     error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
   });
 });
 
-// ═══════════════════════════════════
+// 
 // Startup
-// ═══════════════════════════════════
+// 
 async function start() {
   try {
     await connectSQL();
     await connectMongo();
 
     app.listen(PORT, () => {
-      console.log(`\n🏨 LuxeReserve API running at http://localhost:${PORT}/api\n`);
+      console.log(`\n LuxeReserve API running at http://localhost:${PORT}/api\n`);
     });
   } catch (err) {
-    console.error('❌ Startup failed:', err.message);
+    console.error(' Startup failed:', err.message);
     process.exit(1);
   }
 }
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down...');
+  console.log('\n Shutting down...');
   await closeAll();
   process.exit(0);
 });

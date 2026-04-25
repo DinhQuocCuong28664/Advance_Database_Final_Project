@@ -6,16 +6,16 @@ import { useFlash } from '../context/FlashContext';
 export default function LoginPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { login, logout, authBusy, authSession, isSystemUser, isAdminUser, isCashierUser } = useAuth();
-  const { setFlash, clearToasts } = useFlash();
+  const { login, logout, authBusy, authSession, isSystemUser, isAdminUser } = useAuth();
+  const { setFlash } = useFlash();
   const [form, setForm] = useState({ login: '', password: '' });
 
-  // ── Already signed in as GUEST → go home ────────────────────
+  //  Already signed in as GUEST  go home 
   if (authSession && !isSystemUser) {
     return <Navigate to="/" replace />;
   }
 
-  // ── Already signed in as SYSTEM USER → show switch screen ───
+  //  Already signed in as SYSTEM USER  show switch screen 
   // (prevents old admin session from blocking cashier login)
   if (authSession && isSystemUser) {
     const portalPath  = isAdminUser ? '/admin' : '/cashier';
@@ -52,7 +52,7 @@ export default function LoginPage() {
     );
   }
 
-  // ── Submit ───────────────────────────────────────────────────
+  //  Submit 
   async function handleSubmit(event) {
     event.preventDefault();
     const result = await login(form);
@@ -64,7 +64,7 @@ export default function LoginPage() {
 
     setFlash({ tone: 'success', text: `Signed in as ${result.user.full_name}.` });
 
-    // System users → portal by role
+    // System users  portal by role
     if (result.user.user_type === 'SYSTEM_USER') {
       const roles = result.user.roles || [];
       if (roles.includes('ADMIN')) {
@@ -77,12 +77,12 @@ export default function LoginPage() {
       return;
     }
 
-    // Guests → intended page or home
+    // Guests  intended page or home
     const nextUrl = location.state?.nextUrl;
     navigate(nextUrl || '/', { replace: true });
   }
 
-  // ── Login form ───────────────────────────────────────────────
+  //  Login form 
   return (
     <section className="page-card auth-shell">
       <p className="auth-eyebrow">Shared login</p>
@@ -118,7 +118,11 @@ export default function LoginPage() {
             Create account
           </Link>
         </div>
+        <Link to="/forgot-password" style={{ color: 'var(--text-soft)', fontSize: '0.92rem', textDecoration: 'underline' }}>
+          Forgot your password?
+        </Link>
       </form>
     </section>
   );
 }
+

@@ -32,7 +32,7 @@ function StatusBadge({ status }) {
 
 function ReservationCard({ r, onCancel }) {
   const nights = r.nights || 1;
-  // backend view uses 'grand_total'; table uses 'grand_total_amount' — handle both
+  // backend view uses 'grand_total'; table uses 'grand_total_amount'  handle both
   const rawTotal = r.grand_total_amount ?? r.grand_total ?? 0;
   const total = Number(rawTotal).toLocaleString('en-US');
   const checkin = new Date(r.checkin_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -47,7 +47,7 @@ function ReservationCard({ r, onCancel }) {
           <h3 className="resv-card-hotel">{r.hotel_name}</h3>
           {r.room_type_name && (
             <p className="resv-card-room">
-              {r.room_type_name}{r.room_number ? ` · Room ${r.room_number}` : ''}
+              {r.room_type_name}{r.room_number ? `  Room ${r.room_number}` : ''}
             </p>
           )}
         </div>
@@ -161,7 +161,7 @@ export default function ReservationPage() {
 
   return (
     <div className="resv-page">
-      {/* ── Header ── */}
+      {/*  Header  */}
       <div className="resv-header">
         <div>
           <p className="page-eyebrow">LuxeReserve</p>
@@ -174,7 +174,7 @@ export default function ReservationPage() {
         </div>
       </div>
 
-      {/* ── Lookup box (always visible) ── */}
+      {/*  Lookup box (always visible)  */}
       <section className="page-card resv-lookup-card">
         <p className="page-eyebrow">Lookup</p>
         <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Find by reservation code</h2>
@@ -187,13 +187,13 @@ export default function ReservationPage() {
             required
           />
           <button className="primary-button" type="submit" disabled={lookupBusy}>
-            {lookupBusy ? 'Searching…' : 'Look up'}
+            {lookupBusy ? 'Searching...' : 'Look up'}
           </button>
         </form>
         {lookupError && <p style={{ color: '#c0392b', marginTop: 8 }}>{lookupError}</p>}
         {lookupResult && (
           <div className="resv-lookup-result">
-            {/* No cancel button for anonymous lookup — must be logged in */}
+            {/* No cancel button for anonymous lookup  must be logged in */}
             <ReservationCard r={lookupResult} onCancel={null} />
             {!loggedIn && lookupResult.reservation_status === 'CONFIRMED' && (
               <p style={{ marginTop: 8, fontSize: '0.88rem', color: 'var(--text-soft)' }}>
@@ -212,11 +212,11 @@ export default function ReservationPage() {
         )}
       </section>
 
-      {/* ── My Bookings (logged-in only) ── */}
+      {/*  My Bookings (logged-in only)  */}
       {loggedIn && (
         <section className="resv-list-section">
           <h2 className="resv-section-title">My bookings</h2>
-          {loading && <p style={{ color: 'var(--text-soft)' }}>Loading your reservations…</p>}
+          {loading && <p style={{ color: 'var(--text-soft)' }}>Loading your reservations...</p>}
           {error && <p style={{ color: '#c0392b' }}>{error}</p>}
           {!loading && !error && reservations.length === 0 && (
             <div className="resv-empty">

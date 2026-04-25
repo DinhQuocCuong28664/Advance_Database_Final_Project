@@ -6,7 +6,7 @@
  *  3. Hotel-type-specific Unsplash photo
  *  4. Generic luxury hotel fallback
  *
- * All Unsplash IDs are stable — they won't break over time.
+ * All Unsplash IDs are stable  they won't break over time.
  */
 
 const CITY_IMAGES = {
@@ -37,7 +37,7 @@ const TYPE_IMAGES = {
 
 const GENERIC = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80';
 
-// Fake domain used by MongoDB seed data — always replace these
+// Fake domain used by MongoDB seed data  always replace these
 const FAKE_DOMAINS = ['cdn.luxereserve.com', 'luxereserve.com'];
 
 function isFakeOrBroken(url) {
@@ -47,8 +47,8 @@ function isFakeOrBroken(url) {
 
 /**
  * Returns the best available image URL for a hotel object.
- * @param {object} hotel – hotel object from backend
- * @returns {string} – Unsplash or valid CDN URL
+ * @param {object} hotel  hotel object from backend
+ * @returns {string}  Unsplash or valid CDN URL
  */
 export function resolveHotelImage(hotel) {
   if (!isFakeOrBroken(hotel?.hero_image)) {
@@ -69,7 +69,7 @@ export function resolveHotelImage(hotel) {
 }
 
 /**
- * Always-safe onError handler — set as <img onError={imgError} />
+ * Always-safe onError handler  set as <img onError={imgError} />
  */
 export function imgError(e) {
   e.target.onerror = null; // prevent infinite loop

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import '../styles/Search.css';
 import { resolveHotelImage, imgError } from '../utils/hotelImages';
+import SearchDirectionsPreview from '../components/maps/SearchDirectionsPreview';
 
 const GENERIC_SEARCH_WORDS = new Set([
   'city',
@@ -23,6 +24,90 @@ function addDays(dateStr, n) {
   const date = new Date(dateStr);
   date.setDate(date.getDate() + n);
   return date.toISOString().slice(0, 10);
+}
+
+function clampGuests(value) {
+  const guests = Number(value);
+  if (!Number.isFinite(guests)) return 1;
+  return Math.min(10, Math.max(1, guests));
+}
+
+function normalizeQueryState(query) {
+  const checkin = query.checkin || today();
+  const checkoutCandidate = query.checkout || addDays(checkin, 2);
+  const checkout = checkoutCandidate > checkin ? checkoutCandidate : addDays(checkin, 1);
+
+  return {
+    destination: String(query.destination || ''),
+    checkin,
+    checkout,
+    guests: clampGuests(query.guests),
+  };
+}
+
+function readQueryState(searchParams) {
+  return normalizeQueryState({
+    destination: searchParams.get('destination') || '',
+    checkin: searchParams.get('checkin') || today(),
+    checkout: searchParams.get('checkout') || addDays(today(), 2),
+    guests: Number(searchParams.get('guests')) || 1,
+  });
+}
+
+function buildQueryParams(query) {
+  return new URLSearchParams({
+    destination: query.destination,
+    checkin: query.checkin,
+    checkout: query.checkout,
+    guests: String(query.guests),
+  });
+}
+
+function hasHotelCoordinates(hotel) {
+  const latitude = Number(hotel.latitude);
+  const longitude = Number(hotel.longitude);
+  return Number.isFinite(latitude) && Number.isFinite(longitude);
+}
+
+function getCurrentPositionAsync() {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      reject(new Error('Geolocation is not available in this browser.'));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(resolve, (error) => {
+      if (error?.code === error.PERMISSION_DENIED) {
+        reject(new Error('Location access was denied.'));
+        return;
+      }
+      if (error?.code === error.POSITION_UNAVAILABLE) {
+        reject(new Error('Your location is currently unavailable.'));
+        return;
+      }
+      if (error?.code === error.TIMEOUT) {
+        reject(new Error('Location request timed out.'));
+        return;
+      }
+      reject(new Error('Could not get your current location.'));
+    }, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000,
+    });
+  });
+}
+
+function buildGoogleDirectionsUrl(originLat, originLng, destinationLat, destinationLng) {
+  const params = new URLSearchParams({
+    api: '1',
+    destination: `${destinationLat},${destinationLng}`,
+    travelmode: 'driving',
+  });
+  if (Number.isFinite(originLat) && Number.isFinite(originLng)) {
+    params.set('origin', `${originLat},${originLng}`);
+  }
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
 function normalizeText(value) {
@@ -76,7 +161,7 @@ function StarRating({ stars }) {
   );
 }
 
-function HotelCard({ hotel, checkin, checkout, guests }) {
+function HotelCard({ hotel, checkin, checkout, guests, onPreviewDirections, directionsState, directionsLoading }) {
   const navigate = useNavigate();
   const minRate = hotel.min_nightly_rate;
   const locationText = [
@@ -84,6 +169,7 @@ function HotelCard({ hotel, checkin, checkout, guests }) {
     hotel.location_detail?.city,
     hotel.location_detail?.country,
   ].filter(Boolean).join(', ');
+  const canOpenDirections = hasHotelCoordinates(hotel);
 
   return (
     <div className="search-hotel-card">
@@ -114,15 +200,31 @@ function HotelCard({ hotel, checkin, checkout, guests }) {
           </div>
         </div>
         {hotel.hotel_type ? <span className="search-hotel-type-pill">{hotel.hotel_type}</span> : null}
-        <button
-          className="primary-button search-hotel-cta"
-          type="button"
-          onClick={() =>
-            navigate(`/hotel/${hotel.hotel_id}?checkin=${checkin}&checkout=${checkout}&guests=${guests}`)
-          }
-        >
-          View hotel
-        </button>
+        <div className="search-hotel-actions">
+          <button
+            className="primary-button search-hotel-cta"
+            type="button"
+            onClick={() =>
+              navigate(`/hotel/${hotel.hotel_id}?checkin=${checkin}&checkout=${checkout}&guests=${guests}`)
+            }
+          >
+            View hotel
+          </button>
+          <button
+            className="ghost-button search-hotel-cta search-hotel-cta-secondary"
+            type="button"
+            onClick={() => onPreviewDirections(hotel)}
+            disabled={!canOpenDirections || directionsLoading}
+            title={canOpenDirections ? 'Preview the route from your location' : 'Directions unavailable for this hotel'}
+          >
+            {directionsLoading ? 'Locating...' : 'Preview route'}
+          </button>
+        </div>
+        {directionsState?.message ? (
+          <p className={`search-route-note search-route-note--${directionsState.tone || 'info'}`}>
+            {directionsState.message}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -132,24 +234,18 @@ export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [search, setSearch] = useState({
-    destination: searchParams.get('destination') || '',
-    checkin: searchParams.get('checkin') || today(),
-    checkout: searchParams.get('checkout') || addDays(today(), 2),
-    guests: Number(searchParams.get('guests')) || 1,
-  });
-
-  const [activeQuery, setActiveQuery] = useState({
-    destination: searchParams.get('destination') || '',
-    checkin: searchParams.get('checkin') || today(),
-    checkout: searchParams.get('checkout') || addDays(today(), 2),
-    guests: Number(searchParams.get('guests')) || 1,
-  });
+  const [search, setSearch] = useState(() => readQueryState(searchParams));
 
   const [allHotels, setAllHotels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [availabilityByHotel, setAvailabilityByHotel] = useState({});
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [filters, setFilters] = useState({ minPrice: '', maxPrice: '', stars: '', brand: '' });
+  const [directionsLoadingHotelId, setDirectionsLoadingHotelId] = useState(null);
+  const [directionsStateByHotel, setDirectionsStateByHotel] = useState({});
+  const [previewHotel, setPreviewHotel] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,7 +276,12 @@ export default function SearchPage() {
     [allHotels],
   );
 
-  const hotels = useMemo(() => {
+  const activeQuery = useMemo(
+    () => normalizeQueryState({ ...search, guests: search.guests || 1 }),
+    [search],
+  );
+
+  const candidateHotels = useMemo(() => {
     let result = allHotels;
     const destination = activeQuery.destination.trim();
 
@@ -196,6 +297,67 @@ export default function SearchPage() {
         (hotel) => hotel.brand_name === filters.brand || hotel.chain_name === filters.brand,
       );
     }
+    return result;
+  }, [activeQuery.destination, allHotels, filters.stars, filters.brand]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (candidateHotels.length === 0) {
+      setAvailabilityByHotel({});
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setAvailabilityLoading(true);
+
+    Promise.all(
+      candidateHotels.map(async (hotel) => {
+        try {
+          const payload = await apiRequest(
+            `/rooms/availability?hotel_id=${hotel.hotel_id}&checkin=${activeQuery.checkin}&checkout=${activeQuery.checkout}`,
+          );
+          const rooms = payload.data || payload.rooms || payload.availability || [];
+          const minRate = rooms.reduce((lowest, room) => {
+            const rate = Number(room.min_nightly_rate || 0);
+            if (!rate) return lowest;
+            return lowest == null ? rate : Math.min(lowest, rate);
+          }, null);
+
+          return [hotel.hotel_id, { count: rooms.length, minRate }];
+        } catch {
+          return [hotel.hotel_id, { count: 0, minRate: null }];
+        }
+      }),
+    )
+      .then((entries) => {
+        if (cancelled) return;
+        setAvailabilityByHotel(Object.fromEntries(entries));
+      })
+      .finally(() => {
+        if (!cancelled) setAvailabilityLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeQuery.checkin, activeQuery.checkout, candidateHotels]);
+
+  const hotels = useMemo(() => {
+    let result = candidateHotels
+      .map((hotel) => {
+        const availability = availabilityByHotel[hotel.hotel_id];
+        if (!availability || availability.count === 0) return null;
+
+        return {
+          ...hotel,
+          available_room_count: availability.count,
+          min_nightly_rate: availability.minRate || hotel.min_nightly_rate,
+        };
+      })
+      .filter(Boolean);
+
     if (filters.minPrice) {
       result = result.filter(
         (hotel) => !hotel.min_nightly_rate || Number(hotel.min_nightly_rate) >= Number(filters.minPrice),
@@ -208,29 +370,115 @@ export default function SearchPage() {
     }
 
     return result;
-  }, [activeQuery.destination, allHotels, filters]);
+  }, [availabilityByHotel, candidateHotels, filters.minPrice, filters.maxPrice]);
+
+  function updateSearch(updater) {
+    setSearch((prev) => {
+      const draft = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
+      if (!draft.checkin || !draft.checkout || draft.checkout > draft.checkin) {
+        return draft;
+      }
+
+      return {
+        ...draft,
+        checkout: addDays(draft.checkin, 1),
+      };
+    });
+  }
+
+  function applyQuery(nextQuery, replace = true) {
+    const normalizedQuery = normalizeQueryState(nextQuery);
+    const nextParams = buildQueryParams(normalizedQuery);
+    if (nextParams.toString() !== searchParams.toString()) {
+      setSearchParams(nextParams, { replace });
+    }
+  }
+
+  useEffect(() => {
+    if (!search.checkin || !search.checkout || search.checkout <= search.checkin || search.guests === '') {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      const normalizedQuery = normalizeQueryState(search);
+      const nextParams = buildQueryParams(normalizedQuery);
+      if (nextParams.toString() !== searchParams.toString()) {
+        setSearchParams(nextParams, { replace: true });
+      }
+    }, 180);
+
+    return () => window.clearTimeout(timer);
+  }, [search, searchParams, setSearchParams]);
 
   function handleSearchSubmit(event) {
     event.preventDefault();
-
-    const nextQuery = {
-      destination: search.destination,
-      checkin: search.checkin,
-      checkout: search.checkout,
-      guests: Number(search.guests) || 1,
-    };
-
-    setActiveQuery(nextQuery);
-    setSearchParams(new URLSearchParams({
-      destination: nextQuery.destination,
-      checkin: nextQuery.checkin,
-      checkout: nextQuery.checkout,
-      guests: String(nextQuery.guests),
-    }));
+    applyQuery(search, false);
   }
 
   function handleFilterChange(key, value) {
     setFilters((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handlePreviewDirections(hotel, forceRefresh = false) {
+    if (!hasHotelCoordinates(hotel)) {
+      setDirectionsStateByHotel((prev) => ({
+        ...prev,
+        [hotel.hotel_id]: { tone: 'error', message: 'Directions are unavailable for this hotel.' },
+      }));
+      return;
+    }
+
+    setPreviewHotel(hotel);
+
+    if (!forceRefresh && currentLocation) {
+      setDirectionsStateByHotel((prev) => ({
+        ...prev,
+        [hotel.hotel_id]: { tone: 'success', message: 'Map preview is ready. Open Google Maps for the full route.' },
+      }));
+      return;
+    }
+
+    try {
+      setDirectionsLoadingHotelId(hotel.hotel_id);
+      setDirectionsStateByHotel((prev) => ({
+        ...prev,
+        [hotel.hotel_id]: { tone: 'info', message: 'Requesting your current location for the preview...' },
+      }));
+
+      const position = await getCurrentPositionAsync();
+      setCurrentLocation({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      });
+
+      setDirectionsStateByHotel((prev) => ({
+        ...prev,
+        [hotel.hotel_id]: { tone: 'success', message: 'Map preview is ready. Open Google Maps for turn-by-turn directions.' },
+      }));
+    } catch (err) {
+      setDirectionsStateByHotel((prev) => ({
+        ...prev,
+        [hotel.hotel_id]: { tone: 'error', message: err.message || 'Could not load the route preview.' },
+      }));
+    } finally {
+      setDirectionsLoadingHotelId(null);
+    }
+  }
+
+  function handleOpenGoogleMaps(hotel = previewHotel) {
+    if (!hotel || !hasHotelCoordinates(hotel)) {
+      return;
+    }
+
+    const directionsUrl = buildGoogleDirectionsUrl(
+      currentLocation?.latitude,
+      currentLocation?.longitude,
+      Number(hotel.latitude),
+      Number(hotel.longitude),
+    );
+
+    window.open(directionsUrl, '_blank', 'noopener,noreferrer');
   }
 
   return (
@@ -241,28 +489,28 @@ export default function SearchPage() {
             type="text"
             placeholder="Destination, hotel, city..."
             value={search.destination}
-            onChange={(event) => setSearch((prev) => ({ ...prev, destination: event.target.value }))}
+            onChange={(event) => updateSearch({ destination: event.target.value })}
             className="search-top-input"
           />
           <input
             type="date"
             value={search.checkin}
             min={today()}
-            onChange={(event) => setSearch((prev) => ({ ...prev, checkin: event.target.value }))}
+            onChange={(event) => updateSearch({ checkin: event.target.value })}
             className="search-top-input"
           />
           <input
             type="date"
             value={search.checkout}
             min={addDays(search.checkin, 1)}
-            onChange={(event) => setSearch((prev) => ({ ...prev, checkout: event.target.value }))}
+            onChange={(event) => updateSearch({ checkout: event.target.value })}
             className="search-top-input"
           />
           <div className="guests-stepper search-guests-stepper">
             <button
               type="button"
               className="guests-btn"
-              onClick={() => setSearch((prev) => ({ ...prev, guests: Math.max(1, Number(prev.guests) - 1) }))}
+              onClick={() => updateSearch((prev) => ({ ...prev, guests: Math.max(1, Number(prev.guests) - 1) }))}
               disabled={Number(search.guests) <= 1}
             >
               -
@@ -275,17 +523,17 @@ export default function SearchPage() {
               onFocus={(event) => event.target.select()}
               onChange={(event) => {
                 const value = parseInt(event.target.value.replace(/\D/g, ''), 10);
-                setSearch((prev) => ({
+                updateSearch((prev) => ({
                   ...prev,
                   guests: Number.isNaN(value) ? '' : Math.min(10, Math.max(1, value)),
                 }));
               }}
-              onBlur={() => setSearch((prev) => ({ ...prev, guests: prev.guests || 1 }))}
+              onBlur={() => updateSearch((prev) => ({ ...prev, guests: prev.guests || 1 }))}
             />
             <button
               type="button"
               className="guests-btn"
-              onClick={() => setSearch((prev) => ({ ...prev, guests: Math.min(10, Number(prev.guests) + 1) }))}
+              onClick={() => updateSearch((prev) => ({ ...prev, guests: Math.min(10, Number(prev.guests) + 1) }))}
               disabled={Number(search.guests) >= 10}
             >
               +
@@ -360,7 +608,7 @@ export default function SearchPage() {
         </aside>
 
         <div className="search-results">
-          {loading ? (
+          {loading || availabilityLoading ? (
             <div className="search-loading"><span>Loading hotels...</span></div>
           ) : error ? (
             <div className="search-error">
@@ -384,6 +632,16 @@ export default function SearchPage() {
             </div>
           ) : (
             <>
+              {previewHotel ? (
+                <SearchDirectionsPreview
+                  hotel={previewHotel}
+                  userLocation={currentLocation}
+                  status={directionsStateByHotel[previewHotel.hotel_id]}
+                  isLocating={directionsLoadingHotelId === previewHotel.hotel_id}
+                  onOpenGoogleMaps={() => handleOpenGoogleMaps(previewHotel)}
+                  onRefreshLocation={() => handlePreviewDirections(previewHotel, true)}
+                />
+              ) : null}
               <p className="search-result-count">
                 <strong>{hotels.length}</strong> {hotels.length === 1 ? 'hotel' : 'hotels'} found
                 {activeQuery.destination ? ` for "${activeQuery.destination}"` : ''}
@@ -396,6 +654,9 @@ export default function SearchPage() {
                     checkin={activeQuery.checkin}
                     checkout={activeQuery.checkout}
                     guests={activeQuery.guests}
+                    onPreviewDirections={handlePreviewDirections}
+                    directionsState={directionsStateByHotel[hotel.hotel_id]}
+                    directionsLoading={directionsLoadingHotelId === hotel.hotel_id}
                   />
                 ))}
               </div>

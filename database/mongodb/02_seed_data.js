@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — MongoDB Collection Init & Seed Data
+ * LuxeReserve  MongoDB Collection Init & Seed Data
  * Run: node database/mongodb/02_seed_data.js
  */
 
@@ -14,25 +14,25 @@ async function seedMongoDB() {
 
   try {
     await client.connect();
-    console.log('✅ Connected to MongoDB Atlas');
+    console.log(' Connected to MongoDB Atlas');
 
     const db = client.db(DB_NAME);
 
-    // ═══════════════════════════════════
+    // 
     // DROP existing collections for clean re-run
-    // ═══════════════════════════════════
+    // 
     const existing = await db.listCollections().toArray();
     const names = existing.map(c => c.name);
     for (const name of ['Hotel_Catalog', 'amenity_master', 'room_type_catalog']) {
       if (names.includes(name)) {
         await db.dropCollection(name);
-        console.log(`  🗑️  Dropped: ${name}`);
+        console.log(`    Dropped: ${name}`);
       }
     }
 
-    // ═══════════════════════════════════
+    // 
     // 1. AMENITY MASTER
-    // ═══════════════════════════════════
+    // 
     const amenityMaster = db.collection('amenity_master');
     await amenityMaster.insertMany([
       {
@@ -111,11 +111,11 @@ async function seedMongoDB() {
     await amenityMaster.createIndex({ amenity_code: 1 }, { unique: true });
     await amenityMaster.createIndex({ category: 1 });
     await amenityMaster.createIndex({ tags: 1 });
-    console.log('  ✅ amenity_master: 8 documents + indexes');
+    console.log('   amenity_master: 8 documents + indexes');
 
-    // ═══════════════════════════════════
+    // 
     // 2. ROOM TYPE CATALOG
-    // ═══════════════════════════════════
+    // 
     const roomTypeCatalog = db.collection('room_type_catalog');
     await roomTypeCatalog.insertMany([
       {
@@ -129,7 +129,7 @@ async function seedMongoDB() {
       },
       {
         room_type_code: 'RT-STE-RIVER',
-        name: 'Ritz-Carlton Suite — River View',
+        name: 'Ritz-Carlton Suite  River View',
         category: 'SUITE',
         description: '120 sqm signature suite with separate living room, panoramic Saigon River views, and exclusive Club Lounge access.',
         features: { has_balcony: true, has_private_pool: false, has_lounge_access: true, has_butler_service: true },
@@ -184,11 +184,11 @@ async function seedMongoDB() {
     ]);
     await roomTypeCatalog.createIndex({ room_type_code: 1 }, { unique: true });
     await roomTypeCatalog.createIndex({ category: 1 });
-    console.log('  ✅ room_type_catalog: 7 documents + indexes');
+    console.log('   room_type_catalog: 7 documents + indexes');
 
-    // ═══════════════════════════════════
+    // 
     // 3. HOTEL CATALOG (Embedded Design)
-    // ═══════════════════════════════════
+    // 
     const hotelCatalog = db.collection('Hotel_Catalog');
     await hotelCatalog.insertMany([
       {
@@ -311,17 +311,17 @@ async function seedMongoDB() {
     await hotelCatalog.createIndex({ 'amenities.name': 1 });
     await hotelCatalog.createIndex({ 'location.city': 1 });
     await hotelCatalog.createIndex({ star_rating: -1 });
-    console.log('  ✅ Hotel_Catalog: 3 hotels + indexes');
+    console.log('   Hotel_Catalog: 3 hotels + indexes');
 
-    console.log('\n══════════════════════════════════════════');
-    console.log('  ✅ MongoDB SEED COMPLETE');
+    console.log('\n');
+    console.log('   MongoDB SEED COMPLETE');
     console.log('  - 8 amenities (amenity_master)');
     console.log('  - 7 room types (room_type_catalog)');
     console.log('  - 3 hotels (Hotel_Catalog)');
-    console.log('══════════════════════════════════════════\n');
+    console.log('\n');
 
   } catch (err) {
-    console.error('❌ MongoDB Seed Error:', err.message);
+    console.error(' MongoDB Seed Error:', err.message);
     process.exit(1);
   } finally {
     await client.close();

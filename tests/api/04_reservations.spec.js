@@ -1,6 +1,6 @@
 /**
- * ══════════════════════════════════════════════════════════════
- * [04] RESERVATIONS API — Full Lifecycle Test
+ * 
+ * [04] RESERVATIONS API  Full Lifecycle Test
  * Endpoints:
  *   POST /api/reservations
  *   GET  /api/reservations/:code
@@ -9,7 +9,7 @@
  *   POST /api/reservations/:id/guest-cancel
  *   POST /api/reservations/:id/hotel-cancel
  *   POST /api/reservations/:id/transfer
- * ══════════════════════════════════════════════════════════════
+ * 
  */
 const { test, expect } = require('@playwright/test');
 const { SEED, DATES, futureDate } = require('./helpers');
@@ -20,9 +20,9 @@ let cancelReservation = null; // for guest-cancel test
 let hotelCancelReservation = null; // for hotel-cancel test
 let guestToken = null;        // JWT for guest-cancel (requires auth)
 
-// ─────────────────────────────────────────────────────────────
+// 
 // Helper: find an available room for the given hotel + dates
-// ─────────────────────────────────────────────────────────────
+// 
 async function findAvailableRoom(request, hotelId, checkin, checkout) {
   const res = await request.get('/api/rooms/availability', {
     params: { hotel_id: hotelId, checkin, checkout },
@@ -32,17 +32,17 @@ async function findAvailableRoom(request, hotelId, checkin, checkout) {
   return body.data[0];
 }
 
-test.describe('📋 Reservations API — Full Lifecycle', () => {
+test.describe(' Reservations API  Full Lifecycle', () => {
 
-  // ── POST /reservations — Validation ───────────────────────
-  test('POST /reservations — missing required fields → 400', async ({ request }) => {
+  //  POST /reservations  Validation 
+  test('POST /reservations  missing required fields  400', async ({ request }) => {
     const res = await request.post('/api/reservations', {
       data: { hotel_id: SEED.hotel.id, guest_id: SEED.guest.id }, // missing room, dates
     });
     expect(res.status()).toBe(400);
   });
 
-  test('POST /reservations — nightly_rate <= 0 → 400', async ({ request }) => {
+  test('POST /reservations  nightly_rate <= 0  400', async ({ request }) => {
     const res = await request.post('/api/reservations', {
       data: {
         hotel_id: SEED.hotel.id,
@@ -56,7 +56,7 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(res.status()).toBe(400);
   });
 
-  test('POST /reservations — checkout before checkin → 400', async ({ request }) => {
+  test('POST /reservations  checkout before checkin  400', async ({ request }) => {
     const res = await request.post('/api/reservations', {
       data: {
         hotel_id: SEED.hotel.id,
@@ -70,8 +70,8 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(res.status()).toBe(400);
   });
 
-  // ── POST /reservations — Success ───────────────────────────
-  test('POST /reservations — create reservation (pessimistic locking)', async ({ request }) => {
+  //  POST /reservations  Success 
+  test('POST /reservations  create reservation (pessimistic locking)', async ({ request }) => {
     const room = await findAvailableRoom(request, SEED.hotel.id, DATES.checkin, DATES.checkout);
     if (!room) return test.skip();
 
@@ -100,8 +100,8 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     reservation = body.data;
   });
 
-  // ── GET /reservations/:code ────────────────────────────────
-  test('GET /reservations/:code — fetch by code', async ({ request }) => {
+  //  GET /reservations/:code 
+  test('GET /reservations/:code  fetch by code', async ({ request }) => {
     if (!reservation) return test.skip();
     const res = await request.get(`/api/reservations/${reservation.reservation_code}`);
     expect(res.status()).toBe(200);
@@ -116,20 +116,20 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(body.data).toHaveProperty('balance_due');
   });
 
-  test('GET /reservations/:code — not found → 404', async ({ request }) => {
+  test('GET /reservations/:code  not found  404', async ({ request }) => {
     const res = await request.get('/api/reservations/RES-NOTEXIST-999');
     expect(res.status()).toBe(404);
   });
 
-  // ── POST /reservations/:id/checkin ─────────────────────────
-  test('POST /reservations/:id/checkin — check in', async ({ request }) => {
+  //  POST /reservations/:id/checkin 
+  test('POST /reservations/:id/checkin  check in', async ({ request }) => {
     if (!reservation) return test.skip();
     const res = await request.post(`/api/reservations/${reservation.reservation_id}/checkin`, {
       data: { agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
-    // Response: { success, message, reservation_id } — no data field
+    // Response: { success, message, reservation_id }  no data field
     expect(body.success).toBe(true);
     expect(body.message).toBe('Check-in successful');
     expect(body.reservation_id).toBe(reservation.reservation_id);
@@ -138,7 +138,7 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(det.data.reservation_status).toBe('CHECKED_IN');
   });
 
-  test('POST /checkin — already checked in → 409', async ({ request }) => {
+  test('POST /checkin  already checked in  409', async ({ request }) => {
     if (!reservation) return test.skip();
     const res = await request.post(`/api/reservations/${reservation.reservation_id}/checkin`, {
       data: { agent_id: SEED.staff.id },
@@ -146,8 +146,8 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(res.status()).toBe(409);
   });
 
-  // ── POST /reservations/:id/checkout ────────────────────────
-  test('POST /reservations/:id/checkout — full checkout lifecycle', async ({ request }) => {
+  //  POST /reservations/:id/checkout 
+  test('POST /reservations/:id/checkout  full checkout lifecycle', async ({ request }) => {
     if (!reservation) return test.skip();
     const res = await request.post(`/api/reservations/${reservation.reservation_id}/checkout`, {
       data: { agent_id: SEED.staff.id },
@@ -155,12 +155,12 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
 
-    // ── Response shape ────────────────────────────────────────
+    //  Response shape 
     expect(body.success).toBe(true);
     expect(body.message).toBe('Check-out successful');
     expect(body.reservation_id).toBe(reservation.reservation_id);
 
-    // ── Financial summary from vw_ReservationTotal ────────────
+    //  Financial summary from vw_ReservationTotal 
     expect(body.financials).not.toBeNull();
     // checkout endpoint queries: grand_total, total_paid, balance_due
     expect(body.financials).toHaveProperty('grand_total');
@@ -168,13 +168,13 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(body.financials).toHaveProperty('balance_due');
     expect(Number(body.financials.grand_total)).toBeGreaterThanOrEqual(0);
 
-    // ── Verify: Reservation status changed to CHECKED_OUT ─────
+    //  Verify: Reservation status changed to CHECKED_OUT 
     const detailRes = await request.get(`/api/reservations/${reservation.reservation_code}`);
     expect(detailRes.status()).toBe(200);
     const detail = await detailRes.json();
     expect(detail.data.reservation_status).toBe('CHECKED_OUT');
 
-    // ── Verify: Status history has CHECKED_IN → CHECKED_OUT ───
+    //  Verify: Status history has CHECKED_IN  CHECKED_OUT 
     const history = detail.data.status_history || [];
     const checkoutEntry = history.find(
       h => h.old_status === 'CHECKED_IN' && h.new_status === 'CHECKED_OUT'
@@ -182,7 +182,7 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(checkoutEntry).toBeTruthy();
     expect(checkoutEntry.change_reason).toBe('Guest checked out');
 
-    // ── Verify: Housekeeping task auto-created (CLEANING/HIGH) ─
+    //  Verify: Housekeeping task auto-created (CLEANING/HIGH) 
     const hkRes = await request.get('/api/housekeeping', {
       params: { hotel_id: SEED.hotel.id },
     });
@@ -194,7 +194,7 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(autoTask).toBeTruthy();
   });
 
-  test('POST /checkout — not in CHECKED_IN status → 409', async ({ request }) => {
+  test('POST /checkout  not in CHECKED_IN status  409', async ({ request }) => {
     if (!reservation) return test.skip();
     // Already CHECKED_OUT, attempt again
     const res = await request.post(`/api/reservations/${reservation.reservation_id}/checkout`, {
@@ -206,14 +206,14 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(body.error).toMatch(/not in CHECKED_IN/i);
   });
 
-  test('POST /checkout — invalid reservation ID → 400', async ({ request }) => {
+  test('POST /checkout  invalid reservation ID  400', async ({ request }) => {
     const res = await request.post('/api/reservations/not-a-number/checkout', {
       data: { agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(400);
   });
 
-  test('POST /checkout — nonexistent ID → 409', async ({ request }) => {
+  test('POST /checkout  nonexistent ID  409', async ({ request }) => {
     const res = await request.post('/api/reservations/999999/checkout', {
       data: { agent_id: SEED.staff.id },
     });
@@ -222,8 +222,8 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(body.success).toBe(false);
   });
 
-  // ── POST /reservations/:id/guest-cancel ───────────────────
-  test('POST /reservations — create reservation for guest-cancel', async ({ request }) => {
+  //  POST /reservations/:id/guest-cancel 
+  test('POST /reservations  create reservation for guest-cancel', async ({ request }) => {
     const cin  = futureDate(80);
     const cout = futureDate(82);
     const room = await findAvailableRoom(request, SEED.hotel.id, cin, cout);
@@ -253,7 +253,7 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     if (res.status() === 201) cancelReservation = (await res.json()).data;
   });
 
-  test('POST /reservations/:id/guest-cancel — cancel and forfeit deposit', async ({ request }) => {
+  test('POST /reservations/:id/guest-cancel  cancel and forfeit deposit', async ({ request }) => {
     if (!cancelReservation) return test.skip();
     // guest-cancel requires Bearer token (requireAuth middleware)
     const headers = guestToken ? { Authorization: `Bearer ${guestToken}` } : {};
@@ -270,7 +270,7 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(body.data.refund_amount).toBe(0); // deposit forfeited
   });
 
-  test('POST /guest-cancel — not in CONFIRMED → 409', async ({ request }) => {
+  test('POST /guest-cancel  not in CONFIRMED  409', async ({ request }) => {
     if (!cancelReservation) return test.skip();
     // Already cancelled, try again (still needs auth)
     const headers = guestToken ? { Authorization: `Bearer ${guestToken}` } : {};
@@ -281,8 +281,8 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(res.status()).toBe(409);
   });
 
-  // ── POST /reservations/:id/hotel-cancel ──────────────────
-  test('POST /reservations — create reservation for hotel-cancel', async ({ request }) => {
+  //  POST /reservations/:id/hotel-cancel 
+  test('POST /reservations  create reservation for hotel-cancel', async ({ request }) => {
     const cin  = futureDate(90);
     const cout = futureDate(92);
     const room = await findAvailableRoom(request, SEED.hotel.id, cin, cout);
@@ -303,7 +303,7 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     if (res.status() === 201) hotelCancelReservation = (await res.json()).data;
   });
 
-  test('POST /reservations/:id/hotel-cancel — full cancellation lifecycle', async ({ request }) => {
+  test('POST /reservations/:id/hotel-cancel  full cancellation lifecycle', async ({ request }) => {
     if (!hotelCancelReservation) return test.skip();
     const res = await request.post(`/api/reservations/${hotelCancelReservation.reservation_id}/hotel-cancel`, {
       data: { reason: 'Room issue - Playwright test', agent_id: SEED.staff.id },
@@ -311,7 +311,7 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
 
-    // ── Response shape ─────────────────────────────────
+    //  Response shape 
     expect(body.success).toBe(true);
     expect(body.message).toMatch(/cancelled by hotel/i);
     // Response uses data.new_status (not data.reservation_status)
@@ -322,13 +322,13 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(body.data.reservation_id).toBe(hotelCancelReservation.reservation_id);
     expect(body.data).toHaveProperty('refund_amount');
 
-    // ── Verify: reservation now CANCELLED via GET ─────────
+    //  Verify: reservation now CANCELLED via GET 
     const detailRes = await request.get(`/api/reservations/${hotelCancelReservation.reservation_code}`);
     expect(detailRes.status()).toBe(200);
     const detail = (await detailRes.json()).data;
     expect(detail.reservation_status).toBe('CANCELLED');
 
-    // ── Verify: status history has CONFIRMED → CANCELLED with reason ─
+    //  Verify: status history has CONFIRMED  CANCELLED with reason 
     const hcEntry = detail.status_history?.find(
       h => h.old_status === 'CONFIRMED' && h.new_status === 'CANCELLED'
     );
@@ -336,7 +336,7 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(hcEntry.change_reason).toMatch(/HOTEL CANCEL/i);
   });
 
-  test('POST /hotel-cancel — missing reason → 400', async ({ request }) => {
+  test('POST /hotel-cancel  missing reason  400', async ({ request }) => {
     if (!hotelCancelReservation) return test.skip();
     const res = await request.post(`/api/reservations/${hotelCancelReservation.reservation_id}/hotel-cancel`, {
       data: { agent_id: 1 }, // missing reason
@@ -347,7 +347,7 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(body.error).toMatch(/reason/i);
   });
 
-  test('POST /hotel-cancel — already CANCELLED → 409', async ({ request }) => {
+  test('POST /hotel-cancel  already CANCELLED  409', async ({ request }) => {
     if (!hotelCancelReservation) return test.skip();
     // Already cancelled above, try again
     const res = await request.post(`/api/reservations/${hotelCancelReservation.reservation_id}/hotel-cancel`, {
@@ -359,36 +359,36 @@ test.describe('📋 Reservations API — Full Lifecycle', () => {
     expect(body.error).toMatch(/Cannot cancel/i);
   });
 
-  test('POST /hotel-cancel — invalid ID → 400', async ({ request }) => {
+  test('POST /hotel-cancel  invalid ID  400', async ({ request }) => {
     const res = await request.post('/api/reservations/not-a-number/hotel-cancel', {
       data: { reason: 'test', agent_id: 1 },
     });
     expect(res.status()).toBe(400);
   });
 
-  test('POST /hotel-cancel — nonexistent reservation → 404', async ({ request }) => {
+  test('POST /hotel-cancel  nonexistent reservation  404', async ({ request }) => {
     const res = await request.post('/api/reservations/999999/hotel-cancel', {
       data: { reason: 'test', agent_id: 1 },
     });
     expect(res.status()).toBe(404);
   });
 
-  // ── POST /reservations/:id/transfer ───────────────────────
-  test('POST /reservations/:id/transfer — invalid reservation → 404', async ({ request }) => {
+  //  POST /reservations/:id/transfer 
+  test('POST /reservations/:id/transfer  invalid reservation  404', async ({ request }) => {
     const res = await request.post('/api/reservations/99999/transfer', {
       data: { new_room_id: 2, reason: 'Test', agent_id: 1 },
     });
     expect(res.status()).toBe(404);
   });
 
-  test('POST /transfer — missing new_room_id → 400', async ({ request }) => {
+  test('POST /transfer  missing new_room_id  400', async ({ request }) => {
     const res = await request.post('/api/reservations/1/transfer', {
       data: { reason: 'Test', agent_id: 1 },
     });
     expect(res.status()).toBe(400);
   });
 
-  test('POST /transfer — missing reason → 400', async ({ request }) => {
+  test('POST /transfer  missing reason  400', async ({ request }) => {
     const res = await request.post('/api/reservations/1/transfer', {
       data: { new_room_id: 2, agent_id: 1 },
     });

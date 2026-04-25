@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -30,7 +30,7 @@ const ADMIN_TABS = [
   { key: 'channels', label: '🌐 Channels', note: 'Booking channel stats and location hierarchy tree' },
   { key: 'payments', label: '💳 Payments', note: 'Payment history, filters and transaction review' },
   { key: 'accounts', label: '👤 Accounts', note: 'System and guest login management' },
-  { key: 'timeline', label: '📋 Timeline', note: 'Reservation status audit trail and history' },
+  { key: 'timeline', label: '🕒 Timeline', note: 'Reservation status audit trail and history' },
   { key: 'reports', label: '📊 Reports', note: 'KPIs, exports, and revenue analytics' },
 ];
 
@@ -50,11 +50,11 @@ export default function AdminPage() {
 const [brandRevenueData, setBrandRevenueData] = useState([]);
   const [loadingReport, setLoadingReport] = useState(false);
 
-  // Not logged in → login
+  // Not logged in  login
   if (!isSystemUser) {
     return <Navigate to="/login" replace state={{ nextUrl: '/admin' }} />;
   }
-  // Logged in but not ADMIN → cashier portal
+  // Logged in but not ADMIN  cashier portal
   if (!isAdminUser) {
     return <Navigate to="/cashier" replace />;
   }

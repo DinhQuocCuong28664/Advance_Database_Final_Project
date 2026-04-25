@@ -1,19 +1,19 @@
 /**
- * ══════════════════════════════════════════════════════════════
- * [11] PROMOTIONS & LOCATIONS API — Playwright Tests
+ * 
+ * [11] PROMOTIONS & LOCATIONS API  Playwright Tests
  * Endpoints:
  *   GET /api/promotions
  *   GET /api/locations/tree
  *   GET /api/locations
- * ══════════════════════════════════════════════════════════════
+ * 
  */
 const { test, expect } = require('@playwright/test');
 const { SEED } = require('./helpers');
 
-test.describe('🏷️ Promotions API', () => {
+test.describe(' Promotions API', () => {
 
-  // ── GET /promotions ────────────────────────────────────────
-  test('GET /promotions — returns active promotions', async ({ request }) => {
+  //  GET /promotions 
+  test('GET /promotions  returns active promotions', async ({ request }) => {
     const res = await request.get('/api/promotions');
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -22,7 +22,7 @@ test.describe('🏷️ Promotions API', () => {
     expect(body).toHaveProperty('count');
   });
 
-  test('GET /promotions?hotel_id= — filter by hotel', async ({ request }) => {
+  test('GET /promotions?hotel_id=  filter by hotel', async ({ request }) => {
     const res = await request.get('/api/promotions', {
       params: { hotel_id: SEED.hotel.id },
     });
@@ -32,7 +32,7 @@ test.describe('🏷️ Promotions API', () => {
     expect(Array.isArray(body.data)).toBe(true);
   });
 
-  test('GET /promotions — each promotion has required fields', async ({ request }) => {
+  test('GET /promotions  each promotion has required fields', async ({ request }) => {
     const res = await request.get('/api/promotions');
     const body = await res.json();
     if (body.data.length > 0) {
@@ -47,7 +47,7 @@ test.describe('🏷️ Promotions API', () => {
     }
   });
 
-  test('GET /promotions?hotel_id=&guest_id= — includes eligible_for_guest flag', async ({ request }) => {
+  test('GET /promotions?hotel_id=&guest_id=  includes eligible_for_guest flag', async ({ request }) => {
     const res = await request.get('/api/promotions', {
       params: { hotel_id: SEED.hotel.id, guest_id: SEED.guest.id },
     });
@@ -59,7 +59,7 @@ test.describe('🏷️ Promotions API', () => {
     }
   });
 
-  test('GET /promotions?member_only=true — filter member-only promos', async ({ request }) => {
+  test('GET /promotions?member_only=true  filter member-only promos', async ({ request }) => {
     const res = await request.get('/api/promotions', {
       params: { member_only: 'true' },
     });
@@ -69,7 +69,7 @@ test.describe('🏷️ Promotions API', () => {
     body.data.forEach(p => expect(p.member_only_flag).toBe(true));
   });
 
-  test('GET /promotions?member_only=false — filter non-member promos', async ({ request }) => {
+  test('GET /promotions?member_only=false  filter non-member promos', async ({ request }) => {
     const res = await request.get('/api/promotions', {
       params: { member_only: 'false' },
     });
@@ -80,10 +80,10 @@ test.describe('🏷️ Promotions API', () => {
 
 });
 
-test.describe('📍 Locations API', () => {
+test.describe(' Locations API', () => {
 
-  // ── GET /locations ─────────────────────────────────────────
-  test('GET /locations — returns flat location list', async ({ request }) => {
+  //  GET /locations 
+  test('GET /locations  returns flat location list', async ({ request }) => {
     const res = await request.get('/api/locations');
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -92,7 +92,7 @@ test.describe('📍 Locations API', () => {
     expect(body.data.length).toBeGreaterThan(0);
   });
 
-  test('GET /locations — each item has location_id, name, level', async ({ request }) => {
+  test('GET /locations  each item has location_id, name, level', async ({ request }) => {
     const res = await request.get('/api/locations');
     const body = await res.json();
     const loc = body.data[0];
@@ -101,8 +101,8 @@ test.describe('📍 Locations API', () => {
     expect(loc).toHaveProperty('level'); // actual field is 'level'
   });
 
-  // ── GET /locations/tree ────────────────────────────────────
-  test('GET /locations/tree — returns full hierarchy', async ({ request }) => {
+  //  GET /locations/tree 
+  test('GET /locations/tree  returns full hierarchy', async ({ request }) => {
     const res = await request.get('/api/locations/tree');
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -110,7 +110,7 @@ test.describe('📍 Locations API', () => {
     expect(Array.isArray(body.data)).toBe(true);
   });
 
-  test('GET /locations/tree — each node has depth and level', async ({ request }) => {
+  test('GET /locations/tree  each node has depth and level', async ({ request }) => {
     const res = await request.get('/api/locations/tree');
     const body = await res.json();
     if (body.data.length > 0) {
@@ -120,7 +120,7 @@ test.describe('📍 Locations API', () => {
     }
   });
 
-  test('GET /locations/tree?root= — filter by root name', async ({ request }) => {
+  test('GET /locations/tree?root=  filter by root name', async ({ request }) => {
     // Get a location name first
     const listRes = await request.get('/api/locations');
     const locations = (await listRes.json()).data;
@@ -135,7 +135,7 @@ test.describe('📍 Locations API', () => {
     expect(body.success).toBe(true);
   });
 
-  test('GET /locations/tree?root_id= — filter by root_id', async ({ request }) => {
+  test('GET /locations/tree?root_id=  filter by root_id', async ({ request }) => {
     const listRes = await request.get('/api/locations');
     const locations = (await listRes.json()).data;
     if (locations.length === 0) return test.skip();

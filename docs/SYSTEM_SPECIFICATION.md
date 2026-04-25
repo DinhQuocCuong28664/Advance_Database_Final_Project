@@ -1,97 +1,97 @@
-# ĐẶC TẢ HỆ THỐNG — LuxeReserve
+# AC TA HE THONG  LuxeReserve
 ## Hotel Reservation Management System
 
-> **Phiên bản:** 1.0  
-> **Ngày:** 2026-04-20  
-> **Nhóm:** DAF04 — Cơ sở dữ liệu nâng cao
+> **Phien ban:** 1.0  
+> **Ngay:** 2026-04-20  
+> **Nhom:** DAF04  Co so du lieu nang cao
 
 ---
 
-## Mục lục
+## Muc luc
 
-1. [Tổng quan hệ thống](#1-tổng-quan-hệ-thống)
-2. [Kiến trúc kỹ thuật](#2-kiến-trúc-kỹ-thuật)
-3. [Yêu cầu chức năng](#3-yêu-cầu-chức-năng)
-4. [Yêu cầu phi chức năng](#4-yêu-cầu-phi-chức-năng)
-5. [Thiết kế cơ sở dữ liệu](#5-thiết-kế-cơ-sở-dữ-liệu)
-6. [Phân quyền và bảo mật](#6-phân-quyền-và-bảo-mật)
-7. [Luồng nghiệp vụ chính](#7-luồng-nghiệp-vụ-chính)
-8. [Giao diện người dùng](#8-giao-diện-người-dùng)
-9. [Tích hợp bên ngoài](#9-tích-hợp-bên-ngoài)
-10. [Ràng buộc và quy tắc nghiệp vụ](#10-ràng-buộc-và-quy-tắc-nghiệp-vụ)
+1. [Tong quan he thong](#1-tong-quan-he-thong)
+2. [Kien truc ky thuat](#2-kien-truc-ky-thuat)
+3. [Yeu cau chuc nang](#3-yeu-cau-chuc-nang)
+4. [Yeu cau phi chuc nang](#4-yeu-cau-phi-chuc-nang)
+5. [Thiet ke co so du lieu](#5-thiet-ke-co-so-du-lieu)
+6. [Phan quyen va bao mat](#6-phan-quyen-va-bao-mat)
+7. [Luong nghiep vu chinh](#7-luong-nghiep-vu-chinh)
+8. [Giao dien nguoi dung](#8-giao-dien-nguoi-dung)
+9. [Tich hop ben ngoai](#9-tich-hop-ben-ngoai)
+10. [Rang buoc va quy tac nghiep vu](#10-rang-buoc-va-quy-tac-nghiep-vu)
 11. [Glossary](#11-glossary)
 
 ---
 
-## 1. Tổng quan hệ thống
+## 1. Tong quan he thong
 
-### 1.1 Mục đích
+### 1.1 Muc ich
 
-**LuxeReserve** là hệ thống quản lý đặt phòng khách sạn (Hotel Reservation Management System — HRMS) dành cho chuỗi khách sạn cao cấp. Hệ thống cung cấp:
+**LuxeReserve** la he thong quan ly at phong khach san (Hotel Reservation Management System  HRMS) danh cho chuoi khach san cao cap. He thong cung cap:
 
-- **Cổng đặt phòng trực tuyến** cho khách hàng (guest booking portal)
-- **Cổng quản lý nghiệp vụ** cho nhân viên (admin/cashier portals)
-- **API nền tảng** cho tích hợp với các hệ thống OTA và kênh phân phối
+- **Cong at phong truc tuyen** cho khach hang (guest booking portal)
+- **Cong quan ly nghiep vu** cho nhan vien (admin/cashier portals)
+- **API nen tang** cho tich hop voi cac he thong OTA va kenh phan phoi
 
-### 1.2 Phạm vi
+### 1.2 Pham vi
 
-| Trong phạm vi | Ngoài phạm vi |
+| Trong pham vi | Ngoai pham vi |
 |---|---|
-| Đặt phòng trực tiếp (direct booking) | Tích hợp Booking.com / Agoda |
-| Quản lý phòng và inventory | Quản lý nhân sự (HR) |
-| Check-in / Check-out / Room transfer | Hệ thống kế toán doanh nghiệp |
-| Thanh toán deposit và settlement | Loyalty points full lifecycle |
-| Housekeeping và Maintenance | Revenue management AI |
-| Báo cáo doanh thu | Multi-property accounting |
-| Dịch vụ phụ trợ (spa, F&B) | App mobile native |
+| at phong truc tiep (direct booking) | Tich hop Booking.com / Agoda |
+| Quan ly phong va inventory | Quan ly nhan su (HR) |
+| Check-in / Check-out / Room transfer | He thong ke toan doanh nghiep |
+| Thanh toan deposit va settlement | Loyalty points full lifecycle |
+| Housekeeping va Maintenance | Revenue management AI |
+| Bao cao doanh thu | Multi-property accounting |
+| Dich vu phu tro (spa, F&B) | App mobile native |
 
-### 1.3 Người dùng hệ thống
+### 1.3 Nguoi dung he thong
 
-| Actor | Mô tả | Portal |
+| Actor | Mo ta | Portal |
 |---|---|---|
-| **Guest (Khách hàng)** | Khách đặt phòng trực tiếp, có hoặc không có tài khoản | `/` (public site) |
-| **Admin** | Quản trị viên hệ thống, quyền toàn bộ | `/admin` |
-| **Cashier (Thu ngân)** | Nhân viên lễ tân thu tiền, check-in/out | `/cashier` |
-| **Front Desk** | Nhân viên lễ tân, thực hiện nghiệp vụ | `/cashier` (shared) |
+| **Guest (Khach hang)** | Khach at phong truc tiep, co hoac khong co tai khoan | `/` (public site) |
+| **Admin** | Quan tri vien he thong, quyen toan bo | `/admin` |
+| **Cashier (Thu ngan)** | Nhan vien le tan thu tien, check-in/out | `/cashier` |
+| **Front Desk** | Nhan vien le tan, thuc hien nghiep vu | `/cashier` (shared) |
 
 ---
 
-## 2. Kiến trúc kỹ thuật
+## 2. Kien truc ky thuat
 
-### 2.1 Tổng quan kiến trúc
+### 2.1 Tong quan kien truc
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    CLIENT TIER                       │
-│           React + Vite SPA (port 5173)              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
-│  │  Public  │  │  Admin   │  │  Cashier Portal  │  │
-│  │   Site   │  │  Portal  │  │  (Front Desk)    │  │
-│  └──────────┘  └──────────┘  └──────────────────┘  │
-└─────────────────────────┬───────────────────────────┘
-                          │ HTTP REST / JSON
-                          │ JWT Bearer Token
-┌─────────────────────────▼───────────────────────────┐
-│                  APPLICATION TIER                    │
-│           Node.js + Express (port 3000)             │
-│  ┌─────────────────────────────────────────────┐   │
-│  │   Auth Middleware   │   Route Handlers       │   │
-│  │   (JWT verify)      │   (Business Logic)     │   │
-│  │   Role-Based Auth   │   55 endpoints         │   │
-│  └─────────────────────────────────────────────┘   │
-└───────────────┬─────────────────┬───────────────────┘
-                │                 │
-┌───────────────▼──┐   ┌──────────▼──────────────────┐
-│  DATA TIER SQL   │   │     DATA TIER NOSQL         │
-│  SQL Server 2022 │   │     MongoDB Atlas           │
-│  (ACID / Locks)  │   │  (Flexible content)         │
-│  30 tables       │   │  3 collections              │
-└──────────────────┘   └─────────────────────────────┘
+
+                    CLIENT TIER                       
+           React + Vite SPA (port 5173)              
+        
+    Public      Admin       Cashier Portal    
+     Site       Portal      (Front Desk)      
+        
+
+                           HTTP REST / JSON
+                           JWT Bearer Token
+
+                  APPLICATION TIER                    
+           Node.js + Express (port 3000)             
+     
+     Auth Middleware      Route Handlers          
+     (JWT verify)         (Business Logic)        
+     Role-Based Auth      55 endpoints            
+     
+
+                                 
+   
+  DATA TIER SQL           DATA TIER NOSQL         
+  SQL Server 2022         MongoDB Atlas           
+  (ACID / Locks)       (Flexible content)         
+  30 tables            3 collections              
+   
 ```
 
-### 2.2 Stack công nghệ
+### 2.2 Stack cong nghe
 
-| Layer | Công nghệ | Mục đích |
+| Layer | Cong nghe | Muc ich |
 |---|---|---|
 | **Frontend** | React 18 + Vite | SPA, component-based UI |
 | **Routing** | React Router v6 | Client-side navigation |
@@ -108,246 +108,246 @@
 
 ### 2.3 Polyglot Persistence
 
-Hệ thống sử dụng **hai cơ sở dữ liệu song song** với nguyên tắc phân chia rõ ràng:
+He thong su dung **hai co so du lieu song song** voi nguyen tac phan chia ro rang:
 
-| Loại dữ liệu | Lưu tại | Lý do |
+| Loai du lieu | Luu tai | Ly do |
 |---|---|---|
-| Đặt phòng, thanh toán, inventory | **SQL Server** | ACID, transactions, locks |
-| Thông tin khách, tài khoản | **SQL Server** | Referential integrity |
-| Nội dung mô tả khách sạn | **MongoDB** | Flexible schema, text search |
-| Ảnh, gallery, amenity icons | **MongoDB** | Embedded document hiệu quả |
-| Room type feature lists | **MongoDB** | Thay đổi thường xuyên |
+| at phong, thanh toan, inventory | **SQL Server** | ACID, transactions, locks |
+| Thong tin khach, tai khoan | **SQL Server** | Referential integrity |
+| Noi dung mo ta khach san | **MongoDB** | Flexible schema, text search |
+| Anh, gallery, amenity icons | **MongoDB** | Embedded document hieu qua |
+| Room type feature lists | **MongoDB** | Thay oi thuong xuyen |
 
 ---
 
-## 3. Yêu cầu chức năng
+## 3. Yeu cau chuc nang
 
-### 3.1 F01 — Quản lý khách sạn
+### 3.1 F01  Quan ly khach san
 
-| ID | Tên chức năng | Mô tả |
+| ID | Ten chuc nang | Mo ta |
 |---|---|---|
-| F01.1 | Danh sách khách sạn | Hiển thị danh sách khách sạn với ảnh, rating, giá từ |
-| F01.2 | Chi tiết khách sạn | Thông tin đầy đủ: mô tả, ảnh gallery, amenities, loại phòng |
-| F01.3 | Tìm kiếm & lọc | Lọc theo điểm đến, giá, sao, brand |
-| F01.4 | Kiểm tra phòng trống | Tra cứu phòng available theo ngày nhận/trả |
+| F01.1 | Danh sach khach san | Hien thi danh sach khach san voi anh, rating, gia tu |
+| F01.2 | Chi tiet khach san | Thong tin ay u: mo ta, anh gallery, amenities, loai phong |
+| F01.3 | Tim kiem & loc | Loc theo iem en, gia, sao, brand |
+| F01.4 | Kiem tra phong trong | Tra cuu phong available theo ngay nhan/tra |
 
-### 3.2 F02 — Đặt phòng
+### 3.2 F02  at phong
 
-| ID | Tên chức năng | Mô tả |
+| ID | Ten chuc nang | Mo ta |
 |---|---|---|
-| F02.1 | Đặt phòng có tài khoản | Guest đã đăng nhập, thông tin tự điền |
-| F02.2 | Đặt phòng ẩn danh | Không cần tài khoản, nhập thông tin trực tiếp |
-| F02.3 | Thanh toán deposit | Bắt buộc đặt cọc 30% tổng tiền phòng |
-| F02.4 | Xác nhận qua email | Gửi email xác nhận kèm reservation code |
-| F02.5 | Tra cứu đặt phòng | Tra cứu bằng reservation code |
-| F02.6 | Huỷ đặt phòng (guest) | Guest tự huỷ, mất deposit |
-| F02.7 | Xem lịch sử đặt phòng | Guest xem các reservation của mình |
+| F02.1 | at phong co tai khoan | Guest a ang nhap, thong tin tu ien |
+| F02.2 | at phong an danh | Khong can tai khoan, nhap thong tin truc tiep |
+| F02.3 | Thanh toan deposit | Bat buoc at coc 30% tong tien phong |
+| F02.4 | Xac nhan qua email | Gui email xac nhan kem reservation code |
+| F02.5 | Tra cuu at phong | Tra cuu bang reservation code |
+| F02.6 | Huy at phong (guest) | Guest tu huy, mat deposit |
+| F02.7 | Xem lich su at phong | Guest xem cac reservation cua minh |
 
-### 3.3 F03 — Tài khoản khách hàng
+### 3.3 F03  Tai khoan khach hang
 
-| ID | Tên chức năng | Mô tả |
+| ID | Ten chuc nang | Mo ta |
 |---|---|---|
-| F03.1 | Đăng ký tài khoản | Tạo tài khoản mới, xác thực email OTP |
-| F03.2 | Đăng nhập | Đăng nhập bằng email / guest code |
-| F03.3 | Hồ sơ cá nhân | Xem/sửa thông tin cá nhân |
-| F03.4 | Chương trình loyalty | Xem điểm tích lũy, tier (SILVER/GOLD/PLATINUM/BLACK) |
-| F03.5 | Quên mật khẩu | Reset qua email (OTP) |
+| F03.1 | ang ky tai khoan | Tao tai khoan moi, xac thuc email OTP |
+| F03.2 | ang nhap | ang nhap bang email / guest code |
+| F03.3 | Ho so ca nhan | Xem/sua thong tin ca nhan |
+| F03.4 | Chuong trinh loyalty | Xem iem tich luy, tier (SILVER/GOLD/PLATINUM/BLACK) |
+| F03.5 | Quen mat khau | Reset qua email (OTP) |
 
-### 3.4 F04 — Nghiệp vụ lễ tân (Front Desk)
+### 3.4 F04  Nghiep vu le tan (Front Desk)
 
-| ID | Tên chức năng | Mô tả | Phân quyền |
+| ID | Ten chuc nang | Mo ta | Phan quyen |
 |---|---|---|---|
-| F04.1 | Bảng arrivals | Danh sách khách sắp đến hôm nay | ADMIN, CASHIER |
-| F04.2 | Bảng departures | Danh sách khách sắp đi hôm nay | ADMIN, CASHIER |
-| F04.3 | Check-in | Xác nhận khách nhận phòng | ADMIN, CASHIER |
-| F04.4 | Check-out | Xác nhận khách trả phòng | ADMIN, CASHIER |
-| F04.5 | Huỷ đặt phòng (hotel) | Hotel chủ động huỷ | ADMIN, CASHIER |
-| F04.6 | Chuyển phòng | Chuyển khách sang phòng khác | ADMIN, CASHIER |
-| F04.7 | Tra cứu reservation | Lookup theo reservation code | ADMIN, CASHIER |
-| F04.8 | Xem tổng tài chính | Balance due, total paid | ADMIN, CASHIER |
+| F04.1 | Bang arrivals | Danh sach khach sap en hom nay | ADMIN, CASHIER |
+| F04.2 | Bang departures | Danh sach khach sap i hom nay | ADMIN, CASHIER |
+| F04.3 | Check-in | Xac nhan khach nhan phong | ADMIN, CASHIER |
+| F04.4 | Check-out | Xac nhan khach tra phong | ADMIN, CASHIER |
+| F04.5 | Huy at phong (hotel) | Hotel chu ong huy | ADMIN, CASHIER |
+| F04.6 | Chuyen phong | Chuyen khach sang phong khac | ADMIN, CASHIER |
+| F04.7 | Tra cuu reservation | Lookup theo reservation code | ADMIN, CASHIER |
+| F04.8 | Xem tong tai chinh | Balance due, total paid | ADMIN, CASHIER |
 
-### 3.5 F05 — Quản trị (Admin)
+### 3.5 F05  Quan tri (Admin)
 
-| ID | Tên chức năng | Mô tả |
+| ID | Ten chuc nang | Mo ta |
 |---|---|---|
-| F05.1 | Dashboard KPI | Tổng booking, doanh thu, phòng trống, alerts |
-| F05.2 | Quản lý tài khoản | CRUD system user + guest accounts |
-| F05.3 | Quản lý inventory | Cập nhật trạng thái phòng theo ngày |
-| F05.4 | Báo cáo doanh thu | Revenue theo khách sạn, brand, thời gian |
-| F05.5 | Rate alerts | Cảnh báo giá thay đổi > 50% |
-| F05.6 | Cập nhật giá phòng | Thay đổi room rate |
-| F05.7 | Export báo cáo | Xuất Excel/PDF |
+| F05.1 | Dashboard KPI | Tong booking, doanh thu, phong trong, alerts |
+| F05.2 | Quan ly tai khoan | CRUD system user + guest accounts |
+| F05.3 | Quan ly inventory | Cap nhat trang thai phong theo ngay |
+| F05.4 | Bao cao doanh thu | Revenue theo khach san, brand, thoi gian |
+| F05.5 | Rate alerts | Canh bao gia thay oi > 50% |
+| F05.6 | Cap nhat gia phong | Thay oi room rate |
+| F05.7 | Export bao cao | Xuat Excel/PDF |
 
-### 3.6 F06 — Housekeeping
+### 3.6 F06  Housekeeping
 
-| ID | Tên chức năng | Mô tả |
+| ID | Ten chuc nang | Mo ta |
 |---|---|---|
-| F06.1 | Tạo task dọn phòng | Tự động khi checkout, hoặc tạo thủ công |
-| F06.2 | Assign nhân viên | Phân công nhân viên housekeeping |
-| F06.3 | Cập nhật trạng thái | OPEN → ASSIGNED → IN_PROGRESS → DONE → VERIFIED |
-| F06.4 | Đồng bộ trạng thái phòng | Khi VERIFIED thì Room.housekeeping_status = INSPECTED |
+| F06.1 | Tao task don phong | Tu ong khi checkout, hoac tao thu cong |
+| F06.2 | Assign nhan vien | Phan cong nhan vien housekeeping |
+| F06.3 | Cap nhat trang thai | OPEN  ASSIGNED  IN_PROGRESS  DONE  VERIFIED |
+| F06.4 | ong bo trang thai phong | Khi VERIFIED thi Room.housekeeping_status = INSPECTED |
 
-### 3.7 F07 — Bảo trì (Maintenance)
+### 3.7 F07  Bao tri (Maintenance)
 
-| ID | Tên chức năng | Mô tả |
+| ID | Ten chuc nang | Mo ta |
 |---|---|---|
-| F07.1 | Tạo ticket bảo trì | Báo cáo sự cố thiết bị, cơ sở vật chất |
-| F07.2 | Assign kỹ thuật viên | Phân công người xử lý |
-| F07.3 | Cập nhật tiến độ | Theo dõi quá trình xử lý |
-| F07.4 | Đóng ticket | Resolve → tự động trả phòng về AVAILABLE |
+| F07.1 | Tao ticket bao tri | Bao cao su co thiet bi, co so vat chat |
+| F07.2 | Assign ky thuat vien | Phan cong nguoi xu ly |
+| F07.3 | Cap nhat tien o | Theo doi qua trinh xu ly |
+| F07.4 | ong ticket | Resolve  tu ong tra phong ve AVAILABLE |
 
-### 3.8 F08 — Dịch vụ phụ trợ (Guest Services)
+### 3.8 F08  Dich vu phu tro (Guest Services)
 
-| ID | Tên chức năng | Mô tả |
+| ID | Ten chuc nang | Mo ta |
 |---|---|---|
-| F08.1 | Catalog dịch vụ | Danh sách dịch vụ của khách sạn (spa, laundry, F&B...) |
-| F08.2 | Đặt dịch vụ | Thêm dịch vụ vào reservation |
-| F08.3 | Thanh toán dịch vụ | Incidental charge |
-| F08.4 | Quản lý đơn dịch vụ | Xem, cập nhật trạng thái, cancel |
+| F08.1 | Catalog dich vu | Danh sach dich vu cua khach san (spa, laundry, F&B...) |
+| F08.2 | at dich vu | Them dich vu vao reservation |
+| F08.3 | Thanh toan dich vu | Incidental charge |
+| F08.4 | Quan ly on dich vu | Xem, cap nhat trang thai, cancel |
 
-### 3.9 F09 — Hoá đơn
+### 3.9 F09  Hoa on
 
-| ID | Tên chức năng | Mô tả |
+| ID | Ten chuc nang | Mo ta |
 |---|---|---|
-| F09.1 | Tạo hoá đơn | Generate từ vw_ReservationTotal (tiền phòng + dịch vụ − thanh toán) |
-| F09.2 | Phát hành hoá đơn | DRAFT → ISSUED |
-| F09.3 | Xem hoá đơn | Full line items: rooms, services, payments |
+| F09.1 | Tao hoa on | Generate tu vw_ReservationTotal (tien phong + dich vu  thanh toan) |
+| F09.2 | Phat hanh hoa on | DRAFT  ISSUED |
+| F09.3 | Xem hoa on | Full line items: rooms, services, payments |
 
-### 3.10 F10 — Promotions
+### 3.10 F10  Promotions
 
-| ID | Tên chức năng | Mô tả |
+| ID | Ten chuc nang | Mo ta |
 |---|---|---|
-| F10.1 | Hiển thị promotions | Theo hotel, brand, chain |
-| F10.2 | Eligibility check | Kiểm tra thành viên có đủ điều kiện nhận promo |
-| F10.3 | Member-only offers | Khuyến mãi dành riêng thành viên loyalty |
+| F10.1 | Hien thi promotions | Theo hotel, brand, chain |
+| F10.2 | Eligibility check | Kiem tra thanh vien co u ieu kien nhan promo |
+| F10.3 | Member-only offers | Khuyen mai danh rieng thanh vien loyalty |
 
 ---
 
-## 4. Yêu cầu phi chức năng
+## 4. Yeu cau phi chuc nang
 
-### 4.1 Hiệu năng
+### 4.1 Hieu nang
 
-| Chỉ tiêu | Yêu cầu |
+| Chi tieu | Yeu cau |
 |---|---|
 | API response time | < 500ms cho 95% requests |
-| Booking concurrency | Xử lý đồng thời ≥ 50 booking requests |
-| Room lock timeout | < 2s cho pessimistic lock trên 90 ngày |
+| Booking concurrency | Xu ly ong thoi  50 booking requests |
+| Room lock timeout | < 2s cho pessimistic lock tren 90 ngay |
 | Page load | < 2s first contentful paint |
 
-### 4.2 Tính sẵn sàng
+### 4.2 Tinh san sang
 
-| Chỉ tiêu | Yêu cầu |
+| Chi tieu | Yeu cau |
 |---|---|
-| Uptime | ≥ 99% |
-| Graceful shutdown | SIGINT → đóng DB connections trước khi tắt |
-| Error recovery | Transaction rollback automatic trên mọi lỗi |
+| Uptime |  99% |
+| Graceful shutdown | SIGINT  ong DB connections truoc khi tat |
+| Error recovery | Transaction rollback automatic tren moi loi |
 
-### 4.3 Bảo mật
+### 4.3 Bao mat
 
-| Yêu cầu | Thực hiện |
+| Yeu cau | Thuc hien |
 |---|---|
-| Mật khẩu | bcrypt (cost=10), không lưu plain text |
+| Mat khau | bcrypt (cost=10), khong luu plain text |
 | Authentication | JWT Bearer token, 8h expiry |
 | Authorization | Role-based middleware, enforce per endpoint |
 | Injection | Parameterized queries (mssql input binding) |
-| CORS | Configured, chỉ allow frontend origin |
-| Sensitive data | Credentials trong `.env`, không commit |
+| CORS | Configured, chi allow frontend origin |
+| Sensitive data | Credentials trong `.env`, khong commit |
 
-### 4.4 Tính toàn vẹn dữ liệu
+### 4.4 Tinh toan ven du lieu
 
-| Yêu cầu | Thực hiện |
+| Yeu cau | Thuc hien |
 |---|---|
 | Race condition | Pessimistic lock (UPDLOCK+HOLDLOCK) khi booking |
 | Inventory consistency | Optimistic lock (version_no) khi update availability |
-| Payment integrity | Validation: tổng payment ≤ grand_total |
-| Audit trail | ReservationStatusHistory ghi mọi thay đổi trạng thái |
+| Payment integrity | Validation: tong payment  grand_total |
+| Audit trail | ReservationStatusHistory ghi moi thay oi trang thai |
 
-### 4.5 Khả năng mở rộng
+### 4.5 Kha nang mo rong
 
-| Yêu cầu | Thiết kế |
+| Yeu cau | Thiet ke |
 |---|---|
-| Multi-hotel | Hotel_id trên mọi bảng liên quan |
-| Multi-chain | Chain → Brand → Hotel hierarchy |
-| Multi-currency | currency_code trên mọi giao dịch |
-| Multi-language | i18n ready (nội dung MongoDB) |
-| Multi-role | Role-based system, dễ thêm role mới |
+| Multi-hotel | Hotel_id tren moi bang lien quan |
+| Multi-chain | Chain  Brand  Hotel hierarchy |
+| Multi-currency | currency_code tren moi giao dich |
+| Multi-language | i18n ready (noi dung MongoDB) |
+| Multi-role | Role-based system, de them role moi |
 
 ---
 
-## 5. Thiết kế cơ sở dữ liệu
+## 5. Thiet ke co so du lieu
 
-### 5.1 Tổng quan (30 bảng SQL + 3 collections MongoDB)
+### 5.1 Tong quan (30 bang SQL + 3 collections MongoDB)
 
 ```
 DOMAIN 1: Location Hierarchy
-  └── Location (tự tham chiếu, 5 cấp)
+   Location (tu tham chieu, 5 cap)
 
 DOMAIN 2: Hotel Organization  
-  └── HotelChain → Brand → Hotel
-  └── HotelPolicy, HotelAmenity
+   HotelChain  Brand  Hotel
+   HotelPolicy, HotelAmenity
 
 DOMAIN 3: Room Management
-  └── RoomType → Room
-  └── RoomRate, RoomAvailability
+   RoomType  Room
+   RoomRate, RoomAvailability
 
 DOMAIN 4: Guest Management
-  └── Guest → GuestAuth → EmailVerificationOtp
-  └── GuestAddress, GuestPreference
+   Guest  GuestAuth  EmailVerificationOtp
+   GuestAddress, GuestPreference
 
 DOMAIN 5: System Users & Roles
-  └── SystemUser ← UserRole → Role
+   SystemUser  UserRole  Role
 
 DOMAIN 6: Pricing & Promotions
-  └── RatePlan, BookingChannel
-  └── Promotion
+   RatePlan, BookingChannel
+   Promotion
 
 DOMAIN 7: Reservation Core
-  └── Reservation → ReservationRoom
-  └── ReservationStatusHistory
+   Reservation  ReservationRoom
+   ReservationStatusHistory
 
 DOMAIN 8: Financial
-  └── Payment, Invoice, InvoiceLineItem
+   Payment, Invoice, InvoiceLineItem
 
 DOMAIN 9: Stay & Services
-  └── StayRecord
-  └── ServiceCatalog → ReservationService
+   StayRecord
+   ServiceCatalog  ReservationService
 
 DOMAIN 10: Operations
-  └── HousekeepingTask
-  └── MaintenanceTicket
+   HousekeepingTask
+   MaintenanceTicket
 
 DOMAIN 11: Loyalty
-  └── LoyaltyAccount
+   LoyaltyAccount
 
 DOMAIN 12: Audit & Locks
-  └── InventoryLockLog
+   InventoryLockLog
 ```
 
-### 5.2 Entity Relationship — Core Flow
+### 5.2 Entity Relationship  Core Flow
 
 ```
-Guest ──────────────────┐
-  │                     │
-  │                     ▼
-  │               GuestAuth (login credentials)
-  │
-  ▼
-Reservation ────────────────── Hotel
-  │                               │
-  ├── ReservationRoom ────── Room ─┘
-  │       │                  │
-  │       │           RoomAvailability (1 row/night)
-  │       │
-  ├── ReservationService ── ServiceCatalog
-  │
-  ├── Payment
-  │
-  ├── Invoice ── InvoiceLineItem
-  │
-  └── ReservationStatusHistory
+Guest 
+                       
+                       
+                 GuestAuth (login credentials)
+  
+  
+Reservation  Hotel
+                                 
+   ReservationRoom  Room 
+                           
+                    RoomAvailability (1 row/night)
+         
+   ReservationService  ServiceCatalog
+  
+   Payment
+  
+   Invoice  InvoiceLineItem
+  
+   ReservationStatusHistory
 ```
 
-### 5.3 Bảng quan trọng
+### 5.3 Bang quan trong
 
 #### Reservation
 ```sql
@@ -387,10 +387,10 @@ payment_status          VARCHAR(15)  -- PENDING|AUTHORIZED|CAPTURED|FAILED|REFUN
 amount                  DECIMAL(18,2)
 ```
 
-### 5.4 Views quan trọng
+### 5.4 Views quan trong
 
 #### vw_ReservationTotal
-Tổng hợp tài chính theo reservation — single source of truth cho số tài chính:
+Tong hop tai chinh theo reservation  single source of truth cho so tai chinh:
 
 ```sql
 CREATE VIEW vw_ReservationTotal AS
@@ -408,39 +408,39 @@ FROM Reservation r ...
 
 ### 5.5 Stored Procedures
 
-| Procedure | Mục đích |
+| Procedure | Muc ich |
 |---|---|
-| `sp_ReserveRoom` | Lock và booking một phòng cho một đêm (UPDLOCK+HOLDLOCK) |
-| `sp_TransferRoom` | Chuyển phòng với lock mới, giải phóng phòng cũ |
+| `sp_ReserveRoom` | Lock va booking mot phong cho mot em (UPDLOCK+HOLDLOCK) |
+| `sp_TransferRoom` | Chuyen phong voi lock moi, giai phong phong cu |
 
 ### 5.6 MongoDB Collections
 
-| Collection | Mục đích | Key fields |
+| Collection | Muc ich | Key fields |
 |---|---|---|
-| `Hotel_Catalog` | Mô tả, ảnh, địa chỉ chi tiết | `hotel_id`, `description`, `images[]`, `amenities[]`, `contact` |
-| `room_type_catalog` | Mô tả, features, ảnh loại phòng | `room_type_code`, `description`, `features[]`, `images[]` |
-| `amenity_master` | Tên, icon, category của amenity | `amenity_code`, `name`, `icon`, `category`, `tags[]` |
+| `Hotel_Catalog` | Mo ta, anh, ia chi chi tiet | `hotel_id`, `description`, `images[]`, `amenities[]`, `contact` |
+| `room_type_catalog` | Mo ta, features, anh loai phong | `room_type_code`, `description`, `features[]`, `images[]` |
+| `amenity_master` | Ten, icon, category cua amenity | `amenity_code`, `name`, `icon`, `category`, `tags[]` |
 
 ---
 
-## 6. Phân quyền và bảo mật
+## 6. Phan quyen va bao mat
 
 ### 6.1 Role matrix
 
-| Chức năng | Guest | CASHIER | FRONT_DESK | ADMIN |
-|---|---|---|---|---|
-| Xem hotel / phòng | ✅ | ✅ | ✅ | ✅ |
-| Đặt phòng | ✅ | — | — | — |
-| Huỷ đặt phòng (own) | ✅ | — | — | — |
-| Check-in / Check-out | — | ✅ | ✅ | ✅ |
-| Huỷ đặt phòng (hotel) | — | ✅ | ✅ | ✅ |
-| Room transfer | — | ✅ | ✅ | ✅ |
-| Tra cứu reservation | — | ✅ | ✅ | ✅ |
-| Quản lý accounts | — | — | — | ✅ |
-| Báo cáo doanh thu | — | — | — | ✅ |
-| Cập nhật giá / inventory | — | — | — | ✅ |
-| Housekeeping tasks | — | — | ✅ | ✅ |
-| Maintenance tickets | — | — | ✅ | ✅ |
+| Chuc nang | Guest | CASHIER | FRONT_DESK | ADMIN |
+------------------------------------------------------------
+| Xem hotel / phong |  |  |  |  |
+| at phong |  |  |  |  |
+| Huy at phong (own) |  |  |  |  |
+| Check-in / Check-out |  |  |  |  |
+| Huy at phong (hotel) |  |  |  |  |
+| Room transfer |  |  |  |  |
+| Tra cuu reservation |  |  |  |  |
+| Quan ly accounts |  |  |  |  |
+| Bao cao doanh thu |  |  |  |  |
+| Cap nhat gia / inventory |  |  |  |  |
+| Housekeeping tasks |  |  |  |  |
+| Maintenance tickets |  |  |  |  |
 
 ### 6.2 JWT Token Structure
 
@@ -459,296 +459,296 @@ FROM Reservation r ...
 
 ```
 Request
-  │
-  ├── attachAuthContext()   ← Giải mã JWT, set req.auth (optional)
-  │
-  ├── requireAuth()         ← Bắt buộc đăng nhập
-  │
-  └── requireSystemUser()  ← Kiểm tra authenticated system user
+  
+   attachAuthContext()    Giai ma JWT, set req.auth (optional)
+  
+   requireAuth()          Bat buoc ang nhap
+  
+   requireSystemUser()   Kiem tra authenticated system user
 ```
 
-### 6.4 Tài khoản demo
+### 6.4 Tai khoan demo
 
 | Username | Password | Roles | Portal |
 |---|---|---|---|
 | `admin` | `admin` | ADMIN | `/admin` |
 | `cashier` | `cashier` | CASHIER, FRONT_DESK | `/cashier` |
-| `dqc` | `dqc` | Guest — PLATINUM | `/` |
+| `dqc` | `dqc` | Guest  PLATINUM | `/` |
 
 ---
 
-## 7. Luồng nghiệp vụ chính
+## 7. Luong nghiep vu chinh
 
-### 7.1 Luồng đặt phòng hoàn chỉnh
+### 7.1 Luong at phong hoan chinh
 
 ```
-[Guest] Tìm kiếm khách sạn (hotel_id, checkin, checkout)
-    │
-    ▼
-[GET /rooms/availability] → Danh sách phòng available
-    │   Logic: NOT EXISTS BOOKED/BLOCKED trong RoomAvailability
-    │
-    ▼
-[Guest] Chọn phòng, điền thông tin
-    │
-    ▼
-[POST /reservations] → Tạo reservation với PESSIMISTIC LOCK
-    │
-    ├── BEGIN TRANSACTION
-    │   ├── Tạo/resolve Guest record
-    │   ├── FOR EACH night: SELECT ... WITH (UPDLOCK, HOLDLOCK)
-    │   │   ├── Kiểm tra status = 'OPEN'
-    │   │   └── UPDATE status = 'BOOKED'
-    │   ├── INSERT Reservation (status='CONFIRMED')
-    │   ├── INSERT ReservationRoom
-    │   └── INSERT ReservationStatusHistory
-    └── COMMIT TRANSACTION
-    │
-    ▼
-[Email] Gửi booking confirmation
-    │
-    ▼
-[POST /payments] → Thanh toán deposit 30%
-    │   Validate: amount ≤ deposit_amount, reservation CONFIRMED
-    │
-    ▼
+[Guest] Tim kiem khach san (hotel_id, checkin, checkout)
+    
+    
+[GET /rooms/availability]  Danh sach phong available
+       Logic: NOT EXISTS BOOKED/BLOCKED trong RoomAvailability
+    
+    
+[Guest] Chon phong, ien thong tin
+    
+    
+[POST /reservations]  Tao reservation voi PESSIMISTIC LOCK
+    
+     BEGIN TRANSACTION
+        Tao/resolve Guest record
+        FOR EACH night: SELECT ... WITH (UPDLOCK, HOLDLOCK)
+           Kiem tra status = 'OPEN'
+           UPDATE status = 'BOOKED'
+        INSERT Reservation (status='CONFIRMED')
+        INSERT ReservationRoom
+        INSERT ReservationStatusHistory
+     COMMIT TRANSACTION
+    
+    
+[Email] Gui booking confirmation
+    
+    
+[POST /payments]  Thanh toan deposit 30%
+       Validate: amount  deposit_amount, reservation CONFIRMED
+    
+    
 [Reservation status: CONFIRMED + deposit paid]
 ```
 
-### 7.2 Luồng Check-in
+### 7.2 Luong Check-in
 
 ```
-[Cashier] Tra cứu reservation code
-    │
-    ▼
-[GET /reservations/:code] → vw_ReservationTotal
-    │   Hiển thị: balance_due, total_paid, danh sách phòng
-    │
-    ▼
-Kiểm tra balance_due = 0? (không còn nợ)
-    ├── Nếu CÒN NỢ → yêu cầu thanh toán trước [POST /payments]
-    └── Nếu OK →
-        │
-        ▼
+[Cashier] Tra cuu reservation code
+    
+    
+[GET /reservations/:code]  vw_ReservationTotal
+       Hien thi: balance_due, total_paid, danh sach phong
+    
+    
+Kiem tra balance_due = 0-> (khong con no)
+     Neu CON NO  yeu cau thanh toan truoc [POST /payments]
+     Neu OK 
+        
+        
 [POST /reservations/:id/checkin]
-    │
-    ├── BEGIN TRANSACTION
-    │   ├── UPDATE Reservation → CHECKED_IN (guard: phải là CONFIRMED)
-    │   ├── UPDATE ReservationRoom.occupancy_status = 'IN_HOUSE'
-    │   ├── UPDATE Room.room_status = 'OCCUPIED'
-    │   ├── INSERT StayRecord (actual_checkin_at = NOW)
-    │   └── INSERT ReservationStatusHistory
-    └── COMMIT
+    
+     BEGIN TRANSACTION
+        UPDATE Reservation  CHECKED_IN (guard: phai la CONFIRMED)
+        UPDATE ReservationRoom.occupancy_status = 'IN_HOUSE'
+        UPDATE Room.room_status = 'OCCUPIED'
+        INSERT StayRecord (actual_checkin_at = NOW)
+        INSERT ReservationStatusHistory
+     COMMIT
 ```
 
-### 7.3 Luồng Check-out
+### 7.3 Luong Check-out
 
 ```
-[Cashier] Xác nhận check-out
-    │
-    ▼
+[Cashier] Xac nhan check-out
+    
+    
 [POST /reservations/:id/checkout]
-    │
-    ├── BEGIN TRANSACTION
-    │   ├── UPDATE Reservation → CHECKED_OUT (guard: phải là CHECKED_IN)
-    │   ├── UPDATE ReservationRoom.occupancy_status = 'COMPLETED'
-    │   ├── UPDATE Room → AVAILABLE, housekeeping_status = 'DIRTY'
-    │   ├── UPDATE StayRecord.actual_checkout_at = NOW
-    │   └── INSERT HousekeepingTask (type=CLEANING, priority=HIGH)
-    └── COMMIT
-    │
-    ▼
-Response bao gồm financials: grand_total, total_paid, balance_due
+    
+     BEGIN TRANSACTION
+        UPDATE Reservation  CHECKED_OUT (guard: phai la CHECKED_IN)
+        UPDATE ReservationRoom.occupancy_status = 'COMPLETED'
+        UPDATE Room  AVAILABLE, housekeeping_status = 'DIRTY'
+        UPDATE StayRecord.actual_checkout_at = NOW
+        INSERT HousekeepingTask (type=CLEANING, priority=HIGH)
+     COMMIT
+    
+    
+Response bao gom financials: grand_total, total_paid, balance_due
 ```
 
-### 7.4 Luồng Room Transfer
+### 7.4 Luong Room Transfer
 
 ```
-[Cashier] Chọn reservation + phòng mới
-    │
-    ▼
+[Cashier] Chon reservation + phong moi
+    
+    
 [POST /reservations/:id/transfer]
-    │
-    ├── BEGIN TRANSACTION
-    │   ├── Lock phòng mới (UPDLOCK per night)
-    │   ├── Verify phòng mới OPEN
-    │   ├── Update RoomAvailability phòng mới → BOOKED
-    │   ├── Release RoomAvailability phòng cũ → OPEN
-    │   ├── Update ReservationRoom → phòng mới
-    │   └── INSERT ReservationStatusHistory
-    └── COMMIT
+    
+     BEGIN TRANSACTION
+        Lock phong moi (UPDLOCK per night)
+        Verify phong moi OPEN
+        Update RoomAvailability phong moi  BOOKED
+        Release RoomAvailability phong cu  OPEN
+        Update ReservationRoom  phong moi
+        INSERT ReservationStatusHistory
+     COMMIT
 ```
 
-### 7.5 Luồng Housekeeping sau Checkout
+### 7.5 Luong Housekeeping sau Checkout
 
 ```
 [Checkout trigger] AUTO: INSERT HousekeepingTask (CLEANING, HIGH)
-    │
-    ▼
-[Staff] Nhận task, cập nhật trạng thái
-    │
-    ├── PUT /housekeeping/:id/assign → gán nhân viên
-    ├── PUT /housekeeping/:id/status → IN_PROGRESS
-    ├── PUT /housekeeping/:id/status → DONE
-    └── PUT /housekeeping/:id/status → VERIFIED
-              │
-              └── Auto sync:
-                        IN_PROGRESS → Room.housekeeping_status = 'IN_PROGRESS'
-                        DONE        → Room.housekeeping_status = 'CLEAN'
-                        VERIFIED    → Room.housekeeping_status = 'INSPECTED'
+    
+    
+[Staff] Nhan task, cap nhat trang thai
+    
+     PUT /housekeeping/:id/assign  gan nhan vien
+     PUT /housekeeping/:id/status  IN_PROGRESS
+     PUT /housekeeping/:id/status  DONE
+     PUT /housekeeping/:id/status  VERIFIED
+              
+               Auto sync:
+                        IN_PROGRESS  Room.housekeeping_status = 'IN_PROGRESS'
+                        DONE         Room.housekeeping_status = 'CLEAN'
+                        VERIFIED     Room.housekeeping_status = 'INSPECTED'
 ```
 
 ---
 
-## 8. Giao diện người dùng
+## 8. Giao dien nguoi dung
 
-### 8.1 Cấu trúc routes frontend
+### 8.1 Cau truc routes frontend
 
-| Route | Component | Mô tả |
+| Route | Component | Mo ta |
 |---|---|---|
-| `/` | `HomePage` | Trang chủ: hero search, featured hotels, promotions |
-| `/search` | `SearchPage` | Kết quả tìm kiếm với filter sidebar |
-| `/hotels/:id` | `HotelPage` | Chi tiết khách sạn, danh sách phòng |
-| `/booking` | `BookingPage` | Form đặt phòng, xác nhận, thanh toán deposit |
-| `/reservations` | `ReservationPage` | Tra cứu đặt phòng theo code |
-| `/account` | `AccountPage` | Tài khoản: lịch sử, loyalty, hồ sơ |
-| `/login` | `LoginPage` | Đăng nhập (unified cho guest + system) |
-| `/register` | `RegisterPage` | Đăng ký tài khoản guest |
-| `/admin` | `AdminPage` | Admin portal (yêu cầu ADMIN role) |
-| `/cashier` | `CashierPage` | Cashier portal (yêu cầu CASHIER role) |
+| `/` | `HomePage` | Trang chu: hero search, featured hotels, promotions |
+| `/search` | `SearchPage` | Ket qua tim kiem voi filter sidebar |
+| `/hotels/:id` | `HotelPage` | Chi tiet khach san, danh sach phong |
+| `/booking` | `BookingPage` | Form at phong, xac nhan, thanh toan deposit |
+| `/reservations` | `ReservationPage` | Tra cuu at phong theo code |
+| `/account` | `AccountPage` | Tai khoan: lich su, loyalty, ho so |
+| `/login` | `LoginPage` | ang nhap (unified cho guest + system) |
+| `/register` | `RegisterPage` | ang ky tai khoan guest |
+| `/admin` | `AdminPage` | Admin portal (yeu cau ADMIN role) |
+| `/cashier` | `CashierPage` | Cashier portal (yeu cau CASHIER role) |
 
-### 8.2 Components chính
+### 8.2 Components chinh
 
-| Component | Mô tả |
+| Component | Mo ta |
 |---|---|
 | `SiteHeader` | Navigation, login/logout, portal link |
 | `SearchBar` | Hero search: destination, dates, guests |
-| `HotelCard` | Card trong danh sách tìm kiếm |
-| `RoomCard` | Card loại phòng kèm giá và booking |
-| `AdminFrontDesk` | Module lễ tân: arrivals/departures board + lookup |
+| `HotelCard` | Card trong danh sach tim kiem |
+| `RoomCard` | Card loai phong kem gia va booking |
+| `AdminFrontDesk` | Module le tan: arrivals/departures board + lookup |
 | `FlashMessage` | Toast notifications |
 
 ### 8.3 State management
 
-| Context | Nội dung |
+| Context | Noi dung |
 |---|---|
 | `AuthContext` | `authSession`, `isSystemUser`, `isAdminUser`, `isCashierUser` |
-| `FlashContext` | `setFlash({tone, text})` — global toast |
+| `FlashContext` | `setFlash({tone, text})`  global toast |
 
 ---
 
-## 9. Tích hợp bên ngoài
+## 9. Tich hop ben ngoai
 
 ### 9.1 VNPay (Payment Gateway)
 
-| Thông số | Giá trị |
+| Thong so | Gia tri |
 |---|---|
-| Môi trường hiện tại | Sandbox |
+| Moi truong hien tai | Sandbox |
 | TMN Code | `3ZEQZZ0D` |
 | Endpoint | `https://sandbox.vnpayment.vn/paymentv2/vpcpay.html` |
 | Return URL | `http://localhost:5173/booking/vnpay-return` |
 | IPN URL | `http://localhost:3000/api/vnpay/ipn` |
-| **Trạng thái** | ⚠️ **Code sẵn sàng, chưa kích hoạt** (cần production IPN URL) |
+| **Trang thai** |  **Code san sang, chua kich hoat** (can production IPN URL) |
 
 **Flow:**
 ```
-Frontend → POST /api/vnpay/create-payment → VNPay URL
-VNPay → redirect GET /vnpay/return → verify signature → frontend
-VNPay → callback GET /vnpay/ipn → ghi payment record
+Frontend  POST /api/vnpay/create-payment  VNPay URL
+VNPay  redirect GET /vnpay/return  verify signature  frontend
+VNPay  callback GET /vnpay/ipn  ghi payment record
 ```
 
 ### 9.2 Gmail SMTP (Transactional Email)
 
-| Sự kiện | Email template |
+| Su kien | Email template |
 |---|---|
-| Đặt phòng thành công | Booking confirmation + reservation code |
-| Huỷ đặt phòng | Cancellation notice |
-| Reminder check-in | Mail template available; automatic scheduler chưa được wire |
-| OTP xác thực | Email verification code (6 chữ số, hết hạn 10 phút) |
+| at phong thanh cong | Booking confirmation + reservation code |
+| Huy at phong | Cancellation notice |
+| Reminder check-in | Mail template available; automatic scheduler chua uoc wire |
+| OTP xac thuc | Email verification code (6 chu so, het han 10 phut) |
 
 ### 9.3 MongoDB Atlas
 
 - **Cluster:** `luxereserve.ckfwy6o.mongodb.net`
 - **Database:** `luxereserve`
 - **Collections:** `Hotel_Catalog`, `room_type_catalog`, `amenity_master`
-- **Truy cập:** Từ backend tại startup, không expose ra client
+- **Truy cap:** Tu backend tai startup, khong expose ra client
 
 ---
 
-## 10. Ràng buộc và quy tắc nghiệp vụ
+## 10. Rang buoc va quy tac nghiep vu
 
-### 10.1 Đặt phòng
+### 10.1 at phong
 
-| Quy tắc | Mô tả |
+| Quy tac | Mo ta |
 |---|---|
-| BR-01 | `checkout_date` phải sau `checkin_date` |
+| BR-01 | `checkout_date` phai sau `checkin_date` |
 | BR-02 | `nightly_rate` > 0 |
-| BR-03 | Tối đa 90 đêm mỗi reservation |
-| BR-04 | Phải đặt cọc 30% nếu `guarantee_type = 'DEPOSIT'` |
-| BR-05 | Phòng phải có `availability_status = 'OPEN'` cho TẤT CẢ các đêm |
-| BR-06 | Chỉ lock và đặt khi nằm trong TRANSACTION — nếu lỗi thì ROLLBACK |
+| BR-03 | Toi a 90 em moi reservation |
+| BR-04 | Phai at coc 30% neu `guarantee_type = 'DEPOSIT'` |
+| BR-05 | Phong phai co `availability_status = 'OPEN'` cho TAT CA cac em |
+| BR-06 | Chi lock va at khi nam trong TRANSACTION  neu loi thi ROLLBACK |
 
-### 10.2 Thanh toán
+### 10.2 Thanh toan
 
-| Quy tắc | Mô tả |
+| Quy tac | Mo ta |
 |---|---|
-| BR-10 | Tổng payment không được vượt `grand_total_amount` |
-| BR-11 | DEPOSIT payment không được vượt `deposit_amount` |
-| BR-12 | FULL_PAYMENT phải bằng đúng số dư còn lại |
-| BR-13 | Không được tạo payment cho reservation `CANCELLED`, `CHECKED_OUT`, `NO_SHOW` |
+| BR-10 | Tong payment khong uoc vuot `grand_total_amount` |
+| BR-11 | DEPOSIT payment khong uoc vuot `deposit_amount` |
+| BR-12 | FULL_PAYMENT phai bang ung so du con lai |
+| BR-13 | Khong uoc tao payment cho reservation `CANCELLED`, `CHECKED_OUT`, `NO_SHOW` |
 
 ### 10.3 Check-in / Check-out
 
-| Quy tắc | Mô tả |
+| Quy tac | Mo ta |
 |---|---|
-| BR-20 | Chỉ check-in được khi `reservation_status = 'CONFIRMED'` |
-| BR-21 | Chỉ check-out được khi `reservation_status = 'CHECKED_IN'` |
-| BR-22 | Sau checkout: phòng → `AVAILABLE + DIRTY`, tạo HK task tự động |
+| BR-20 | Chi check-in uoc khi `reservation_status = 'CONFIRMED'` |
+| BR-21 | Chi check-out uoc khi `reservation_status = 'CHECKED_IN'` |
+| BR-22 | Sau checkout: phong  `AVAILABLE + DIRTY`, tao HK task tu ong |
 
-### 10.4 Huỷ đặt phòng
+### 10.4 Huy at phong
 
-| Quy tắc | Guest Cancel | Hotel Cancel |
+| Quy tac | Guest Cancel | Hotel Cancel |
 |---|---|---|
-| Điều kiện | Chỉ huỷ được khi CONFIRMED | Quyền admin/cashier |
-| Hoàn tiền deposit | ❌ Không hoàn | ✅ Hoàn toàn bộ |
-| Phóng thích phòng | ✅ RoomAvailability → OPEN | ✅ RoomAvailability → OPEN |
-| Quyền thực hiện | Chỉ guest SỞ HỮU reservation | ADMIN, CASHIER, FRONT_DESK |
+| ieu kien | Chi huy uoc khi CONFIRMED | Quyen admin/cashier |
+| Hoan tien deposit |  Khong hoan |  Hoan toan bo |
+| Phong thich phong |  RoomAvailability  OPEN |  RoomAvailability  OPEN |
+| Quyen thuc hien | Chi guest SO HUU reservation | ADMIN, CASHIER, FRONT_DESK |
 
 ### 10.5 Inventory
 
-| Quy tắc | Mô tả |
+| Quy tac | Mo ta |
 |---|---|
-| BR-30 | Mỗi phòng có 1 row `RoomAvailability` per ngày |
-| BR-31 | Khi booking: UPDLOCK + HOLDLOCK để chống concurrent booking |
-| BR-32 | Admin update phòng: kiểm tra `version_no` (Optimistic Lock) |
-| BR-33 | Price Guard: cảnh báo nếu giá thay đổi > 50% |
+| BR-30 | Moi phong co 1 row `RoomAvailability` per ngay |
+| BR-31 | Khi booking: UPDLOCK + HOLDLOCK e chong concurrent booking |
+| BR-32 | Admin update phong: kiem tra `version_no` (Optimistic Lock) |
+| BR-33 | Price Guard: canh bao neu gia thay oi > 50% |
 
 ---
 
 ## 11. Glossary
 
-| Thuật ngữ | Định nghĩa |
+| Thuat ngu | inh nghia |
 |---|---|
-| **Reservation Code** | Mã xác nhận đặt phòng, format `RES-YYYYMMDD-XXXXXX` |
-| **Deposit** | Đặt cọc 30% tổng tiền phòng, bắt buộc khi `guarantee_type=DEPOSIT` |
-| **Pessimistic Lock** | Khóa row với UPDLOCK+HOLDLOCK trong transaction để ngăn concurrent booking |
-| **Optimistic Lock** | Dùng `version_no` để detect conflict khi không cần lock mạnh |
-| **Polyglot Persistence** | Dùng nhiều loại database (SQL + NoSQL) cho các mục đích khác nhau |
-| **Front Desk** | Bộ phận lễ tân: check-in, check-out, room transfer |
-| **Stay Record** | Bản ghi thực tế của một lượt lưu trú (actual checkin/checkout time) |
-| **Incidental Charge** | Phụ phí phát sinh trong kỳ lưu trú (dịch vụ, minibar...) |
-| **Rate Plan** | Kế hoạch giá (Rack Rate, Member Rate, Advance Purchase...) |
+| **Reservation Code** | Ma xac nhan at phong, format `RES-YYYYMMDD-XXXXXX` |
+| **Deposit** | at coc 30% tong tien phong, bat buoc khi `guarantee_type=DEPOSIT` |
+| **Pessimistic Lock** | Khoa row voi UPDLOCK+HOLDLOCK trong transaction e ngan concurrent booking |
+| **Optimistic Lock** | Dung `version_no` e detect conflict khi khong can lock manh |
+| **Polyglot Persistence** | Dung nhieu loai database (SQL + NoSQL) cho cac muc ich khac nhau |
+| **Front Desk** | Bo phan le tan: check-in, check-out, room transfer |
+| **Stay Record** | Ban ghi thuc te cua mot luot luu tru (actual checkin/checkout time) |
+| **Incidental Charge** | Phu phi phat sinh trong ky luu tru (dich vu, minibar...) |
+| **Rate Plan** | Ke hoach gia (Rack Rate, Member Rate, Advance Purchase...) |
 | **OTA** | Online Travel Agency (Booking.com, Agoda, Expedia) |
 | **HRMS** | Hotel Reservation Management System |
-| **IPN** | Instant Payment Notification — webhook từ VNPay |
-| **Tier** | Cấp độ thành viên loyalty: SILVER, GOLD, PLATINUM, BLACK |
-| **Balance Due** | Số tiền còn cần thanh toán = grand_total − total_paid |
-| **RevPAR** | Revenue Per Available Room — chỉ số hiệu quả doanh thu phòng |
-| **Availability Status** | Trạng thái phòng theo ngày: OPEN / BOOKED / BLOCKED / MAINTENANCE |
-| **JWT** | JSON Web Token — credential stateless |
-| **RBAC** | Role-Based Access Control — phân quyền theo vai trò |
+| **IPN** | Instant Payment Notification  webhook tu VNPay |
+| **Tier** | Cap o thanh vien loyalty: SILVER, GOLD, PLATINUM, BLACK |
+| **Balance Due** | So tien con can thanh toan = grand_total  total_paid |
+| **RevPAR** | Revenue Per Available Room  chi so hieu qua doanh thu phong |
+| **Availability Status** | Trang thai phong theo ngay: OPEN / BOOKED / BLOCKED / MAINTENANCE |
+| **JWT** | JSON Web Token  credential stateless |
+| **RBAC** | Role-Based Access Control  phan quyen theo vai tro |
 
 ---
 
-*Tài liệu này được tạo từ source code thực tế — LuxeReserve v1.0*  
-*Nhóm DAF04 — Môn Cơ sở dữ liệu nâng cao — 2026*
+*Tai lieu nay uoc tao tu source code thuc te  LuxeReserve v1.0*  
+*Nhom DAF04  Mon Co so du lieu nang cao  2026*

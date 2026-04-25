@@ -1,12 +1,12 @@
-﻿/**
- * LuxeReserve — Payment Routes
+/**
+ * LuxeReserve  Payment Routes
  */
 
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 
-// POST /api/payments — Create payment
+// POST /api/payments  Create payment
 router.post('/', async (req, res) => {
   try {
     const { reservation_id, payment_type, payment_method, amount, currency_code } = req.body;

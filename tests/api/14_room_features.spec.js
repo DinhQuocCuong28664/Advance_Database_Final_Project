@@ -1,22 +1,22 @@
 /**
- * ══════════════════════════════════════════════════════════════
- * [14] ROOM FEATURES API — CRUD Tests
+ * 
+ * [14] ROOM FEATURES API  CRUD Tests
  * Endpoints:
  *   GET  /api/hotels/:id/features
  *   POST /api/hotels/:id/features
  *   DELETE /api/hotels/:id/features/:fid
  * Also covers: sql_features array in GET /api/hotels/:id
- * ══════════════════════════════════════════════════════════════
+ * 
  */
 const { test, expect } = require('@playwright/test');
 const { SEED } = require('./helpers');
 
-test.describe('🏷️ Room Features API', () => {
+test.describe(' Room Features API', () => {
 
   let createdFeatureId = null;
 
-  // ── GET /hotels/:id — sql_features embedded ──────────────
-  test('GET /hotels/:id — includes sql_features array per room type', async ({ request }) => {
+  //  GET /hotels/:id  sql_features embedded 
+  test('GET /hotels/:id  includes sql_features array per room type', async ({ request }) => {
     const res = await request.get(`/api/hotels/${SEED.hotel.id}`);
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -33,18 +33,18 @@ test.describe('🏷️ Room Features API', () => {
     expect(feat).toHaveProperty('is_premium');
   });
 
-  // ── GET /hotels/:id/features ─────────────────────────────
-  test('GET /hotels/:id/features — invalid hotel ID → 400', async ({ request }) => {
+  //  GET /hotels/:id/features 
+  test('GET /hotels/:id/features  invalid hotel ID  400', async ({ request }) => {
     const res = await request.get('/api/hotels/abc/features');
     expect(res.status()).toBe(400);
   });
 
-  test('GET /hotels/:id/features — nonexistent hotel → 404', async ({ request }) => {
+  test('GET /hotels/:id/features  nonexistent hotel  404', async ({ request }) => {
     const res = await request.get('/api/hotels/999999/features');
     expect(res.status()).toBe(404);
   });
 
-  test('GET /hotels/:id/features — returns feature list with correct shape', async ({ request }) => {
+  test('GET /hotels/:id/features  returns feature list with correct shape', async ({ request }) => {
     const res = await request.get(`/api/hotels/${SEED.hotel.id}/features`);
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -72,18 +72,18 @@ test.describe('🏷️ Room Features API', () => {
     }
   });
 
-  test('GET /hotels/:id/features — features belong only to the queried hotel', async ({ request }) => {
+  test('GET /hotels/:id/features  features belong only to the queried hotel', async ({ request }) => {
     const res = await request.get(`/api/hotels/${SEED.hotel2.id}/features`);
     expect(res.status()).toBe(200);
     const body = await res.json();
     // All room_type_name entries should not be from hotel 1 room types
-    // (indirect check — just verify the endpoint works for hotel 2 as well)
+    // (indirect check  just verify the endpoint works for hotel 2 as well)
     expect(body.hotel_id).toBe(SEED.hotel2.id);
     expect(Array.isArray(body.data)).toBe(true);
   });
 
-  // ── POST /hotels/:id/features ────────────────────────────
-  test('POST /hotels/:id/features — missing feature_code → 400', async ({ request }) => {
+  //  POST /hotels/:id/features 
+  test('POST /hotels/:id/features  missing feature_code  400', async ({ request }) => {
     const res = await request.post(`/api/hotels/${SEED.hotel.id}/features`, {
       data: {
         room_type_id: SEED.roomType.id,
@@ -97,7 +97,7 @@ test.describe('🏷️ Room Features API', () => {
     expect(body.error).toMatch(/feature_code/i);
   });
 
-  test('POST /hotels/:id/features — missing room_type_id AND room_id → 400', async ({ request }) => {
+  test('POST /hotels/:id/features  missing room_type_id AND room_id  400', async ({ request }) => {
     const res = await request.post(`/api/hotels/${SEED.hotel.id}/features`, {
       data: {
         feature_code: 'TEST_CODE',
@@ -110,7 +110,7 @@ test.describe('🏷️ Room Features API', () => {
     expect(body.error).toMatch(/room_type_id|room_id/i);
   });
 
-  test('POST /hotels/:id/features — invalid feature_category → 400', async ({ request }) => {
+  test('POST /hotels/:id/features  invalid feature_category  400', async ({ request }) => {
     const res = await request.post(`/api/hotels/${SEED.hotel.id}/features`, {
       data: {
         room_type_id: SEED.roomType.id,
@@ -125,7 +125,7 @@ test.describe('🏷️ Room Features API', () => {
     expect(body.error).toMatch(/feature_category/i);
   });
 
-  test('POST /hotels/:id/features — nonexistent hotel → 404', async ({ request }) => {
+  test('POST /hotels/:id/features  nonexistent hotel  404', async ({ request }) => {
     const res = await request.post('/api/hotels/999999/features', {
       data: {
         room_type_id: SEED.roomType.id,
@@ -136,7 +136,7 @@ test.describe('🏷️ Room Features API', () => {
     expect(res.status()).toBe(404);
   });
 
-  test('POST /hotels/:id/features — room_type from wrong hotel → 404', async ({ request }) => {
+  test('POST /hotels/:id/features  room_type from wrong hotel  404', async ({ request }) => {
     // room type 4 belongs to hotel 2, not hotel 1
     const res = await request.post(`/api/hotels/${SEED.hotel.id}/features`, {
       data: {
@@ -151,7 +151,7 @@ test.describe('🏷️ Room Features API', () => {
     expect(body.error).toMatch(/RoomType not found for this hotel/i);
   });
 
-  test('POST /hotels/:id/features — create premium feature → 201', async ({ request }) => {
+  test('POST /hotels/:id/features  create premium feature  201', async ({ request }) => {
     const res = await request.post(`/api/hotels/${SEED.hotel.id}/features`, {
       data: {
         room_type_id: SEED.roomType.id,
@@ -176,7 +176,7 @@ test.describe('🏷️ Room Features API', () => {
     createdFeatureId = body.data.room_feature_id;
   });
 
-  test('POST /hotels/:id/features — create non-premium feature → 201', async ({ request }) => {
+  test('POST /hotels/:id/features  create non-premium feature  201', async ({ request }) => {
     const res = await request.post(`/api/hotels/${SEED.hotel.id}/features`, {
       data: {
         room_type_id: SEED.roomType.id,
@@ -197,8 +197,8 @@ test.describe('🏷️ Room Features API', () => {
     }
   });
 
-  // ── Verify POST appears in GET list ──────────────────────
-  test('GET /hotels/:id/features — created feature appears in list', async ({ request }) => {
+  //  Verify POST appears in GET list 
+  test('GET /hotels/:id/features  created feature appears in list', async ({ request }) => {
     if (!createdFeatureId) return test.skip();
     const res = await request.get(`/api/hotels/${SEED.hotel.id}/features`);
     expect(res.status()).toBe(200);
@@ -209,25 +209,25 @@ test.describe('🏷️ Room Features API', () => {
     expect(created.is_premium).toBe(true);
   });
 
-  // ── DELETE /hotels/:id/features/:fid ─────────────────────
-  test('DELETE /hotels/:id/features/:fid — invalid IDs → 400', async ({ request }) => {
+  //  DELETE /hotels/:id/features/:fid 
+  test('DELETE /hotels/:id/features/:fid  invalid IDs  400', async ({ request }) => {
     const res = await request.delete('/api/hotels/abc/features/xyz');
     expect(res.status()).toBe(400);
   });
 
-  test('DELETE /hotels/:id/features/:fid — nonexistent → 404', async ({ request }) => {
+  test('DELETE /hotels/:id/features/:fid  nonexistent  404', async ({ request }) => {
     const res = await request.delete(`/api/hotels/${SEED.hotel.id}/features/999999`);
     expect(res.status()).toBe(404);
   });
 
-  test('DELETE /hotels/:id/features/:fid — feature from wrong hotel → 404', async ({ request }) => {
+  test('DELETE /hotels/:id/features/:fid  feature from wrong hotel  404', async ({ request }) => {
     if (!createdFeatureId) return test.skip();
     // Try to delete hotel 1's feature via hotel 2's endpoint
     const res = await request.delete(`/api/hotels/${SEED.hotel2.id}/features/${createdFeatureId}`);
     expect(res.status()).toBe(404);
   });
 
-  test('DELETE /hotels/:id/features/:fid — delete own feature → 200', async ({ request }) => {
+  test('DELETE /hotels/:id/features/:fid  delete own feature  200', async ({ request }) => {
     if (!createdFeatureId) return test.skip();
     const res = await request.delete(`/api/hotels/${SEED.hotel.id}/features/${createdFeatureId}`);
     expect(res.status()).toBe(200);
@@ -236,16 +236,16 @@ test.describe('🏷️ Room Features API', () => {
     expect(body.room_feature_id).toBe(createdFeatureId);
   });
 
-  test('DELETE /hotels/:id/features/:fid — already deleted → 404', async ({ request }) => {
+  test('DELETE /hotels/:id/features/:fid  already deleted  404', async ({ request }) => {
     if (!createdFeatureId) return test.skip();
     const res = await request.delete(`/api/hotels/${SEED.hotel.id}/features/${createdFeatureId}`);
     expect(res.status()).toBe(404);
   });
 
-  // ── Valid categories coverage ─────────────────────────────
+  //  Valid categories coverage 
   const validCategories = ['VIEW', 'BED', 'BATH', 'TECH', 'AMENITY', 'SPACE'];
   validCategories.forEach(cat => {
-    test(`POST /features — valid category '${cat}' → 201`, async ({ request }) => {
+    test(`POST /features  valid category '${cat}'  201`, async ({ request }) => {
       const res = await request.post(`/api/hotels/${SEED.hotel.id}/features`, {
         data: {
           room_type_id: SEED.roomType.id,

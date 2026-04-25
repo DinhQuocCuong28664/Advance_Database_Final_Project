@@ -2,11 +2,11 @@ import { useState, useMemo } from 'react';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
 
-// ── Constants ─────────────────────────────────────────────────────────
+//  Constants 
 const STATUS_CONFIG = {
-  ACTIVE:   { label: 'Active',   icon: '✓', bg: '#dcfce7', color: '#166534', btn: 'Activate' },
-  LOCKED:   { label: 'Locked',   icon: '🔒', bg: '#fef3c7', color: '#92400e', btn: 'Lock' },
-  DISABLED: { label: 'Disabled', icon: '✕', bg: '#fee2e2', color: '#991b1b', btn: 'Disable' },
+  ACTIVE:   { label: 'Active',   icon: '', bg: '#dcfce7', color: '#166534', btn: 'Activate' },
+  LOCKED:   { label: 'Locked',   icon: '', bg: '#fef3c7', color: '#92400e', btn: 'Lock' },
+  DISABLED: { label: 'Disabled', icon: '', bg: '#fee2e2', color: '#991b1b', btn: 'Disable' },
 };
 
 const TIER_CONFIG = {
@@ -18,7 +18,7 @@ const TIER_CONFIG = {
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : 'Never';
 
-// ── StatusPill ────────────────────────────────────────────────────────
+//  StatusPill 
 function StatusPill({ status }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.DISABLED;
   return (
@@ -28,7 +28,7 @@ function StatusPill({ status }) {
   );
 }
 
-// ── TierBadge ────────────────────────────────────────────────────────
+//  TierBadge 
 function TierBadge({ tier }) {
   if (!tier) return null;
   const cfg = TIER_CONFIG[tier] || { bg: '#e2e8f0', color: '#475569' };
@@ -39,7 +39,7 @@ function TierBadge({ tier }) {
   );
 }
 
-// ── Quick-action buttons ──────────────────────────────────────────────
+//  Quick-action buttons 
 function QuickActions({ current, onSet, busy, selfLock }) {
   return (
     <div className="acct-quick-actions">
@@ -59,7 +59,7 @@ function QuickActions({ current, onSet, busy, selfLock }) {
   );
 }
 
-// ── System User Row ───────────────────────────────────────────────────
+//  System User Row 
 function SystemUserRow({ user, onStatusChange, currentUserId }) {
   const [busy, setBusy] = useState(false);
   const { setFlash } = useFlash();
@@ -73,7 +73,7 @@ function SystemUserRow({ user, onStatusChange, currentUserId }) {
         body: JSON.stringify({ account_status: newStatus }),
       });
       onStatusChange('system', user.user_id, newStatus);
-      setFlash({ tone: 'success', text: `${user.full_name} → ${newStatus}` });
+      setFlash({ tone: 'success', text: `${user.full_name}  ${newStatus}` });
     } catch (err) {
       setFlash({ tone: 'error', text: err.message });
     } finally {
@@ -93,8 +93,8 @@ function SystemUserRow({ user, onStatusChange, currentUserId }) {
         </div>
         <div className="acct-row-meta">
           <span>@{user.username}</span>
-          {user.department && <span>· {user.department}</span>}
-          {user.email && <span>· {user.email}</span>}
+          {user.department && <span> {user.department}</span>}
+          {user.email && <span> {user.email}</span>}
         </div>
         <div className="acct-row-foot">
           <StatusPill status={user.account_status} />
@@ -111,7 +111,7 @@ function SystemUserRow({ user, onStatusChange, currentUserId }) {
   );
 }
 
-// ── Guest Account Row ─────────────────────────────────────────────────
+//  Guest Account Row 
 function GuestRow({ guest, onStatusChange }) {
   const [busy, setBusy] = useState(false);
   const { setFlash } = useFlash();
@@ -124,7 +124,7 @@ function GuestRow({ guest, onStatusChange }) {
         body: JSON.stringify({ account_status: newStatus }),
       });
       onStatusChange('guest', guest.guest_auth_id, newStatus);
-      setFlash({ tone: 'success', text: `${guest.login_email} → ${newStatus}` });
+      setFlash({ tone: 'success', text: `${guest.login_email}  ${newStatus}` });
     } catch (err) {
       setFlash({ tone: 'error', text: err.message });
     } finally {
@@ -140,14 +140,14 @@ function GuestRow({ guest, onStatusChange }) {
       <div className="acct-row-info">
         <div className="acct-row-name">
           {guest.full_name}
-          {guest.vip_flag === true && <span className="acct-vip-badge">⭐ VIP</span>}
+          {guest.vip_flag === true && <span className="acct-vip-badge"> VIP</span>}
           <TierBadge tier={guest.tier_code} />
         </div>
         <div className="acct-row-meta">
           <span>{guest.login_email}</span>
-          <span>· {guest.guest_code}</span>
+          <span> {guest.guest_code}</span>
           {guest.points_balance != null && (
-            <span>· {Number(guest.points_balance).toLocaleString()} pts</span>
+            <span> {Number(guest.points_balance).toLocaleString()} pts</span>
           )}
         </div>
         <div className="acct-row-foot">
@@ -160,7 +160,7 @@ function GuestRow({ guest, onStatusChange }) {
   );
 }
 
-// ── Main AdminAccounts ─────────────────────────────────────────────────
+//  Main AdminAccounts 
 export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
   const [search, setSearch]     = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -221,7 +221,7 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
 
   return (
     <section className="page-card page-card-wide" id="admin-accounts">
-      {/* ── Header ── */}
+      {/*  Header  */}
       <div className="admin-section-header" style={{ marginBottom: 24 }}>
         <div>
           <p className="page-eyebrow">Access Control</p>
@@ -230,7 +230,7 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
         </div>
       </div>
 
-      {/* ── KPI Strip ── */}
+      {/*  KPI Strip  */}
       <div className="acct-kpi-strip">
         <div className="acct-kpi">
           <span className="acct-kpi-num">{totalSys}</span>
@@ -262,20 +262,20 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
         )}
       </div>
 
-      {/* ── Section Toggle + Filters ── */}
+      {/*  Section Toggle + Filters  */}
       <div className="acct-toolbar">
         <div className="acct-section-toggle">
           <button
             className={activeSection === 'system' ? 'primary-button' : 'ghost-button'}
             onClick={() => setActiveSection('system')}
           >
-            🏢 Staff ({totalSys})
+             Staff ({totalSys})
           </button>
           <button
             className={activeSection === 'guest' ? 'primary-button' : 'ghost-button'}
             onClick={() => setActiveSection('guest')}
           >
-            👥 Guests ({totalGuest})
+             Guests ({totalGuest})
           </button>
         </div>
 
@@ -283,7 +283,7 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
           <input
             className="fd-input"
             type="search"
-            placeholder={`Search ${activeSection === 'system' ? 'name, username, email…' : 'name, email, guest code…'}`}
+            placeholder={`Search ${activeSection === 'system' ? 'name, username, email...' : 'name, email, guest code...'}`}
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{ minWidth: 240 }}
@@ -297,7 +297,7 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
         </div>
       </div>
 
-      {/* ── Account List ── */}
+      {/*  Account List  */}
       <div className="acct-list">
         {activeList.length === 0 ? (
           <p style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-soft)' }}>
@@ -323,7 +323,7 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
 
       <p style={{ fontSize: '0.74rem', color: 'var(--text-soft)', marginTop: 16, textAlign: 'right' }}>
         {activeList.length} of {activeSection === 'system' ? totalSys : totalGuest} accounts shown
-        {' · '}Data loaded at admin session start — refresh browser to update.
+        {'  '}Data loaded at admin session start  refresh browser to update.
       </p>
     </section>
   );

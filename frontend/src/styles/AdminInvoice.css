@@ -1,0 +1,32 @@
+.inv-dialog {
+  max-width: 780px !important;
+  width: 95vw;
+  background: #ffffff;
+  border: 1.5px solid var(--border, #e0d5c8);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.14);
+}
+
+.inv-dialog .pm-header {
+  border-bottom: 1px solid var(--border, #ece5db);
+}
+
+.inv-dialog .pm-eyebrow {
+  color: var(--text-soft, #5f6b73);
+}
+
+.inv-dialog .pm-title {
+  color: var(--text-strong, #0f2830);
+}
+
+.inv-dialog .pm-guest {
+  color: var(--text-soft, #5f6b73);
+}
+
+.inv-dialog .pm-close {
+  color: rgba(15, 40, 48, 0.55);
+}
+
+.inv-dialog .pm-close:hover {
+  background: rgba(15, 40, 48, 0.08);
+  color: var(--text-strong, #0f2830);
+}

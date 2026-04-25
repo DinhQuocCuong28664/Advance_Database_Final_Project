@@ -1,22 +1,22 @@
 /**
- * ══════════════════════════════════════════════════════════════
- * [12] ADMIN ACCOUNTS API — Account Management Tests
+ * 
+ * [12] ADMIN ACCOUNTS API  Account Management Tests
  * Endpoints:
  *   GET /api/admin/accounts
  *   PUT /api/admin/accounts/system/:id
  *   PUT /api/admin/accounts/guest/:id
- * ══════════════════════════════════════════════════════════════
+ * 
  */
 const { test, expect } = require('@playwright/test');
 const { SEED } = require('./helpers');
 
-test.describe('👤 Admin Accounts API', () => {
+test.describe(' Admin Accounts API', () => {
 
   let adminToken       = null;
   let seedSystemUserId = null; // non-admin system user to test lock/unlock
   let seedGuestAuthId  = null; // guest to test lock/unlock
 
-  // ── Setup: get admin token + collect IDs ──────────────────
+  //  Setup: get admin token + collect IDs 
   test.beforeAll(async ({ request }) => {
     const res = await request.post('/api/auth/admin/login', {
       data: { username: SEED.admin.username, password: SEED.admin.password },
@@ -39,13 +39,13 @@ test.describe('👤 Admin Accounts API', () => {
     }
   });
 
-  // ── GET /admin/accounts ──────────────────────────────────
-  test('GET /admin/accounts — no token → 401', async ({ request }) => {
+  //  GET /admin/accounts 
+  test('GET /admin/accounts  no token  401', async ({ request }) => {
     const res = await request.get('/api/admin/accounts');
     expect([401, 403]).toContain(res.status());
   });
 
-  test('GET /admin/accounts — returns system_users and guest_accounts', async ({ request }) => {
+  test('GET /admin/accounts  returns system_users and guest_accounts', async ({ request }) => {
     const res = await request.get('/api/admin/accounts', {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
@@ -76,15 +76,15 @@ test.describe('👤 Admin Accounts API', () => {
     expect(['ACTIVE', 'LOCKED', 'DISABLED']).toContain(g.account_status);
   });
 
-  // ── PUT /admin/accounts/system/:id ──────────────────────
-  test('PUT /admin/accounts/system/:id — no token → 401', async ({ request }) => {
+  //  PUT /admin/accounts/system/:id 
+  test('PUT /admin/accounts/system/:id  no token  401', async ({ request }) => {
     const res = await request.put('/api/admin/accounts/system/1', {
       data: { account_status: 'LOCKED' },
     });
     expect([401, 403]).toContain(res.status());
   });
 
-  test('PUT /admin/accounts/system/:id — invalid status → 400', async ({ request }) => {
+  test('PUT /admin/accounts/system/:id  invalid status  400', async ({ request }) => {
     const res = await request.put('/api/admin/accounts/system/1', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: { account_status: 'BANNED' },
@@ -94,7 +94,7 @@ test.describe('👤 Admin Accounts API', () => {
     expect(body.success).toBe(false);
   });
 
-  test('PUT /admin/accounts/system/:id — invalid ID → 400', async ({ request }) => {
+  test('PUT /admin/accounts/system/:id  invalid ID  400', async ({ request }) => {
     const res = await request.put('/api/admin/accounts/system/not-a-number', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: { account_status: 'LOCKED' },
@@ -102,7 +102,7 @@ test.describe('👤 Admin Accounts API', () => {
     expect(res.status()).toBe(400);
   });
 
-  test('PUT /admin/accounts/system/:id — nonexistent → 404', async ({ request }) => {
+  test('PUT /admin/accounts/system/:id  nonexistent  404', async ({ request }) => {
     const res = await request.put('/api/admin/accounts/system/999999', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: { account_status: 'LOCKED' },
@@ -110,7 +110,7 @@ test.describe('👤 Admin Accounts API', () => {
     expect(res.status()).toBe(404);
   });
 
-  test('PUT /admin/accounts/system/:id — lock then restore non-admin user', async ({ request }) => {
+  test('PUT /admin/accounts/system/:id  lock then restore non-admin user', async ({ request }) => {
     if (!adminToken || !seedSystemUserId) return test.skip();
 
     // Lock
@@ -133,7 +133,7 @@ test.describe('👤 Admin Accounts API', () => {
     expect((await restoreRes.json()).data.account_status).toBe('ACTIVE');
   });
 
-  test('PUT /admin/accounts/system/:id — cannot lock own account → 400', async ({ request }) => {
+  test('PUT /admin/accounts/system/:id  cannot lock own account  400', async ({ request }) => {
     if (!adminToken) return test.skip();
     // Get admin user_id from /auth/me
     const meRes = await request.get('/api/auth/me', {
@@ -153,15 +153,15 @@ test.describe('👤 Admin Accounts API', () => {
     expect(body.error).toMatch(/cannot|self|own|currently in use/i);
   });
 
-  // ── PUT /admin/accounts/guest/:id ───────────────────────
-  test('PUT /admin/accounts/guest/:id — no token → 401', async ({ request }) => {
+  //  PUT /admin/accounts/guest/:id 
+  test('PUT /admin/accounts/guest/:id  no token  401', async ({ request }) => {
     const res = await request.put('/api/admin/accounts/guest/1', {
       data: { account_status: 'LOCKED' },
     });
     expect([401, 403]).toContain(res.status());
   });
 
-  test('PUT /admin/accounts/guest/:id — invalid status → 400', async ({ request }) => {
+  test('PUT /admin/accounts/guest/:id  invalid status  400', async ({ request }) => {
     const res = await request.put('/api/admin/accounts/guest/1', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: { account_status: 'SUSPENDED' },
@@ -169,7 +169,7 @@ test.describe('👤 Admin Accounts API', () => {
     expect(res.status()).toBe(400);
   });
 
-  test('PUT /admin/accounts/guest/:id — disable then restore guest', async ({ request }) => {
+  test('PUT /admin/accounts/guest/:id  disable then restore guest', async ({ request }) => {
     if (!adminToken || !seedGuestAuthId) return test.skip();
 
     // Disable
@@ -192,7 +192,7 @@ test.describe('👤 Admin Accounts API', () => {
     expect((await restRes.json()).data.account_status).toBe('ACTIVE');
   });
 
-  test('PUT /admin/accounts/guest/:id — nonexistent → 404', async ({ request }) => {
+  test('PUT /admin/accounts/guest/:id  nonexistent  404', async ({ request }) => {
     const res = await request.put('/api/admin/accounts/guest/999999', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: { account_status: 'LOCKED' },

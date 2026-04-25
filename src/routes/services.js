@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — Service Routes
+ * LuxeReserve  Service Routes
  * Manage hotel services & incidental charges during stay
  */
 
@@ -7,10 +7,10 @@ const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 
-// ═══════════════════════════════════════════════
+// 
 // GET /api/services?hotel_id=1
 // List available services for a hotel
-// ═══════════════════════════════════════════════
+// 
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -39,10 +39,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // POST /api/services/order
 // Order a service (incidental charge) for a reservation
-// ═══════════════════════════════════════════════
+// 
 router.post('/order', async (req, res) => {
   try {
     const { reservation_id, service_id, quantity, special_instruction, scheduled_at } = req.body;
@@ -140,11 +140,11 @@ router.post('/order', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // GET /api/services/orders?reservation_id=1
 //   or /api/services/orders?hotel_id=1&status=REQUESTED
 // List service orders (guest view or staff hotel-wide view)
-// ═══════════════════════════════════════════════
+// 
 router.get('/orders', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -154,7 +154,7 @@ router.get('/orders', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Provide reservation_id or hotel_id' });
     }
 
-    // ── Guest view: single reservation ──────────────
+    //  Guest view: single reservation 
     if (reservation_id) {
       const result = await pool.request()
         .input('resvId', sql.BigInt, parseInt(reservation_id))
@@ -183,7 +183,7 @@ router.get('/orders', async (req, res) => {
       });
     }
 
-    // ── Staff view: all orders for a hotel (optional status filter) ──
+    //  Staff view: all orders for a hotel (optional status filter) 
     const request = pool.request().input('hotelId', sql.BigInt, parseInt(hotel_id));
     let statusClause = '';
     if (status) {
@@ -233,10 +233,10 @@ router.get('/orders', async (req, res) => {
 });
 
 
-// ═══════════════════════════════════════════════
+// 
 // PUT /api/services/orders/:id/status
 // Update service order status (CONFIRMED, DELIVERED, CANCELLED)
-// ═══════════════════════════════════════════════
+// 
 router.put('/orders/:id/status', async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
@@ -276,10 +276,10 @@ router.put('/orders/:id/status', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // POST /api/services/orders/:id/pay
 // Pay for a specific incidental service order
-// ═══════════════════════════════════════════════
+// 
 router.post('/orders/:id/pay', async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);

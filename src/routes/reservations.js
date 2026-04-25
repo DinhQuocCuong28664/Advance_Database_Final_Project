@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — Reservation Routes
+ * LuxeReserve  Reservation Routes
  * Core flow: Booking with Pessimistic Locking
  */
 
@@ -24,7 +24,7 @@ async function generateGuestCode(pool) {
   throw new Error('Unable to generate unique guest code');
 }
 
-// POST /api/reservations — Create Reservation (calls sp_ReserveRoom)
+// POST /api/reservations  Create Reservation (calls sp_ReserveRoom)
 router.post('/', async (req, res) => {
   try {
     const {
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
       booking_channel_id, booking_source,
       checkin_date, checkout_date, nights,
       adult_count, child_count, nightly_rate,
-      currency_code, guarantee_type, purpose_of_stay,
+      currency_code, guarantee_type, purpose_of_stay, booking_email_otp,
       special_request_text
     } = req.body;
 
@@ -83,9 +83,9 @@ router.post('/', async (req, res) => {
       let resolvedGuestId = guest_id ? Number(guest_id) : null;
       const reservationCode = `RES-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
-      // ═══════════════════════════════════
+      // 
       // STEP 1: Call sp_ReserveRoom for EACH night (Pessimistic Lock)
-      // ═══════════════════════════════════
+      // 
       // [FIX] TC_BND_001: Limit max nights to prevent Pessimistic Lock timeout
       const MAX_NIGHTS = 90;
       if (nightCount <= 0 || nightCount > MAX_NIGHTS) {
@@ -123,25 +123,95 @@ router.post('/', async (req, res) => {
             `);
         }
       } else {
-        const guestCode = await generateGuestCode(pool);
-        const createdGuest = await new sql.Request(transaction)
-          .input('guestCode', sql.VarChar(50), guestCode)
-          .input('firstName', sql.NVarChar(100), String(guest_profile.first_name).trim())
-          .input('lastName', sql.NVarChar(100), String(guest_profile.last_name).trim())
-          .input('email', sql.VarChar(150), String(guest_profile.email).trim())
-          .input('phoneCountryCode', sql.VarChar(10), guest_profile.phone_country_code || null)
-          .input('phoneNumber', sql.VarChar(30), guest_profile.phone_number || null)
+        const existingGuestAuth = await new sql.Request(transaction)
+          .input('loginEmail', sql.VarChar(150), String(guest_profile.email).trim())
           .query(`
-            INSERT INTO Guest (
-              guest_code, first_name, last_name, email, phone_country_code, phone_number
-            )
-            OUTPUT INSERTED.guest_id
-            VALUES (
-              @guestCode, @firstName, @lastName, @email, @phoneCountryCode, @phoneNumber
-            )
+            SELECT TOP 1 guest_auth_id, guest_id, account_status, email_verified_at
+            FROM GuestAuth
+            WHERE login_email = @loginEmail
           `);
 
-        resolvedGuestId = createdGuest.recordset[0].guest_id;
+        if (existingGuestAuth.recordset.length > 0) {
+          const account = existingGuestAuth.recordset[0];
+
+          if (!booking_email_otp) {
+            await transaction.rollback();
+            return res.status(409).json({
+              success: false,
+              error: 'This email already exists in the system. Enter the verification code sent to that email to continue this booking.',
+            });
+          }
+
+          const otpMatch = await new sql.Request(transaction)
+            .input('guestAuthId', sql.BigInt, account.guest_auth_id)
+            .input('otpCode', sql.VarChar(10), String(booking_email_otp).trim())
+            .query(`
+              SELECT TOP 1 email_otp_id
+              FROM EmailVerificationOtp
+              WHERE guest_auth_id = @guestAuthId
+                AND otp_code = @otpCode
+                AND purpose = 'BOOKING_ACCESS'
+                AND consumed_at IS NULL
+                AND expires_at >= GETDATE()
+              ORDER BY created_at DESC
+            `);
+
+          if (otpMatch.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(400).json({
+              success: false,
+              error: 'Invalid or expired booking verification code.',
+            });
+          }
+
+          await new sql.Request(transaction)
+            .input('otpId', sql.BigInt, otpMatch.recordset[0].email_otp_id)
+            .query(`
+              UPDATE EmailVerificationOtp
+              SET consumed_at = GETDATE()
+              WHERE email_otp_id = @otpId
+            `);
+
+          resolvedGuestId = account.guest_id;
+
+          await new sql.Request(transaction)
+            .input('guestId', sql.BigInt, resolvedGuestId)
+            .input('firstName', sql.NVarChar(100), String(guest_profile.first_name || '').trim() || null)
+            .input('lastName', sql.NVarChar(100), String(guest_profile.last_name || '').trim() || null)
+            .input('email', sql.VarChar(150), String(guest_profile.email || '').trim() || null)
+            .input('phoneCountryCode', sql.VarChar(10), guest_profile.phone_country_code || null)
+            .input('phoneNumber', sql.VarChar(30), guest_profile.phone_number || null)
+            .query(`
+              UPDATE Guest
+              SET first_name = COALESCE(@firstName, first_name),
+                  last_name = COALESCE(@lastName, last_name),
+                  email = COALESCE(@email, email),
+                  phone_country_code = @phoneCountryCode,
+                  phone_number = @phoneNumber,
+                  updated_at = GETDATE()
+              WHERE guest_id = @guestId
+            `);
+        } else {
+          const guestCode = await generateGuestCode(pool);
+          const createdGuest = await new sql.Request(transaction)
+            .input('guestCode', sql.VarChar(50), guestCode)
+            .input('firstName', sql.NVarChar(100), String(guest_profile.first_name).trim())
+            .input('lastName', sql.NVarChar(100), String(guest_profile.last_name).trim())
+            .input('email', sql.VarChar(150), String(guest_profile.email).trim())
+            .input('phoneCountryCode', sql.VarChar(10), guest_profile.phone_country_code || null)
+            .input('phoneNumber', sql.VarChar(30), guest_profile.phone_number || null)
+            .query(`
+              INSERT INTO Guest (
+                guest_code, first_name, last_name, email, phone_country_code, phone_number
+              )
+              OUTPUT INSERTED.guest_id
+              VALUES (
+                @guestCode, @firstName, @lastName, @email, @phoneCountryCode, @phoneNumber
+              )
+            `);
+
+          resolvedGuestId = createdGuest.recordset[0].guest_id;
+        }
       }
 
       for (let i = 0; i < nightCount; i++) {
@@ -193,9 +263,9 @@ router.post('/', async (req, res) => {
 
       }
 
-      // ═══════════════════════════════════
+      // 
       // STEP 2: Create Reservation header
-      // ═══════════════════════════════════
+      // 
       const resvRequest = new sql.Request(transaction);
       const resvResult = await resvRequest
         .input('code', sql.VarChar(50), reservationCode)
@@ -235,9 +305,9 @@ router.post('/', async (req, res) => {
 
       const reservation = resvResult.recordset[0];
 
-      // ═══════════════════════════════════
+      // 
       // STEP 3: Create ReservationRoom line item
-      // ═══════════════════════════════════
+      // 
       const rrRequest = new sql.Request(transaction);
       await rrRequest
         .input('resv_id', sql.BigInt, reservation.reservation_id)
@@ -265,15 +335,15 @@ router.post('/', async (req, res) => {
           )
         `);
 
-      // ═══════════════════════════════════
+      // 
       // STEP 4: Status history
-      // ═══════════════════════════════════
+      // 
       const histRequest = new sql.Request(transaction);
       await histRequest
         .input('resv_id', sql.BigInt, reservation.reservation_id)
         .query(`
           INSERT INTO ReservationStatusHistory (reservation_id, old_status, new_status, change_reason)
-          VALUES (@resv_id, NULL, 'CONFIRMED', 'Reservation created via API — rooms locked successfully')
+          VALUES (@resv_id, NULL, 'CONFIRMED', 'Reservation created via API  rooms locked successfully')
         `);
 
       await transaction.commit();
@@ -296,7 +366,7 @@ router.post('/', async (req, res) => {
 
       res.status(201).json({ success: true, data: responseData });
 
-      // ── Fire-and-forget: booking confirmation email ──────────
+      //  Fire-and-forget: booking confirmation email 
       try {
         const guestEmail = guest_profile?.email ||
           (resolvedGuestId
@@ -342,10 +412,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// GET /api/reservations — List reservations
+// 
+// GET /api/reservations  List reservations
 // Query params: guest_id, email, status, limit (default 20)
-// ═══════════════════════════════════════════════════════════
+// 
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -423,9 +493,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// GET /api/reservations/by-guest/:guestCode — By guest code
-// ═══════════════════════════════════════════════════════════
+// 
+// GET /api/reservations/by-guest/:guestCode  By guest code
+// 
 router.get('/by-guest/:guestCode', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -457,7 +527,7 @@ router.get('/by-guest/:guestCode', async (req, res) => {
   }
 });
 
-// GET /api/reservations/:code — Get by reservation code
+// GET /api/reservations/:code  Get by reservation code
 router.get('/:code', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -520,7 +590,7 @@ router.get('/:code', async (req, res) => {
   }
 });
 
-// POST /api/reservations/:id/checkin — Check-in
+// POST /api/reservations/:id/checkin  Check-in
 router.post('/:id/checkin', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -541,7 +611,7 @@ router.post('/:id/checkin', async (req, res) => {
       const updateResult = await reqUpdate.input('id', sql.BigInt, resvId)
         .query(`UPDATE Reservation SET reservation_status = 'CHECKED_IN', updated_at = GETDATE() WHERE reservation_id = @id AND reservation_status = 'CONFIRMED'`);
 
-      // [FIX] BUG-1: Check rowsAffected — reject if reservation not in CONFIRMED status
+      // [FIX] BUG-1: Check rowsAffected  reject if reservation not in CONFIRMED status
       if (updateResult.rowsAffected[0] === 0) {
         await transaction.rollback();
         return res.status(409).json({ success: false, error: 'Check-in failed: Reservation not found or not in CONFIRMED status' });
@@ -587,7 +657,7 @@ router.post('/:id/checkin', async (req, res) => {
   }
 });
 
-// POST /api/reservations/:id/checkout — Check-out
+// POST /api/reservations/:id/checkout  Check-out
 router.post('/:id/checkout', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -673,10 +743,10 @@ router.post('/:id/checkout', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
+// 
 // POST /api/reservations/:id/guest-cancel
-// Guest initiates cancellation → FORFEIT DEPOSIT (no refund)
-// ═══════════════════════════════════════════════════════════
+// Guest initiates cancellation  FORFEIT DEPOSIT (no refund)
+// 
 router.post('/:id/guest-cancel', requireAuth, async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -687,7 +757,7 @@ router.post('/:id/guest-cancel', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid reservation ID' });
     }
 
-    // ── Auth: only the guest who owns this reservation can cancel ──
+    //  Auth: only the guest who owns this reservation can cancel 
     if (req.auth.user_type !== 'GUEST') {
       return res.status(403).json({ success: false, error: 'Only guests can use guest-cancel. Admins use hotel-cancel.' });
     }
@@ -729,7 +799,7 @@ router.post('/:id/guest-cancel', requireAuth, async (req, res) => {
         });
       }
 
-      // STEP 2: Update reservation → CANCELLED
+      // STEP 2: Update reservation  CANCELLED
       const req2 = new sql.Request(transaction);
       await req2.input('id', sql.BigInt, resvId).query(`
         UPDATE Reservation
@@ -737,7 +807,7 @@ router.post('/:id/guest-cancel', requireAuth, async (req, res) => {
         WHERE reservation_id = @id
       `);
 
-      // STEP 3: Release RoomAvailability → OPEN
+      // STEP 3: Release RoomAvailability  OPEN
       const req3 = new sql.Request(transaction);
       await req3.input('id', sql.BigInt, resvId).query(`
         UPDATE RoomAvailability
@@ -800,7 +870,7 @@ router.post('/:id/guest-cancel', requireAuth, async (req, res) => {
         }
       });
 
-      // ── Fire-and-forget: cancellation email ─────────────────
+      //  Fire-and-forget: cancellation email 
       try {
         const guestRow = await pool.request().input('id', sql.BigInt, resvId).query(`
           SELECT g.email, g.first_name, g.last_name, h.hotel_name
@@ -832,10 +902,10 @@ router.post('/:id/guest-cancel', requireAuth, async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
+// 
 // POST /api/reservations/:id/hotel-cancel
-// Hotel initiates cancellation → FULL REFUND (hotel's fault)
-// ═══════════════════════════════════════════════════════════
+// Hotel initiates cancellation  FULL REFUND (hotel's fault)
+// 
 router.post('/:id/hotel-cancel', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -887,7 +957,7 @@ router.post('/:id/hotel-cancel', async (req, res) => {
       `);
       const totalPaid = parseFloat(paidResult.recordset[0].total_paid);
 
-      // STEP 3: Update reservation → CANCELLED
+      // STEP 3: Update reservation  CANCELLED
       const req3 = new sql.Request(transaction);
       await req3.input('id', sql.BigInt, resvId).query(`
         UPDATE Reservation
@@ -976,10 +1046,10 @@ router.post('/:id/hotel-cancel', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
+// 
 // POST /api/reservations/:id/transfer
-// Room Transfer — calls sp_TransferRoom (Pessimistic Locking)
-// ═══════════════════════════════════════════════════════════
+// Room Transfer  calls sp_TransferRoom (Pessimistic Locking)
+// 
 router.post('/:id/transfer', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -1085,10 +1155,10 @@ router.post('/:id/transfer', async (req, res) => {
 });
 
 
-// ═══════════════════════════════════════════════
+// 
 // GET /api/reservations/:id/guests
 // List additional guests for a reservation
-// ═══════════════════════════════════════════════
+// 
 router.get('/:id/guests', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -1111,11 +1181,11 @@ router.get('/:id/guests', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // POST /api/reservations/:id/guests
 // Add an additional guest to a reservation
 // Body: full_name, age_category, nationality_country_code, document_type, document_no, special_note
-// ═══════════════════════════════════════════════
+// 
 router.post('/:id/guests', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -1165,10 +1235,10 @@ router.post('/:id/guests', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // DELETE /api/reservations/:id/guests/:guestId
 // Remove an additional guest (non-primary only)
-// ═══════════════════════════════════════════════
+// 
 router.delete('/:id/guests/:guestId', async (req, res) => {
   try {
     const pool = getSqlPool();

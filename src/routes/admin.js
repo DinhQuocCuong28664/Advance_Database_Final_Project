@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — Admin Routes
+ * LuxeReserve  Admin Routes
  * Rate management (triggers Price Guard), reports (Window Functions)
  */
 
@@ -10,7 +10,7 @@ const { requireSystemUser } = require('../middleware/auth');
 
 router.use(requireSystemUser);
 
-// PUT /api/admin/rates/:id — Update room rate (triggers Price Integrity Guard)
+// PUT /api/admin/rates/:id  Update room rate (triggers Price Integrity Guard)
 router.put('/rates/:id', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -35,7 +35,7 @@ router.put('/rates/:id', async (req, res) => {
 
     const oldValue = oldRate.recordset[0].final_rate;
 
-    // Update — this will FIRE the trigger if change > 50%
+    // Update  this will FIRE the trigger if change > 50%
     await pool.request()
       .input('id', sql.BigInt, rateId)
       .input('rate', sql.Decimal(18, 2), final_rate)
@@ -81,7 +81,7 @@ router.put('/rates/:id', async (req, res) => {
   }
 });
 
-// GET /api/admin/rates/alerts — View Price Guard alerts
+// GET /api/admin/rates/alerts  View Price Guard alerts
 router.get('/rates/alerts', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -101,7 +101,7 @@ router.get('/rates/alerts', async (req, res) => {
   }
 });
 
-// GET /api/admin/accounts — Admin account management snapshot
+// GET /api/admin/accounts  Admin account management snapshot
 router.get('/accounts', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -136,7 +136,7 @@ router.get('/accounts', async (req, res) => {
   }
 });
 
-// PUT /api/admin/accounts/system/:id — update system user account status
+// PUT /api/admin/accounts/system/:id  update system user account status
 router.put('/accounts/system/:id', async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
@@ -176,7 +176,7 @@ router.put('/accounts/system/:id', async (req, res) => {
   }
 });
 
-// PUT /api/admin/accounts/guest/:id — update guest login account status
+// PUT /api/admin/accounts/guest/:id  update guest login account status
 router.put('/accounts/guest/:id', async (req, res) => {
   try {
     const guestAuthId = parseInt(req.params.id, 10);
@@ -212,9 +212,9 @@ router.put('/accounts/guest/:id', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
-// GET /api/admin/reports/summary — Dashboard KPIs
-// ═══════════════════════════════════════════════
+// 
+// GET /api/admin/reports/summary  Dashboard KPIs
+// 
 router.get('/reports/summary', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -274,8 +274,8 @@ router.get('/reports/summary', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
-// GET /api/admin/reports/revenue — Revenue Intelligence (Window Functions)
+// 
+// GET /api/admin/reports/revenue  Revenue Intelligence (Window Functions)
 router.get('/reports/revenue', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -319,11 +319,11 @@ router.get('/reports/revenue', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // GET /api/admin/reports/revenue-by-brand
 // Revenue Analytics grouped by Brand & Chain (Window Functions)
-// Demonstrates: HotelChain → Brand → Hotel hierarchy utilization
-// ═══════════════════════════════════════════════
+// Demonstrates: HotelChain  Brand  Hotel hierarchy utilization
+// 
 router.get('/reports/revenue-by-brand', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -377,11 +377,11 @@ router.get('/reports/revenue-by-brand', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
-// PUT /api/admin/availability/:id — Optimistic Locking
+// 
+// PUT /api/admin/availability/:id  Optimistic Locking
 // Update room availability with version check
 // Uses version_no column for conflict detection
-// ═══════════════════════════════════════════════
+// 
 router.put('/availability/:id', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -401,11 +401,11 @@ router.put('/availability/:id', async (req, res) => {
       });
     }
 
-    // ═══════════════════════════════════════════
+    // 
     // OPTIMISTIC LOCKING pattern:
     // UPDATE ... WHERE id = @id AND version_no = @expectedVersion
-    // If rowsAffected = 0 → someone else modified it → CONFLICT
-    // ═══════════════════════════════════════════
+    // If rowsAffected = 0  someone else modified it  CONFLICT
+    // 
     const result = await pool.request()
       .input('id', sql.BigInt, availId)
       .input('status', sql.VarChar(10), availability_status)
@@ -426,7 +426,7 @@ router.put('/availability/:id', async (req, res) => {
       `);
 
     if (result.recordset.length === 0) {
-      // Conflict detected — get current version to help client
+      // Conflict detected  get current version to help client
       const current = await pool.request()
         .input('id', sql.BigInt, availId)
         .query('SELECT availability_id, availability_status, version_no FROM RoomAvailability WHERE availability_id = @id');
@@ -463,10 +463,10 @@ router.put('/availability/:id', async (req, res) => {
 });
 
 
-// ═══════════════════════════════════════════════
+// 
 // GET /api/admin/rates?hotel_id=&date_from=&date_to=&room_type_id=
 // List RoomRate rows for rate management UI
-// ═══════════════════════════════════════════════
+// 
 router.get('/rates', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -554,11 +554,11 @@ router.get('/rates', async (req, res) => {
 });
 
 
-// ═══════════════════════════════════════════════
+// 
 // GET /api/admin/history
-// Reservation Status History — audit/timeline view
+// Reservation Status History  audit/timeline view
 // Filters: hotel_id, reservation_id, status, date_from, date_to, limit
-// ═══════════════════════════════════════════════
+// 
 router.get('/history', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -600,29 +600,35 @@ router.get('/history', async (req, res) => {
 
     const result = await request.query(`
       SELECT TOP (@limit)
-        rsh.history_id, rsh.reservation_id, rsh.old_status, rsh.new_status,
+        rsh.status_history_id AS history_id, rsh.reservation_id, rsh.old_status, rsh.new_status,
         rsh.changed_by, rsh.change_reason, rsh.changed_at,
         r.reservation_code, r.checkin_date, r.checkout_date,
         g.first_name + ' ' + g.last_name AS guest_name,
         g.email AS guest_email,
-        su.full_name AS agent_name, su.role_code,
+        su.full_name AS agent_name, sr.role_code,
         h.hotel_id, h.hotel_name,
         rm.room_number
       FROM ReservationStatusHistory rsh
       JOIN Reservation r         ON rsh.reservation_id = r.reservation_id
       JOIN Guest g               ON r.guest_id          = g.guest_id
-      LEFT JOIN SystemUser su    ON rsh.changed_by      = su.system_user_id
+      LEFT JOIN SystemUser su    ON rsh.changed_by      = su.user_id
+      OUTER APPLY (
+        SELECT STRING_AGG(r2.role_code, ', ') AS role_code
+        FROM UserRole ur2
+        JOIN Role r2 ON ur2.role_id = r2.role_id
+        WHERE ur2.user_id = su.user_id
+      ) sr
       LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
       LEFT JOIN Room rm            ON rr.room_id        = rm.room_id
       LEFT JOIN Hotel h            ON rm.hotel_id       = h.hotel_id
       ${whereClause}
-      ORDER BY rsh.changed_at DESC, rsh.history_id DESC
+      ORDER BY rsh.changed_at DESC, rsh.status_history_id DESC
     `);
 
     // Stats summary
     const rows = result.recordset;
     const byTransition = rows.reduce((acc, r) => {
-      const key = (r.old_status || 'NEW') + ' → ' + r.new_status;
+      const key = (r.old_status || 'NEW') + ' -> ' + r.new_status;
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
@@ -639,10 +645,10 @@ router.get('/history', async (req, res) => {
 });
 
 
-// ═══════════════════════════════════════════════
+// 
 // GET /api/admin/channels
 // BookingChannel list + reservation/revenue stats
-// ═══════════════════════════════════════════════
+// 
 router.get('/channels', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -676,11 +682,11 @@ router.get('/channels', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // GET /api/admin/location-tree
 // Full location hierarchy with hotel counts
 // Uses Recursive CTE (from Location table)
-// ═══════════════════════════════════════════════
+// 
 router.get('/location-tree', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -727,9 +733,9 @@ router.get('/location-tree', async (req, res) => {
 });
 
 
-// ═══════════════════════════════════════════════════════════
-// GET /api/admin/rate-plans — List rate plans (filterable by hotel)
-// ═══════════════════════════════════════════════════════════
+// 
+// GET /api/admin/rate-plans  List rate plans (filterable by hotel)
+// 
 router.get('/rate-plans', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -782,9 +788,9 @@ router.get('/rate-plans', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// GET /api/admin/rate-plans/:id — Get single rate plan
-// ═══════════════════════════════════════════════════════════
+// 
+// GET /api/admin/rate-plans/:id  Get single rate plan
+// 
 router.get('/rate-plans/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -816,9 +822,9 @@ router.get('/rate-plans/:id', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// POST /api/admin/rate-plans — Create a new rate plan
-// ═══════════════════════════════════════════════════════════
+// 
+// POST /api/admin/rate-plans  Create a new rate plan
+// 
 const VALID_RATE_PLAN_TYPES = ['BAR', 'NON_REFUNDABLE', 'MEMBER', 'PACKAGE', 'CORPORATE', 'PROMO'];
 const VALID_MEAL_INCLUSIONS = ['ROOM_ONLY', 'BREAKFAST', 'HALF_BOARD', 'FULL_BOARD', 'ALL_INCLUSIVE'];
 
@@ -902,9 +908,9 @@ router.post('/rate-plans', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// PUT /api/admin/rate-plans/:id — Update rate plan
-// ═══════════════════════════════════════════════════════════
+// 
+// PUT /api/admin/rate-plans/:id  Update rate plan
+// 
 router.put('/rate-plans/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -978,9 +984,9 @@ router.put('/rate-plans/:id', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// DELETE /api/admin/rate-plans/:id — Soft-delete (INACTIVE)
-// ═══════════════════════════════════════════════════════════
+// 
+// DELETE /api/admin/rate-plans/:id  Soft-delete (INACTIVE)
+// 
 router.delete('/rate-plans/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -1018,4 +1024,3 @@ router.delete('/rate-plans/:id', async (req, res) => {
 });
 
 module.exports = router;
-

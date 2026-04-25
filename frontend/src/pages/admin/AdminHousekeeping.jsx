@@ -20,8 +20,8 @@ const STATUS_STYLE = {
   VERIFIED:    { bg: '#d1fae5', color: '#065f46' },
 };
 const TASK_ICON = {
-  CLEANING:     '🧹', DEEP_CLEAN: '🫧', TURNDOWN: '🛏️',
-  INSPECTION:   '🔍', LINEN_CHANGE: '🧺', OTHER: '📋',
+  CLEANING:     '', DEEP_CLEAN: '', TURNDOWN: '',
+  INSPECTION:   '', LINEN_CHANGE: '', OTHER: '',
 };
 
 // Valid next steps for each status
@@ -32,7 +32,7 @@ const NEXT_STATUS = {
 };
 
 function fmt(dt) {
-  if (!dt) return '—';
+  if (!dt) return '';
   return new Date(dt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' });
 }
 
@@ -142,7 +142,7 @@ export default function AdminHousekeeping({ hotels }) {
         method: 'PUT',
         body: JSON.stringify({ status: newStatus }),
       });
-      setFlash({ tone: 'success', text: `Task #${task.hk_task_id} → ${newStatus}.` });
+      setFlash({ tone: 'success', text: `Task #${task.hk_task_id}  ${newStatus}.` });
       await loadTasks(hotelId, filterStatus, filterPriority);
     } catch (e) { setFlash({ tone: 'error', text: e.message }); }
     finally     { setStatusBusy(null); }
@@ -155,17 +155,17 @@ export default function AdminHousekeeping({ hotels }) {
   return (
     <section className="page-card page-card-wide" id="admin-housekeeping">
 
-      {/* ── Assign Modal ── */}
+      {/*  Assign Modal  */}
       {assignTarget && (
         <div className="pm-overlay" onClick={e => { if (e.target === e.currentTarget) setAssignTarget(null); }}>
           <div className="pm-dialog" style={{ maxWidth: 420 }}>
             <div className="pm-header">
               <div>
-                <p className="pm-eyebrow">Assign staff · Task #{assignTarget.hk_task_id}</p>
+                <p className="pm-eyebrow">Assign staff  Task #{assignTarget.hk_task_id}</p>
                 <h2 className="pm-title">{TASK_ICON[assignTarget.task_type]} {assignTarget.task_type.replace(/_/g,' ')}</h2>
-                <p className="pm-guest">Room {assignTarget.room_number} · {assignTarget.room_type_name}</p>
+                <p className="pm-guest">Room {assignTarget.room_number}  {assignTarget.room_type_name}</p>
               </div>
-              <button type="button" className="pm-close" onClick={() => setAssignTarget(null)}>✕</button>
+              <button type="button" className="pm-close" onClick={() => setAssignTarget(null)}></button>
             </div>
             <form onSubmit={handleAssign} style={{ padding: '0 24px 24px' }}>
               <label style={{ display:'flex', flexDirection:'column', gap:6, fontSize:'0.86rem', fontWeight:600, color:'var(--text-soft)', marginBottom:16 }}>
@@ -178,7 +178,7 @@ export default function AdminHousekeeping({ hotels }) {
               <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
                 <button type="button" className="ghost-button" onClick={() => setAssignTarget(null)}>Cancel</button>
                 <button type="submit" className="primary-button" disabled={assignBusy}>
-                  {assignBusy ? 'Assigning…' : 'Assign'}
+                  {assignBusy ? 'Assigning...' : 'Assign'}
                 </button>
               </div>
             </form>
@@ -186,7 +186,7 @@ export default function AdminHousekeeping({ hotels }) {
         </div>
       )}
 
-      {/* ── Header ── */}
+      {/*  Header  */}
       <div className="admin-section-head">
         <div>
           <p className="page-eyebrow">Housekeeping</p>
@@ -197,7 +197,7 @@ export default function AdminHousekeeping({ hotels }) {
         </button>
       </div>
 
-      {/* ── Toolbar ── */}
+      {/*  Toolbar  */}
       <div className="inventory-toolbar" style={{ marginBottom: 16 }}>
         <label>
           Hotel
@@ -225,11 +225,11 @@ export default function AdminHousekeeping({ hotels }) {
         <button type="button" className="primary-button"
           onClick={() => loadTasks(hotelId, filterStatus, filterPriority)}
           disabled={!hotelId || loading}>
-          {loading ? 'Loading…' : '↺ Refresh'}
+          {loading ? 'Loading...' : ' Refresh'}
         </button>
       </div>
 
-      {/* ── Stats ── */}
+      {/*  Stats  */}
       {Object.keys(summary).length > 0 && (
         <div className="maint-stats-row">
           {openCount > 0     && <span className="maint-stat maint-stat--warn"><strong>{openCount}</strong> open</span>}
@@ -240,7 +240,7 @@ export default function AdminHousekeeping({ hotels }) {
         </div>
       )}
 
-      {/* ── Create Form ── */}
+      {/*  Create Form  */}
       {showForm && (
         <form className="maint-new-form page-card" onSubmit={handleCreate}>
           <p className="page-eyebrow" style={{ marginBottom: 12 }}>New housekeeping task</p>
@@ -251,7 +251,7 @@ export default function AdminHousekeeping({ hotels }) {
                 <option value="">Select room</option>
                 {rooms.map(r => (
                   <option key={r.room_id} value={r.room_id}>
-                    Room {r.room_number} · Floor {r.floor_number} · {r.room_type_name || 'Room'}
+                    Room {r.room_number}  Floor {r.floor_number}  {r.room_type_name || 'Room'}
                   </option>
                 ))}
               </select>
@@ -282,23 +282,23 @@ export default function AdminHousekeeping({ hotels }) {
           <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:12 }}>
             <button type="button" className="ghost-button" onClick={() => { setShowForm(false); setForm(EMPTY_FORM); }}>Discard</button>
             <button type="submit" className="primary-button" disabled={submitting}>
-              {submitting ? 'Creating…' : 'Create task'}
+              {submitting ? 'Creating...' : 'Create task'}
             </button>
           </div>
         </form>
       )}
 
-      {/* ── Task List ── */}
-      {loading && <p className="fd-loading">Loading tasks…</p>}
+      {/*  Task List  */}
+      {loading && <p className="fd-loading">Loading tasks...</p>}
 
       {!loading && hotelId && tasks.length === 0 && (
         <div className="svc-orders-empty">
-          <span>🧹</span><p>No housekeeping tasks found.</p>
+          <span></span><p>No housekeeping tasks found.</p>
           <small>Adjust filters or create a new task.</small>
         </div>
       )}
       {!loading && !hotelId && (
-        <div className="svc-orders-empty"><span>🏨</span><p>Select a hotel to view tasks.</p></div>
+        <div className="svc-orders-empty"><span></span><p>Select a hotel to view tasks.</p></div>
       )}
 
       {tasks.length > 0 && (
@@ -323,7 +323,7 @@ export default function AdminHousekeeping({ hotels }) {
                       {task.task_status.replace(/_/g,' ')}
                     </span>
                     <span className="maint-category-pill">
-                      {TASK_ICON[task.task_type] || '📋'} {task.task_type.replace(/_/g,' ')}
+                      {TASK_ICON[task.task_type] || ''} {task.task_type.replace(/_/g,' ')}
                     </span>
                   </div>
                   <span className="maint-ticket-id">#{task.hk_task_id}</span>
@@ -332,14 +332,14 @@ export default function AdminHousekeeping({ hotels }) {
                 {task.note && <p className="maint-desc">{task.note}</p>}
 
                 <div className="maint-card-meta">
-                  <span>🏠 Room {task.room_number} · Floor {task.floor_number} · {task.room_type_name}</span>
+                  <span> Room {task.room_number}  Floor {task.floor_number}  {task.room_type_name}</span>
                   {task.assigned_staff_name
-                    ? <span>👤 Assigned: {task.assigned_staff_name}</span>
-                    : <span style={{ color:'#d97706' }}>⚠️ Unassigned</span>}
-                  {task.scheduled_for && <span>📅 Scheduled: {fmt(task.scheduled_for)}</span>}
-                  {task.started_at    && <span>▶️ Started: {fmt(task.started_at)}</span>}
-                  {task.completed_at  && <span>✅ Done: {fmt(task.completed_at)}</span>}
-                  {task.duration_minutes != null && <span>⏱ {task.duration_minutes} min</span>}
+                    ? <span> Assigned: {task.assigned_staff_name}</span>
+                    : <span style={{ color:'#d97706' }}> Unassigned</span>}
+                  {task.scheduled_for && <span> Scheduled: {fmt(task.scheduled_for)}</span>}
+                  {task.started_at    && <span> Started: {fmt(task.started_at)}</span>}
+                  {task.completed_at  && <span> Done: {fmt(task.completed_at)}</span>}
+                  {task.duration_minutes != null && <span> {task.duration_minutes} min</span>}
                 </div>
 
                 <div className="maint-card-actions">
@@ -352,7 +352,7 @@ export default function AdminHousekeeping({ hotels }) {
                   {nextSteps.map(ns => (
                     <button key={ns} type="button" className="primary-button"
                       disabled={isBusy} onClick={() => advanceStatus(task, ns)}>
-                      {isBusy ? '…' : ns === 'IN_PROGRESS' ? '▶️ Start' : ns === 'DONE' ? '✓ Mark done' : '✅ Verify'}
+                      {isBusy ? '...' : ns === 'IN_PROGRESS' ? ' Start' : ns === 'DONE' ? ' Mark done' : ' Verify'}
                     </button>
                   ))}
                   {task.task_status === 'OPEN' || task.task_status === 'ASSIGNED' ? (

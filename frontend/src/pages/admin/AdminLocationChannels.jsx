@@ -2,16 +2,16 @@ import { useState, useEffect } from 'react';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
 
-// ── Helpers ───────────────────────────────────────────────────────────
+//  Helpers 
 const fmtCurrency = (v) =>
-  v ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(v) : '—';
+  v ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(v) : '';
 
 const LOCATION_ICONS = {
-  CONTINENT: '🌍',
-  COUNTRY:   '🏳️',
-  REGION:    '📍',
-  CITY:      '🏙️',
-  DISTRICT:  '🏘️',
+  CONTINENT: '',
+  COUNTRY:   '',
+  REGION:    '',
+  CITY:      '',
+  DISTRICT:  '',
 };
 
 const CHANNEL_TYPE_COLORS = {
@@ -23,11 +23,11 @@ const CHANNEL_TYPE_COLORS = {
 };
 const channelStyle = (t) => CHANNEL_TYPE_COLORS[t] || { bg: '#f5f5f5', color: '#555' };
 
-// ── Location Tree Node ───────────────────────────────────────────────
+//  Location Tree Node 
 function TreeNode({ node, depth = 0 }) {
   const [open, setOpen] = useState(depth < 2);
   const hasChildren = node.children?.length > 0;
-  const icon = LOCATION_ICONS[node.location_type] || '📌';
+  const icon = LOCATION_ICONS[node.location_type] || '';
   const indent = depth * 20;
 
   return (
@@ -38,14 +38,14 @@ function TreeNode({ node, depth = 0 }) {
         onClick={() => hasChildren && setOpen(o => !o)}
       >
         <span className="loc-node-toggle">
-          {hasChildren ? (open ? '▾' : '▸') : <span style={{ width: 12, display: 'inline-block' }} />}
+          {hasChildren ? (open ? '' : '') : <span style={{ width: 12, display: 'inline-block' }} />}
         </span>
         <span className="loc-node-icon">{icon}</span>
         <span className="loc-node-name">{node.location_name}</span>
         {node.iso_code && <span className="loc-node-code">{node.iso_code}</span>}
         <span className="loc-node-type">{node.location_type}</span>
         {node.hotel_count > 0 && (
-          <span className="loc-node-hotels">🏨 {node.hotel_count}</span>
+          <span className="loc-node-hotels"> {node.hotel_count}</span>
         )}
       </div>
       {open && hasChildren && (
@@ -57,7 +57,7 @@ function TreeNode({ node, depth = 0 }) {
   );
 }
 
-// ── Booking Channel Table ─────────────────────────────────────────────
+//  Booking Channel Table 
 function ChannelTable({ channels, totalRevenue }) {
   return (
     <div className="chan-table-wrap">
@@ -118,7 +118,7 @@ function ChannelTable({ channels, totalRevenue }) {
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────
+//  Main 
 export default function AdminLocationChannels() {
   const { setFlash } = useFlash();
   const [activeView, setActiveView] = useState('channels'); // 'channels' | 'locations'
@@ -167,17 +167,17 @@ export default function AdminLocationChannels() {
           <button
             className={activeView === 'channels' ? 'primary-button' : 'ghost-button'}
             onClick={() => setActiveView('channels')}
-          >💳 Booking Channels</button>
+          > Booking Channels</button>
           <button
             className={activeView === 'locations' ? 'primary-button' : 'ghost-button'}
             onClick={() => setActiveView('locations')}
-          >🌍 Location Tree</button>
+          > Location Tree</button>
         </div>
       </div>
 
-      {loading && <p style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-soft)' }}>Loading…</p>}
+      {loading && <p style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-soft)' }}>Loading...</p>}
 
-      {/* ── Booking Channels view ── */}
+      {/*  Booking Channels view  */}
       {!loading && activeView === 'channels' && (
         <>
           {/* KPI cards */}
@@ -212,12 +212,12 @@ export default function AdminLocationChannels() {
         </>
       )}
 
-      {/* ── Location Tree view ── */}
+      {/*  Location Tree view  */}
       {!loading && activeView === 'locations' && (
         <>
           <div style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: '0.82rem', color: 'var(--text-soft)' }}>
-              Recursive CTE · {locationTree.reduce(function count(s, n) {
+              Recursive CTE  {locationTree.reduce(function count(s, n) {
                 return s + 1 + (n.children || []).reduce(count, 0);
               }, 0)} locations
             </span>

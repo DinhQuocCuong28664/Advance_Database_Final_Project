@@ -43,7 +43,7 @@ function RoomCard({ room, checkin, checkout, hotelId, onSelect }) {
         <div>
           <h3 className="room-card-name">{room.room_type_name || room.room_type}</h3>
           <div className="room-card-meta">
-            <span>🛏 {room.bed_type || 'Standard'}</span>
+            <span>🛏️ {room.bed_type || 'Standard'}</span>
             <span>👥 Max {room.max_adults} adults
             </span>
             {room.floor_number && <span>Floor {room.floor_number}</span>}
@@ -79,7 +79,7 @@ function RoomCard({ room, checkin, checkout, hotelId, onSelect }) {
                 <strong>{nightlyRate.toLocaleString('en-US')} VND</strong>
                 <span>/night</span>
               </div>
-              <div className="room-total">{total.toLocaleString('en-US')} VND total · {nights} night{nights > 1 ? 's' : ''}</div>
+              <div className="room-total">{total.toLocaleString('en-US')} VND total - {nights} night{nights > 1 ? 's' : ''}</div>
             </>
           ) : (
             <span className="search-price-na">Rate on request</span>
@@ -144,7 +144,7 @@ export default function HotelPage() {
   }
 
   if (loading) {
-    return <div className="hotel-loading"><p>Loading hotel…</p></div>;
+    return <div className="hotel-loading"><p>Loading hotel...</p></div>;
   }
   if (error || !hotel) {
     return (
@@ -160,7 +160,7 @@ export default function HotelPage() {
 
   return (
     <div className="hotel-page">
-      {/* ── gallery ── */}
+      {/*  gallery  */}
       <div className="hotel-gallery">
         <img
           src={resolveHotelImage(hotel)}
@@ -173,7 +173,7 @@ export default function HotelPage() {
 
       <div className="hotel-content">
         <div className="hotel-main">
-          {/* ── header ── */}
+          {/*  header  */}
           <div className="hotel-header">
             <div>
               <p className="hotel-brand">{hotel.brand_name || hotel.chain_name || 'LuxeReserve'}</p>
@@ -184,14 +184,14 @@ export default function HotelPage() {
                   hotel.address_line_1 || hotel.address,
                   hotel.city_name,      // SQL: district name e.g. "District 1"
                   hotel.country_name,   // SQL: city name e.g. "Ho Chi Minh City"
-                ].filter(Boolean).join(', ') || '—'}
+                ].filter(Boolean).join(', ') || ''}
               </p>
               <StarRating stars={hotel.star_rating || 0} />
             </div>
             <div className="hotel-type-pill">{hotel.hotel_type || 'Luxury Hotel'}</div>
           </div>
 
-          {/* ── stay summary ── */}
+          {/*  stay summary  */}
           <div className="hotel-stay-summary">
             <div className="hotel-stay-item">
               <span>Check-in</span>
@@ -208,7 +208,7 @@ export default function HotelPage() {
             </div>
           </div>
 
-          {/* ── amenities ── */}
+          {/*  amenities  */}
           {hotel.amenities && hotel.amenities.length > 0 && (
             <div className="hotel-amenities">
               <h2 className="hotel-section-title">Amenities</h2>
@@ -218,14 +218,14 @@ export default function HotelPage() {
                     title={a.description || ''}>
                     {a.is_complimentary && <span className="amenity-free-dot" />}
                     {a.name || a.amenity_code}
-                    {a.is_chargeable && <small> · paid</small>}
+                    {a.is_chargeable && <small>  paid</small>}
                   </span>
                 ))}
               </div>
             </div>
           )}
 
-          {/* ── policies ── */}
+          {/*  policies  */}
           {hotel.policies && hotel.policies.length > 0 && (
             <div className="hotel-policies">
               <h2 className="hotel-section-title">Hotel Policies</h2>
@@ -242,7 +242,7 @@ export default function HotelPage() {
             </div>
           )}
 
-          {/* ── rooms ── */}
+          {/*  rooms  */}
           <div className="hotel-rooms">
             <h2 className="hotel-section-title">Available rooms</h2>
             {rooms.length === 0 ? (
@@ -267,7 +267,7 @@ export default function HotelPage() {
           </div>
         </div>
 
-        {/* ── promotions sidebar ── */}
+        {/*  promotions sidebar  */}
         {promos.length > 0 && (
           <aside className="hotel-promos">
             <h3 className="hotel-section-title">Current offers</h3>

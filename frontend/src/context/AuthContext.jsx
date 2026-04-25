@@ -129,6 +129,51 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function forgotGuestPassword(data) {
+    setAuthBusy('forgot-password');
+    try {
+      const payload = await apiRequest('/auth/guest/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return { success: true, ...payload };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      setAuthBusy('');
+    }
+  }
+
+  async function resetGuestPassword(data) {
+    setAuthBusy('reset-password');
+    try {
+      const payload = await apiRequest('/auth/guest/reset-password', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return { success: true, ...payload };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      setAuthBusy('');
+    }
+  }
+
+  async function changePassword(data) {
+    setAuthBusy('change-password');
+    try {
+      const payload = await apiRequest('/auth/guest/change-password', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return { success: true, ...payload };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      setAuthBusy('');
+    }
+  }
+
   function logout() {
     setAuthSession(null);
     clearStoredSession();
@@ -148,6 +193,9 @@ export function AuthProvider({ children }) {
         registerGuest,
         verifyGuestEmail,
         resendGuestVerification,
+        forgotGuestPassword,
+        resetGuestPassword,
+        changePassword,
         logout,
       }}
     >
@@ -156,6 +204,7 @@ export function AuthProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   return useContext(AuthContext);
 }

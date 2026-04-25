@@ -1,13 +1,13 @@
 -- ============================================================
--- LuxeReserve — 04: Triggers
--- Price Integrity Guard — AFTER UPDATE on RoomRate
+-- LuxeReserve - 04: Triggers
+-- Price Integrity Guard - AFTER UPDATE on RoomRate
 -- ============================================================
 
 USE LuxeReserve;
 GO
 
-CREATE OR ALTER TRIGGER trg_RoomRate_PriceIntegrityGuard
-ON RoomRate
+CREATE OR ALTER TRIGGER dbo.trg_RoomRate_PriceIntegrityGuard
+ON dbo.RoomRate
 AFTER UPDATE
 AS
 BEGIN
@@ -18,7 +18,7 @@ BEGIN
         RETURN;
 
     BEGIN TRY
-        INSERT INTO RateChangeLog (
+        INSERT INTO dbo.RateChangeLog (
             room_rate_id,
             old_rate,
             new_rate,
@@ -42,7 +42,7 @@ BEGIN
                     AS DECIMAL(9,4)
                 )
             END,
-            N'[AUTO] Rate change > 50% — flagged by Price Integrity Guard',
+            N'[AUTO] Rate change > 50% - flagged by Price Integrity Guard',
             GETDATE(),
             i.updated_by,
             'CRITICAL',
@@ -61,17 +61,17 @@ BEGIN
 END;
 GO
 
-PRINT '✅ TRIGGER trg_RoomRate_PriceIntegrityGuard created.';
+PRINT 'OK TRIGGER trg_RoomRate_PriceIntegrityGuard created.';
 GO
 
 -- ============================================================
 -- trg_Reservation_CancellationAudit
 -- AFTER UPDATE on Reservation
--- Auto-log to AuditLog when status → CANCELLED
+-- Auto-log to AuditLog when status -> CANCELLED
 -- ============================================================
 
-CREATE OR ALTER TRIGGER trg_Reservation_CancellationAudit
-ON Reservation
+CREATE OR ALTER TRIGGER dbo.trg_Reservation_CancellationAudit
+ON dbo.Reservation
 AFTER UPDATE
 AS
 BEGIN
@@ -82,7 +82,7 @@ BEGIN
         RETURN;
 
     BEGIN TRY
-        INSERT INTO AuditLog (
+        INSERT INTO dbo.AuditLog (
             entity_name,
             entity_pk,
             action_type,
@@ -124,6 +124,5 @@ BEGIN
 END;
 GO
 
-PRINT '✅ TRIGGER trg_Reservation_CancellationAudit created.';
+PRINT 'OK TRIGGER trg_Reservation_CancellationAudit created.';
 GO
-

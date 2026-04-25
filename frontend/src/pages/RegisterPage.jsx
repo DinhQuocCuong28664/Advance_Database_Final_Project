@@ -4,18 +4,18 @@ import { useAuth } from '../context/AuthContext';
 import { useFlash } from '../context/FlashContext';
 
 const countryCodes = [
-  { code: '+1', flag: '🇺🇸', iso: 'us' },
-  { code: '+44', flag: '🇬🇧', iso: 'gb' },
-  { code: '+60', flag: '🇲🇾', iso: 'my' },
-  { code: '+61', flag: '🇦🇺', iso: 'au' },
-  { code: '+62', flag: '🇮🇩', iso: 'id' },
-  { code: '+63', flag: '🇵🇭', iso: 'ph' },
-  { code: '+65', flag: '🇸🇬', iso: 'sg' },
-  { code: '+66', flag: '🇹🇭', iso: 'th' },
-  { code: '+81', flag: '🇯🇵', iso: 'jp' },
-  { code: '+82', flag: '🇰🇷', iso: 'kr' },
-  { code: '+84', flag: '🇻🇳', iso: 'vn' },
-  { code: '+86', flag: '🇨🇳', iso: 'cn' },
+  { code: '+1', flag: '', iso: 'us' },
+  { code: '+44', flag: '', iso: 'gb' },
+  { code: '+60', flag: '', iso: 'my' },
+  { code: '+61', flag: '', iso: 'au' },
+  { code: '+62', flag: '', iso: 'id' },
+  { code: '+63', flag: '', iso: 'ph' },
+  { code: '+65', flag: '', iso: 'sg' },
+  { code: '+66', flag: '', iso: 'th' },
+  { code: '+81', flag: '', iso: 'jp' },
+  { code: '+82', flag: '', iso: 'kr' },
+  { code: '+84', flag: '', iso: 'vn' },
+  { code: '+86', flag: '', iso: 'cn' },
 ];
 
 function CountrySelect({ value, onChange }) {

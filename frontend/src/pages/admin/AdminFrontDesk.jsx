@@ -1,35 +1,35 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AdditionalGuests from './AdditionalGuests';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
 import { useAuth } from '../../context/AuthContext';
 
-// ── Payment methods available at check-in ──────────────────────────────────
+//  Payment methods available at check-in 
 const PAYMENT_METHODS = [
   {
     key: 'CASH',
     label: 'Cash',
     sublabel: 'Physical currency',
-    icon: '💵',
+    icon: '',
     note: 'Collect payment at the desk. Physical receipt required.',
   },
   {
     key: 'BANK_TRANSFER',
     label: 'Bank Transfer',
     sublabel: 'VNPay / Online Transfer',
-    icon: '🏦',
+    icon: '',
     note: 'Guest scans QR or transfers via VNPay. Verify before confirming.',
   },
   {
     key: 'CREDIT_CARD',
     label: 'Credit / Debit Card',
-    sublabel: 'Visa · Mastercard · JCB',
-    icon: '💳',
+    sublabel: 'Visa  Mastercard  JCB',
+    icon: '',
     note: 'Swipe or tap card on the POS terminal. Confirm after approval.',
   },
 ];
 
-// ── Payment modal ──────────────────────────────────────────────────────────
+//  Payment modal 
 function PaymentModal({ reservation, onConfirm, onCancel, busy }) {
   const [selected, setSelected] = useState('CASH');
   const overlayRef = useRef(null);
@@ -50,11 +50,11 @@ function PaymentModal({ reservation, onConfirm, onCancel, busy }) {
 
         <div className="pm-header">
           <div>
-            <p className="pm-eyebrow">Check-in · Select payment method</p>
+            <p className="pm-eyebrow">Check-in  Select payment method</p>
             <h2 className="pm-title">{reservation.reservation_code}</h2>
-            <p className="pm-guest">{reservation.guest_name} · {reservation.hotel_name}</p>
+            <p className="pm-guest">{reservation.guest_name}  {reservation.hotel_name}</p>
           </div>
-          <button type="button" className="pm-close" onClick={onCancel}>✕</button>
+          <button type="button" className="pm-close" onClick={onCancel}></button>
         </div>
 
         <div className="pm-amount-row">
@@ -77,7 +77,7 @@ function PaymentModal({ reservation, onConfirm, onCancel, busy }) {
                 <span className="pm-method-label">{m.label}</span>
                 <span className="pm-method-sub">{m.sublabel}</span>
               </span>
-              {selected === m.key && <span className="pm-method-check">✓</span>}
+              {selected === m.key && <span className="pm-method-check"></span>}
             </button>
           ))}
         </div>
@@ -88,7 +88,7 @@ function PaymentModal({ reservation, onConfirm, onCancel, busy }) {
 
         <div className="pm-actions">
           <button type="button" className="ghost-button" onClick={onCancel} disabled={busy}>
-            Huỷ
+            Cancel
           </button>
           <button
             type="button"
@@ -96,7 +96,7 @@ function PaymentModal({ reservation, onConfirm, onCancel, busy }) {
             onClick={() => onConfirm(selected)}
             disabled={busy}
           >
-            {busy ? 'Đang xử lý...' : `Xác nhận · ${method?.label}`}
+            {busy ? 'Processing...' : `Confirm  ${method?.label}`}
           </button>
         </div>
 
@@ -111,7 +111,7 @@ function todayString() {
 }
 
 function formatDate(value) {
-  if (!value) return '—';
+  if (!value) return '';
   return new Date(value).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
@@ -160,7 +160,7 @@ function ReservationMiniCard({ reservation, actionLabel, actionTone = 'primary',
           <p className="fd-card-code">{reservation.reservation_code}</p>
           <h3>{reservation.guest_name}</h3>
           <p>
-            {reservation.hotel_name} • Room {reservation.room_number || 'TBD'} •{' '}
+            {reservation.hotel_name}  Room {reservation.room_number || 'TBD'} {' '}
             {reservation.room_type_name || 'Room'}
           </p>
         </div>
@@ -371,7 +371,7 @@ export default function AdminFrontDesk({ hotels }) {
         method: 'POST',
         body: JSON.stringify({ agent_id: agentId, payment_method: paymentMethod }),
       });
-      setFlash({ tone: 'success', text: `${paymentTarget.reservation_code} checked in · ${paymentMethod}.` });
+      setFlash({ tone: 'success', text: `${paymentTarget.reservation_code} checked in  ${paymentMethod}.` });
       setPaymentTarget(null);
       if (lookupResult?.reservation_id === paymentTarget.reservation_id) {
         await handleLookup({ preventDefault() {} });
@@ -393,7 +393,7 @@ export default function AdminFrontDesk({ hotels }) {
       let body = {};
 
       if (action === 'checkin') {
-        // Should not reach here — check-in goes through initiateCheckin()
+        // Should not reach here  check-in goes through initiateCheckin()
         path = `/reservations/${reservation.reservation_id}/checkin`;
         body = { agent_id: agentId };
       } else if (action === 'checkout') {
@@ -502,7 +502,7 @@ export default function AdminFrontDesk({ hotels }) {
   return (
     <>
     <section className="page-card page-card-wide" id="admin-front-desk">
-      {/* ── Payment modal ── */}
+      {/*  Payment modal  */}
       {paymentTarget && (
         <PaymentModal
           reservation={paymentTarget}
@@ -519,21 +519,21 @@ export default function AdminFrontDesk({ hotels }) {
         <span className="admin-status-pill">V1 live</span>
       </div>
 
-      {/* ── Tab switcher ── */}
+      {/*  Tab switcher  */}
       <div className="fd-tab-bar">
         <button
           type="button"
           className={`fd-tab-btn${activeTab === 'frontdesk' ? ' active' : ''}`}
           onClick={() => setActiveTab('frontdesk')}
         >
-          🏨 Arrivals &amp; Departures
+           Arrivals &amp; Departures
         </button>
         <button
           type="button"
           className={`fd-tab-btn${activeTab === 'orders' ? ' active' : ''}`}
           onClick={() => { setActiveTab('orders'); if (hotelId) loadServiceOrders(svcFilter); }}
         >
-          🛎 Service Orders
+           Service Orders
           {svcOrders.filter(o => o.service_status === 'REQUESTED').length > 0 && (
             <span className="fd-tab-badge">
               {svcOrders.filter(o => o.service_status === 'REQUESTED').length}
@@ -542,7 +542,7 @@ export default function AdminFrontDesk({ hotels }) {
         </button>
       </div>
 
-      {/* ══ TAB: Front Desk (arrivals & departures) ══ */}
+      {/*  TAB: Front Desk (arrivals & departures)  */}
       {activeTab === 'frontdesk' && (
         <>
       <form className="inventory-toolbar" onSubmit={(event) => { event.preventDefault(); loadDesk(); }}>
@@ -638,7 +638,7 @@ export default function AdminFrontDesk({ hotels }) {
                   <p className="fd-card-code">{lookupResult.reservation_code}</p>
                   <h3>{lookupResult.guest_name}</h3>
                   <p>
-                    {lookupResult.hotel_name} • {formatDate(lookupResult.checkin_date)} →{' '}
+                    {lookupResult.hotel_name}  {formatDate(lookupResult.checkin_date)} {' '}
                     {formatDate(lookupResult.checkout_date)}
                   </p>
                 </div>
@@ -730,7 +730,7 @@ export default function AdminFrontDesk({ hotels }) {
                       <option value="">Select room</option>
                       {transferOptions.map((room) => (
                         <option key={room.room_id} value={room.room_id}>
-                          Room {room.room_number} • {room.room_type_name} •{' '}
+                          Room {room.room_number}  {room.room_type_name} {' '}
                           {formatMoney(room.min_nightly_rate, selectedHotel?.currency_code || 'VND')}
                         </option>
                       ))}
@@ -755,7 +755,7 @@ export default function AdminFrontDesk({ hotels }) {
         ) : null}
       </section>
       </> )}
-      {/* ══ TAB: Service Orders ══ */}
+      {/*  TAB: Service Orders  */}
       {activeTab === 'orders' && (
         <div className="svc-orders-panel">
           <div className="svc-orders-toolbar">
@@ -789,15 +789,15 @@ export default function AdminFrontDesk({ hotels }) {
               onClick={() => loadServiceOrders(svcFilter)}
               disabled={!hotelId || svcOrdersLoading}
             >
-              {svcOrdersLoading ? 'Loading…' : '↺ Refresh'}
+              {svcOrdersLoading ? 'Loading...' : ' Refresh'}
             </button>
           </div>
 
-          {svcOrdersLoading && <p className="fd-loading">Loading service orders…</p>}
+          {svcOrdersLoading && <p className="fd-loading">Loading service orders...</p>}
 
           {!svcOrdersLoading && svcOrders.length === 0 && (
             <div className="svc-orders-empty">
-              <span>🛎</span>
+              <span></span>
               <p>No service orders found.</p>
               <small>Select a hotel and click Refresh to load requests.</small>
             </div>
@@ -828,14 +828,14 @@ export default function AdminFrontDesk({ hotels }) {
                     </div>
 
                     <div className="svc-order-card-mid">
-                      <span>👤 {order.guest_name}</span>
-                      <span>🏠 Room {order.room_number || '—'}</span>
-                      <span>📋 {order.reservation_code}</span>
+                      <span> {order.guest_name}</span>
+                      <span> Room {order.room_number || ''}</span>
+                      <span> {order.reservation_code}</span>
                       {order.scheduled_at && (
-                        <span>🕐 {new Date(order.scheduled_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                        <span> {new Date(order.scheduled_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
                       )}
                       {order.special_instruction && (
-                        <span>📝 {order.special_instruction}</span>
+                        <span> {order.special_instruction}</span>
                       )}
                       <span style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>
                         Ordered {new Date(order.created_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}
@@ -851,7 +851,7 @@ export default function AdminFrontDesk({ hotels }) {
                             disabled={isBusy}
                             onClick={() => updateOrderStatus(order.reservation_service_id, 'CONFIRMED')}
                           >
-                            {isBusy ? '…' : '✓ Confirm Receipt'}
+                            {isBusy ? '...' : ' Confirm Receipt'}
                           </button>
                           <button
                             type="button"
@@ -870,7 +870,7 @@ export default function AdminFrontDesk({ hotels }) {
                           disabled={isBusy}
                           onClick={() => updateOrderStatus(order.reservation_service_id, 'DELIVERED')}
                         >
-                          {isBusy ? '…' : '🚀 Mark Delivered'}
+                          {isBusy ? '...' : ' Mark Delivered'}
                         </button>
                       )}
                       {order.service_status === 'CONFIRMED' && !order.is_paid && (
@@ -880,34 +880,34 @@ export default function AdminFrontDesk({ hotels }) {
                           disabled={isBusy || chargingId === order.reservation_service_id}
                           onClick={() => { setChargeModal(order); setChargeMethod('CASH'); }}
                         >
-                          💳 Charge guest
+                           Charge guest
                         </button>
                       )}
                       {order.service_status === 'DELIVERED' && !order.is_paid && (
                         <>
-                          <span className="svc-order-done-label">✅ Delivered</span>
+                          <span className="svc-order-done-label"> Delivered</span>
                           <button
                             type="button"
                             className="svc-charge-btn"
                             disabled={chargingId === order.reservation_service_id}
                             onClick={() => { setChargeModal(order); setChargeMethod('CASH'); }}
                           >
-                            💳 Charge guest
+                             Charge guest
                           </button>
                         </>
                       )}
                       {order.is_paid && (
                         <>
                           {order.service_status === 'DELIVERED' && (
-                            <span className="svc-order-done-label">✅ Delivered</span>
+                            <span className="svc-order-done-label"> Delivered</span>
                           )}
                           <span className="svc-paid-badge">
-                            ✅ Paid · {order.paid_method?.replace(/_/g,' ')}
+                             Paid  {order.paid_method?.replace(/_/g,' ')}
                           </span>
                         </>
                       )}
                       {order.service_status === 'CANCELLED' && (
-                        <span className="svc-order-done-label">❌ Cancelled</span>
+                        <span className="svc-order-done-label"> Cancelled</span>
                       )}
                     </div>
                   </article>
@@ -920,24 +920,24 @@ export default function AdminFrontDesk({ hotels }) {
 
     </section>
 
-    {/* ── Charge Guest Modal ── */}
+    {/*  Charge Guest Modal  */}
     {chargeModal && (
       <div className="pm-overlay" onClick={() => setChargeModal(null)}>
         <div className="pm-dialog pm-dialog--light" onClick={e => e.stopPropagation()}>
           <h3 className="pm-title">Charge guest</h3>
           <p className="pm-subtitle">
-            <strong>{chargeModal.service_name}</strong> —{' '}
+            <strong>{chargeModal.service_name}</strong> {' '}
             {new Intl.NumberFormat('en-US', {
               style: 'currency', currency: chargeModal.currency_code || 'USD',
             }).format(chargeModal.final_amount)}
           </p>
           <p className="pm-subtitle" style={{ color: 'var(--text-soft)', fontSize: '0.82rem' }}>
-            Guest: {chargeModal.guest_name} · Room {chargeModal.room_number || '—'}
+            Guest: {chargeModal.guest_name}  Room {chargeModal.room_number || ''}
           </p>
 
           <p style={{ fontWeight: 700, marginBottom: 10, marginTop: 14 }}>Payment method</p>
           <div className="pm-methods">
-            {[['CASH','💵 Cash'],['CREDIT_CARD','💳 Credit / Debit'],['BANK_TRANSFER','🏦 Bank Transfer']].map(([val, label]) => (
+            {[['CASH',' Cash'],['CREDIT_CARD',' Credit / Debit'],['BANK_TRANSFER',' Bank Transfer']].map(([val, label]) => (
               <button
                 key={val}
                 type="button"
@@ -957,7 +957,7 @@ export default function AdminFrontDesk({ hotels }) {
               disabled={chargingId === chargeModal.reservation_service_id}
               onClick={() => chargeOrder(chargeModal, chargeMethod)}
             >
-              {chargingId === chargeModal.reservation_service_id ? 'Processing…' : 'Confirm charge'}
+              {chargingId === chargeModal.reservation_service_id ? 'Processing...' : 'Confirm charge'}
             </button>
           </div>
         </div>

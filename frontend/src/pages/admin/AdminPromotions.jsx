@@ -24,7 +24,7 @@ const EMPTY = {
 };
 
 function fmtDate(d) {
-  if (!d) return '—';
+  if (!d) return '';
   return new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 }
 function fmtDiscount(p) {
@@ -155,7 +155,7 @@ export default function AdminPromotions({ hotels }) {
           </select>
         </label>
         <button type="button" className="primary-button" onClick={() => loadPromos(filterHotel)} disabled={loading}>
-          {loading ? 'Loading…' : '↺ Refresh'}
+          {loading ? 'Loading...' : ' Refresh'}
         </button>
       </div>
 
@@ -242,25 +242,25 @@ export default function AdminPromotions({ hotels }) {
               Description
               <textarea rows={2} value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Optional description shown to guests…" />
+                placeholder="Optional description shown to guests..." />
             </label>
           </div>
           <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:14 }}>
             <button type="button" className="ghost-button"
               onClick={() => { setShowForm(false); setForm(EMPTY); }}>Discard</button>
             <button type="submit" className="primary-button" disabled={submitting}>
-              {submitting ? 'Creating…' : 'Create promotion'}
+              {submitting ? 'Creating...' : 'Create promotion'}
             </button>
           </div>
         </form>
       )}
 
       {/* List */}
-      {loading && <p className="fd-loading">Loading promotions…</p>}
+      {loading && <p className="fd-loading">Loading promotions...</p>}
 
       {!loading && promos.length === 0 && (
         <div className="svc-orders-empty">
-          <span>🎁</span><p>No active promotions found.</p>
+          <span></span><p>No active promotions found.</p>
           <small>Create one above or adjust the hotel filter.</small>
         </div>
       )}
@@ -280,7 +280,7 @@ export default function AdminPromotions({ hotels }) {
                       {p.promotion_type.replace(/_/g,' ')}
                     </span>
                     {p.member_only_flag ? (
-                      <span className="promo-member-badge">⭐ Members only</span>
+                      <span className="promo-member-badge"> Members only</span>
                     ) : null}
                     {p.scope_type && (
                       <span className="promo-scope-badge">{p.scope_type}</span>
@@ -294,21 +294,21 @@ export default function AdminPromotions({ hotels }) {
                     <h3 className="promo-name">{p.promotion_name}</h3>
                     <p className="promo-discount">{fmtDiscount(p)}</p>
                     <div className="promo-meta">
-                      <span>📅 Book: {fmtDate(p.booking_start_date)} → {fmtDate(p.booking_end_date)}</span>
+                      <span> Book: {fmtDate(p.booking_start_date)}  {fmtDate(p.booking_end_date)}</span>
                       {p.stay_start_date && (
-                        <span>🛏️ Stay: {fmtDate(p.stay_start_date)} → {fmtDate(p.stay_end_date)}</span>
+                        <span> Stay: {fmtDate(p.stay_start_date)}  {fmtDate(p.stay_end_date)}</span>
                       )}
-                      {p.min_nights && <span>🌙 Min {p.min_nights} nights</span>}
-                      {p.scope_hotel_name && <span>🏨 {p.scope_hotel_name}</span>}
+                      {p.min_nights && <span> Min {p.min_nights} nights</span>}
+                      {p.scope_hotel_name && <span> {p.scope_hotel_name}</span>}
                     </div>
                     <div className="promo-card-actions">
                       <button type="button" className="ghost-button" onClick={() => startEdit(p)}>
-                        ✏️ Edit
+                         Edit
                       </button>
                       <button type="button" className="maint-deactivate-btn"
                         disabled={deletingId === p.promotion_id}
                         onClick={() => handleDeactivate(p)}>
-                        {deletingId === p.promotion_id ? 'Deactivating…' : 'Deactivate'}
+                        {deletingId === p.promotion_id ? 'Deactivating...' : 'Deactivate'}
                       </button>
                     </div>
                   </>
@@ -362,7 +362,7 @@ export default function AdminPromotions({ hotels }) {
                       <button type="button" className="primary-button"
                         disabled={savingId === p.promotion_id}
                         onClick={() => handleSaveEdit(p.promotion_id)}>
-                        {savingId === p.promotion_id ? 'Saving…' : 'Save changes'}
+                        {savingId === p.promotion_id ? 'Saving...' : 'Save changes'}
                       </button>
                     </div>
                   </div>

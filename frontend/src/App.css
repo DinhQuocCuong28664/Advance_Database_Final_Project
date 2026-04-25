@@ -1,9 +1,9 @@
-/* ══════════════════════════════════════════════════════════
+/* 
    GLOBAL / SHARED STYLES
    Page-specific CSS has been moved to src/styles/*.css
-══════════════════════════════════════════════════════════ */
+ */
 
-/* ── Responsive overrides (cross-page) ─────────────────── */
+/*  Responsive overrides (cross-page)  */
 @media (max-width: 900px) {
   .hero-search-form { grid-template-columns: 1fr 1fr; }
   .hero-search-btn { grid-column: 1 / -1; }
@@ -40,7 +40,7 @@
   .booking-done-summary { grid-template-columns: 1fr; }
 }
 
-/* ── App shell ─────────────────────────────────────────── */
+/*  App shell  */
 .app-shell {
   max-width: 1240px;
   margin: 0 auto;
@@ -52,7 +52,7 @@
   gap: 20px;
 }
 
-/* ── Auth page layout ──────────────────────────────────── */
+/*  Auth page layout  */
 .auth-page-shell {
   min-height: 100vh;
   display: grid;
@@ -92,7 +92,7 @@
   padding: 56px 24px;
 }
 
-/* ── Toast notifications ───────────────────────────────── */
+/*  Toast notifications  */
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(16px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -161,7 +161,7 @@
   background: var(--surface-2);
 }
 
-/* ── Shell header ──────────────────────────────────────── */
+/*  Shell header  */
 .shell-header {
   display: flex;
   align-items: center;
@@ -232,7 +232,7 @@
   color: var(--text-soft);
 }
 
-/* ── Shell footer ──────────────────────────────────────── */
+/*  Shell footer  */
 .shell-footer {
   margin-top: 28px;
   padding: 24px;
@@ -289,7 +289,7 @@
   color: var(--text-strong);
 }
 
-/* ── Page utilities ────────────────────────────────────── */
+/*  Page utilities  */
 .page-card {
   display: grid; gap: 16px; padding: 28px; border-radius: 24px;
   background: rgba(255, 251, 246, 0.88);
@@ -329,7 +329,7 @@
 .message-strip.success { background: rgba(111, 170, 147, 0.14); border-color: rgba(111, 170, 147, 0.28); }
 .message-strip.error { background: rgba(189, 92, 72, 0.12); border-color: rgba(189, 92, 72, 0.28); }
 
-/* ── Auth forms ────────────────────────────────────────── */
+/*  Auth forms  */
 .auth-shell {
   width: min(100%, 560px);
   background: rgba(255, 251, 246, 0.94);
@@ -353,7 +353,7 @@
 }
 .detail-list span { color: var(--text-strong); font-size: 1rem; }
 
-/* ── Form elements ─────────────────────────────────────── */
+/*  Form elements  */
 input, select, textarea, button { font: inherit; }
 
 input, select, textarea {
@@ -419,7 +419,7 @@ button, .button-link {
 }
 .auth-secondary-button:hover { background: rgba(250, 246, 240, 1); }
 
-/* ── Responsive – shell + admin + guest ────────────────── */
+/*  Responsive  shell + admin + guest  */
 @media (max-width: 900px) {
   .shell-header { flex-direction: column; align-items: stretch; }
   .admin-hero, .guest-hero, .admin-section-head { flex-direction: column; align-items: stretch; }
@@ -450,7 +450,7 @@ button, .button-link {
   .footer-bottom-bar { flex-direction: column; align-items: flex-start; }
 }
 
-/* ── Table globals ─────────────────────────────────────── */
+/*  Table globals  */
 .table-wrapper {
   width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 18px;
 }
@@ -468,7 +468,7 @@ table th {
 table tr:last-child td { border-bottom: none; }
 table tr:hover td { background: rgba(20, 61, 66, 0.02); }
 
-/* ── Extra small screens ───────────────────────────────── */
+/*  Extra small screens  */
 @media (max-width: 480px) {
   .app-shell { padding: 12px; }
   .shell-header { padding: 14px 16px; border-radius: 18px; }
@@ -487,9 +487,9 @@ table tr:hover td { background: rgba(20, 61, 66, 0.02); }
   .button-row { flex-direction: column; align-items: stretch; }
 }
 
-/* ═══════════════════════════════════════════════════
+/* 
    VNPAY RETURN PAGE
-═══════════════════════════════════════════════════ */
+ */
 .vnpay-return-page {
   display: grid; place-items: center; min-height: 60vh; padding: 40px 20px;
 }

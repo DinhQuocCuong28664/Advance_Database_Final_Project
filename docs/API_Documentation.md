@@ -1,8 +1,8 @@
-# LuxeReserve — API Documentation
+# LuxeReserve  API Documentation
 
 > **Base URL:** `http://localhost:3000/api`  
 > **Format:** JSON  
-> **Auth:** Bearer token — `Authorization: Bearer <token>`  
+> **Auth:** Bearer token  `Authorization: Bearer <token>`  
 > **Total endpoints:** 55 across 14 route groups
 
 ---
@@ -124,7 +124,7 @@ Resend OTP verification email.
 
 ---
 
-### GET `/auth/me` 🔒
+### GET `/auth/me` 
 Get current authenticated user details.
 
 **Headers:** `Authorization: Bearer <token>`
@@ -134,7 +134,7 @@ Get current authenticated user details.
 ## 2. Hotels
 
 ### GET `/hotels`
-List all active hotels. **Hybrid** — merges SQL operational data with MongoDB rich content.
+List all active hotels. **Hybrid**  merges SQL operational data with MongoDB rich content.
 
 **Response fields per hotel**
 | Field | Source | Description |
@@ -173,14 +173,14 @@ List all active hotels. **Hybrid** — merges SQL operational data with MongoDB 
 ### GET `/hotels/:id`
 Full hotel detail including room types, amenities, and MongoDB rich content.
 
-**Path param:** `id` — hotel_id (integer)
+**Path param:** `id`  hotel_id (integer)
 
 **Response includes**
 - Full hotel info (SQL + MongoDB merged)
-- `room_types[]` — each with pricing, features, images from MongoDB
-- `amenities[]` — each with name, category, icon from MongoDB
-- `images[]` — gallery from MongoDB
-- `contact` — contact info from MongoDB
+- `room_types[]`  each with pricing, features, images from MongoDB
+- `amenities[]`  each with name, category, icon from MongoDB
+- `images[]`  gallery from MongoDB
+- `contact`  contact info from MongoDB
 
 ---
 
@@ -192,9 +192,9 @@ Check available rooms for a date range.
 **Query Parameters**
 | Param | Required | Description |
 |---|---|---|
-| `hotel_id` | ✅ | Hotel ID |
-| `checkin` | ✅ | Date `YYYY-MM-DD` |
-| `checkout` | ✅ | Date `YYYY-MM-DD` |
+| `hotel_id` |  | Hotel ID |
+| `checkin` |  | Date `YYYY-MM-DD` |
+| `checkout` |  | Date `YYYY-MM-DD` |
 
 **Logic:** Returns rooms where `RoomAvailability.availability_status = 'OPEN'` for ALL requested nights. Joins with `RoomRate` to get nightly rates.
 
@@ -225,9 +225,9 @@ List active promotions, optionally filtered and with guest eligibility.
 **Query Parameters**
 | Param | Required | Description |
 |---|---|---|
-| `hotel_id` | ❌ | Filter by hotel |
-| `guest_id` | ❌ | Check eligibility for this guest |
-| `member_only` | ❌ | `true` / `false` |
+| `hotel_id` |  | Filter by hotel |
+| `guest_id` |  | Check eligibility for this guest |
+| `member_only` |  | `true` / `false` |
 
 **Response per promotion**
 ```json
@@ -271,7 +271,7 @@ Create a new reservation with **pessimistic locking** (UPDLOCK + HOLDLOCK per ni
 }
 ```
 
-**For anonymous booking** — provide `guest_profile` instead of `guest_id`:
+**For anonymous booking**  provide `guest_profile` instead of `guest_id`:
 ```json
 {
   "guest_profile": {
@@ -337,12 +337,12 @@ List reservations with optional filters.
 ### GET `/reservations/:code`
 Get full reservation detail by reservation code.
 
-**Uses `vw_ReservationTotal`** — includes `balance_due`, `total_paid`, `room_subtotal`, `service_subtotal`.
+**Uses `vw_ReservationTotal`**  includes `balance_due`, `total_paid`, `room_subtotal`, `service_subtotal`.
 
 **Response includes**
 - Core reservation data
-- `rooms[]` — room line items with room type and number
-- `status_history[]` — audit trail of status changes
+- `rooms[]`  room line items with room type and number
+- `status_history[]`  audit trail of status changes
 
 ---
 
@@ -379,7 +379,7 @@ Check out a reservation. Status must be `CHECKED_IN`.
 
 ---
 
-### POST `/reservations/:id/guest-cancel` 🔒 GUEST
+### POST `/reservations/:id/guest-cancel`  GUEST
 Cancel a reservation as guest. Status must be `CONFIRMED`.
 
 **Request Body:** `{ "reason": "Change of plans" }`
@@ -388,14 +388,14 @@ Cancel a reservation as guest. Status must be `CONFIRMED`.
 
 ---
 
-### POST `/reservations/:id/hotel-cancel` 🔒 ADMIN/FRONT_DESK/CASHIER
+### POST `/reservations/:id/hotel-cancel`  ADMIN/FRONT_DESK/CASHIER
 Cancel a reservation as hotel staff.
 
 **Request Body:** `{ "reason": "Hotel maintenance", "agent_id": 1 }`
 
 ---
 
-### POST `/reservations/:id/transfer` 🔒 ADMIN/FRONT_DESK/CASHIER
+### POST `/reservations/:id/transfer`  ADMIN/FRONT_DESK/CASHIER
 Transfer guest to a different room using `sp_TransferRoom`.
 
 **Request Body:**
@@ -451,7 +451,7 @@ List payments.
 
 ## 7. Services
 
-### GET `/services?hotel_id=1`
+### GET `/services->hotel_id=1`
 List available services in the hotel's service catalog.
 
 **Response per service**
@@ -487,7 +487,7 @@ Order a service for a reservation.
 
 ---
 
-### GET `/services/orders?reservation_id=42`
+### GET `/services/orders->reservation_id=42`
 List all service orders for a reservation with totals summary.
 
 ---
@@ -651,7 +651,7 @@ List all locations (flat list).
 ---
 
 ### GET `/locations/tree`
-Get location hierarchy as a tree (Country → City → District).
+Get location hierarchy as a tree (Country  City  District).
 
 ---
 
@@ -706,7 +706,7 @@ Revenue grouped by brand using SQL Window Functions.
 ---
 
 ### GET `/admin/rates/alerts`
-Price anomaly alerts — rates that changed >50%.
+Price anomaly alerts  rates that changed >50%.
 
 ---
 
@@ -724,7 +724,7 @@ Update a room rate.
 
 ## 14. VNPay
 
-> ⚠️ Integration ready but **not activated** — waiting for production `IPN_URL`.
+>  Integration ready but **not activated**  waiting for production `IPN_URL`.
 
 ### POST `/vnpay/create-payment`
 Create a VNPay payment URL for redirect.
@@ -763,10 +763,10 @@ All errors follow this format:
 | HTTP Status | Meaning |
 |---|---|
 | `400` | Bad request / validation error |
-| `401` | Unauthorized — missing or invalid token |
-| `403` | Forbidden — insufficient permissions |
+| `401` | Unauthorized  missing or invalid token |
+| `403` | Forbidden  insufficient permissions |
 | `404` | Resource not found |
-| `409` | Conflict — e.g. room already booked, wrong status |
+| `409` | Conflict  e.g. room already booked, wrong status |
 | `500` | Internal server error |
 
 ---
@@ -774,10 +774,10 @@ All errors follow this format:
 ## Authentication Reference
 
 | Account | Password | Type | Roles | Portal |
-|---|---|---|---|---|
+------------------------------------------------------------
 | `admin` | `admin` | System | ADMIN | `/admin` |
 | `cashier` | `cashier` | System | CASHIER, FRONT_DESK | `/cashier` |
-| `dqc` | `dqc` | Guest | — (PLATINUM member) | `/` |
+| `dqc` | `dqc` | Guest |  (PLATINUM member) | `/` |
 
 ---
 

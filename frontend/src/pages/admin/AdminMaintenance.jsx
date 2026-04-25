@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
 
-// ── Constants ────────────────────────────────────────────────
+//  Constants 
 const ISSUE_CATEGORIES = [
   'PLUMBING', 'ELECTRICAL', 'HVAC', 'STRUCTURAL',
   'FURNITURE', 'APPLIANCE', 'PEST_CONTROL', 'CLEANING', 'OTHER',
@@ -25,19 +25,19 @@ const STATUS_STYLE = {
 };
 
 const CATEGORY_ICON = {
-  PLUMBING:     '🔧',
-  ELECTRICAL:   '⚡',
-  HVAC:         '❄️',
-  STRUCTURAL:   '🏗️',
-  FURNITURE:    '🛋️',
-  APPLIANCE:    '📺',
-  PEST_CONTROL: '🐛',
-  CLEANING:     '🧹',
-  OTHER:        '🔩',
+  PLUMBING:     '',
+  ELECTRICAL:   '',
+  HVAC:         '',
+  STRUCTURAL:   '',
+  FURNITURE:    '',
+  APPLIANCE:    '',
+  PEST_CONTROL: '',
+  CLEANING:     '',
+  OTHER:        '',
 };
 
 function fmt(dt) {
-  if (!dt) return '—';
+  if (!dt) return '';
   return new Date(dt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' });
 }
 
@@ -48,7 +48,7 @@ const EMPTY_FORM = {
   severity_level: 'MEDIUM',
 };
 
-// ── Main Component ───────────────────────────────────────────
+//  Main Component 
 export default function AdminMaintenance({ hotels }) {
   const { setFlash } = useFlash();
 
@@ -160,7 +160,7 @@ export default function AdminMaintenance({ hotels }) {
   return (
     <section className="page-card page-card-wide" id="admin-maintenance">
 
-      {/* ── Update Modal ── */}
+      {/*  Update Modal  */}
       {updateTarget && (
         <div className="pm-overlay" onClick={e => { if (e.target === e.currentTarget) setUpdateTarget(null); }}>
           <div className="pm-dialog" style={{ maxWidth: 480 }}>
@@ -170,7 +170,7 @@ export default function AdminMaintenance({ hotels }) {
                 <h2 className="pm-title">{updateTarget.issue_category.replace(/_/g,' ')}</h2>
                 <p className="pm-guest">{updateTarget.issue_description?.slice(0, 80)}</p>
               </div>
-              <button type="button" className="pm-close" onClick={() => setUpdateTarget(null)}>✕</button>
+              <button type="button" className="pm-close" onClick={() => setUpdateTarget(null)}></button>
             </div>
             <form onSubmit={handleUpdate} style={{ padding: '0 24px 24px' }}>
               <div className="maint-form-grid">
@@ -193,14 +193,14 @@ export default function AdminMaintenance({ hotels }) {
                     rows="3"
                     value={updateFields.resolution_note}
                     onChange={e => setUpdateFields(f => ({ ...f, resolution_note: e.target.value }))}
-                    placeholder="Describe what was done to resolve the issue…"
+                    placeholder="Describe what was done to resolve the issue..."
                   />
                 </label>
               </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
                 <button type="button" className="ghost-button" onClick={() => setUpdateTarget(null)}>Cancel</button>
                 <button type="submit" className="primary-button" disabled={updateBusy}>
-                  {updateBusy ? 'Saving…' : 'Save changes'}
+                  {updateBusy ? 'Saving...' : 'Save changes'}
                 </button>
               </div>
             </form>
@@ -208,7 +208,7 @@ export default function AdminMaintenance({ hotels }) {
         </div>
       )}
 
-      {/* ── Header ── */}
+      {/*  Header  */}
       <div className="admin-section-head">
         <div>
           <p className="page-eyebrow">Maintenance</p>
@@ -219,7 +219,7 @@ export default function AdminMaintenance({ hotels }) {
         </button>
       </div>
 
-      {/* ── Hotel selector ── */}
+      {/*  Hotel selector  */}
       <div className="inventory-toolbar" style={{ marginBottom: 16 }}>
         <label>
           Hotel
@@ -247,11 +247,11 @@ export default function AdminMaintenance({ hotels }) {
         <button type="button" className="primary-button"
           onClick={() => loadTickets(hotelId, filterStatus, filterSev)}
           disabled={!hotelId || loading}>
-          {loading ? 'Loading…' : '↺ Refresh'}
+          {loading ? 'Loading...' : ' Refresh'}
         </button>
       </div>
 
-      {/* ── Stats pills ── */}
+      {/*  Stats pills  */}
       {tickets.length > 0 && (
         <div className="maint-stats-row">
           <span className="maint-stat"><strong>{tickets.length}</strong> total</span>
@@ -261,7 +261,7 @@ export default function AdminMaintenance({ hotels }) {
         </div>
       )}
 
-      {/* ── New ticket form ── */}
+      {/*  New ticket form  */}
       {showForm && (
         <form className="maint-new-form page-card" onSubmit={handleSubmit}>
           <p className="page-eyebrow" style={{ marginBottom: 12 }}>New maintenance ticket</p>
@@ -286,10 +286,10 @@ export default function AdminMaintenance({ hotels }) {
               Room (optional)
               <select value={form.room_id}
                 onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}>
-                <option value="">— Common area / no specific room —</option>
+                <option value=""> Common area / no specific room </option>
                 {rooms.map(r => (
                   <option key={r.room_id} value={r.room_id}>
-                    Room {r.room_number} · {r.room_type_name || 'Room'} · Floor {r.floor_number}
+                    Room {r.room_number}  {r.room_type_name || 'Room'}  Floor {r.floor_number}
                   </option>
                 ))}
               </select>
@@ -309,27 +309,27 @@ export default function AdminMaintenance({ hotels }) {
               Discard
             </button>
             <button type="submit" className="primary-button" disabled={submitting}>
-              {submitting ? 'Submitting…' : 'Submit ticket'}
+              {submitting ? 'Submitting...' : 'Submit ticket'}
             </button>
           </div>
         </form>
       )}
 
-      {/* ── Ticket list ── */}
-      {loading && <p className="fd-loading">Loading maintenance tickets…</p>}
+      {/*  Ticket list  */}
+      {loading && <p className="fd-loading">Loading maintenance tickets...</p>}
 
       {!loading && !hotelId && (
         <div className="svc-orders-empty">
-          <span>🔧</span>
+          <span></span>
           <p>Select a hotel to view tickets.</p>
         </div>
       )}
 
       {!loading && hotelId && tickets.length === 0 && (
         <div className="svc-orders-empty">
-          <span>✅</span>
+          <span></span>
           <p>No maintenance tickets found.</p>
-          <small>All clear — or adjust filters to see closed tickets.</small>
+          <small>All clear  or adjust filters to see closed tickets.</small>
         </div>
       )}
 
@@ -353,7 +353,7 @@ export default function AdminMaintenance({ hotels }) {
                       {ticket.status.replace(/_/g,' ')}
                     </span>
                     <span className="maint-category-pill">
-                      {CATEGORY_ICON[ticket.issue_category] || '🔩'} {ticket.issue_category.replace(/_/g,' ')}
+                      {CATEGORY_ICON[ticket.issue_category] || ''} {ticket.issue_category.replace(/_/g,' ')}
                     </span>
                   </div>
                   <span className="maint-ticket-id">#{ticket.maintenance_ticket_id}</span>
@@ -363,19 +363,19 @@ export default function AdminMaintenance({ hotels }) {
 
                 <div className="maint-card-meta">
                   {ticket.room_number
-                    ? <span>🏠 Room {ticket.room_number} · Floor {ticket.floor_number}</span>
-                    : <span>📍 Common area</span>}
-                  <span>📅 Reported {fmt(ticket.reported_at)}</span>
-                  {ticket.reporter_name  && <span>👤 By {ticket.reporter_name}</span>}
-                  {ticket.assignee_name  && <span>🔨 Assigned to {ticket.assignee_name}</span>}
-                  {ticket.resolved_at    && <span>✅ Resolved {fmt(ticket.resolved_at)}</span>}
+                    ? <span> Room {ticket.room_number}  Floor {ticket.floor_number}</span>
+                    : <span> Common area</span>}
+                  <span> Reported {fmt(ticket.reported_at)}</span>
+                  {ticket.reporter_name  && <span> By {ticket.reporter_name}</span>}
+                  {ticket.assignee_name  && <span> Assigned to {ticket.assignee_name}</span>}
+                  {ticket.resolved_at    && <span> Resolved {fmt(ticket.resolved_at)}</span>}
                   {ticket.resolution_hours != null && (
-                    <span>⏱ {ticket.resolution_hours}h to resolve</span>
+                    <span> {ticket.resolution_hours}h to resolve</span>
                   )}
                 </div>
 
                 {ticket.resolution_note && (
-                  <p className="maint-resolution-note">📝 {ticket.resolution_note}</p>
+                  <p className="maint-resolution-note"> {ticket.resolution_note}</p>
                 )}
 
                 {!done && (

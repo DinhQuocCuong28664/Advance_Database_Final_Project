@@ -1,6 +1,6 @@
 /**
- * ══════════════════════════════════════════════════════════════
- * [15] RATE PLANS API — CRUD Tests
+ * 
+ * [15] RATE PLANS API  CRUD Tests
  * Endpoints:
  *   GET    /api/admin/rate-plans
  *   GET    /api/admin/rate-plans/:id
@@ -12,15 +12,15 @@
  *   GET    /api/admin/rates
  *   PUT    /api/admin/rates/:id  (Price Guard)
  *   GET    /api/admin/rates/alerts
- * ══════════════════════════════════════════════════════════════
+ * 
  */
 const { test, expect } = require('@playwright/test');
 const { SEED } = require('./helpers');
 
-// ── Admin auth token (requireSystemUser on all /admin/* routes) ──────
+//  Admin auth token (requireSystemUser on all /admin/* routes) 
 let adminToken = null;
 
-test.describe('📐 Rate Plans API', () => {
+test.describe(' Rate Plans API', () => {
 
   test.beforeAll(async ({ request }) => {
     const res = await request.post('/api/auth/admin/login', {
@@ -35,15 +35,15 @@ test.describe('📐 Rate Plans API', () => {
   // Helper: auth header
   const auth = () => ({ Authorization: `Bearer ${adminToken}` });
 
-  // ── Track created plan for cleanup ────────────────────────
+  //  Track created plan for cleanup 
   let createdPlanId = null;
   const TEST_CODE = `PW_TEST_${Date.now().toString(36).toUpperCase()}`.slice(0, 20);
 
-  // ═══════════════════════════════════════════════════════
+  // 
   // Existing RoomRate endpoints
-  // ═══════════════════════════════════════════════════════
+  // 
 
-  test.describe('RoomRate — GET /admin/rates', () => {
+  test.describe('RoomRate  GET /admin/rates', () => {
     test('returns room_types array with rate rows', async ({ request }) => {
       const res = await request.get('/api/admin/rates', {
         headers: auth(),
@@ -56,7 +56,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(body).toHaveProperty('count');
     });
 
-    test('no hotel_id filter → returns all hotels rates', async ({ request }) => {
+    test('no hotel_id filter  returns all hotels rates', async ({ request }) => {
       const res = await request.get('/api/admin/rates', { headers: auth() });
       expect(res.status()).toBe(200);
       const body = await res.json();
@@ -82,7 +82,7 @@ test.describe('📐 Rate Plans API', () => {
     });
   });
 
-  test.describe('RoomRate — GET /admin/rates/alerts', () => {
+  test.describe('RoomRate  GET /admin/rates/alerts', () => {
     test('returns alert list', async ({ request }) => {
       const res = await request.get('/api/admin/rates/alerts', { headers: auth() });
       expect(res.status()).toBe(200);
@@ -92,7 +92,7 @@ test.describe('📐 Rate Plans API', () => {
     });
   });
 
-  test.describe('RoomRate — PUT /admin/rates/:id', () => {
+  test.describe('RoomRate  PUT /admin/rates/:id', () => {
     let rateId = null;
     let originalRate = null;
 
@@ -107,7 +107,7 @@ test.describe('📐 Rate Plans API', () => {
       originalRate = firstRate?.final_rate;
     });
 
-    test('PUT /rates/:id — invalid ID → 400', async ({ request }) => {
+    test('PUT /rates/:id  invalid ID  400', async ({ request }) => {
       const res = await request.put('/api/admin/rates/not-a-number', {
         headers: auth(),
         data: { final_rate: 500000 },
@@ -115,7 +115,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(res.status()).toBe(400);
     });
 
-    test('PUT /rates/:id — nonexistent → 404', async ({ request }) => {
+    test('PUT /rates/:id  nonexistent  404', async ({ request }) => {
       const res = await request.put('/api/admin/rates/999999', {
         headers: auth(),
         data: { final_rate: 500000, price_source: 'MANUAL_OVERRIDE' },
@@ -123,7 +123,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(res.status()).toBe(404);
     });
 
-    test('PUT /rates/:id — update rate → 200 with change_percent', async ({ request }) => {
+    test('PUT /rates/:id  update rate  200 with change_percent', async ({ request }) => {
       if (!rateId) return test.skip();
       const newRate = parseFloat(originalRate) * 1.1; // +10%
       const res = await request.put(`/api/admin/rates/${rateId}`, {
@@ -141,7 +141,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(body.price_guard_triggered).toBe(false); // <50%
     });
 
-    test('PUT /rates/:id — >50% change triggers price_guard_triggered=true', async ({ request }) => {
+    test('PUT /rates/:id  >50% change triggers price_guard_triggered=true', async ({ request }) => {
       if (!rateId) return test.skip();
       const bigRate = parseFloat(originalRate) * 2.5; // +150%
       const res = await request.put(`/api/admin/rates/${rateId}`, {
@@ -158,9 +158,9 @@ test.describe('📐 Rate Plans API', () => {
     });
   });
 
-  // ═══════════════════════════════════════════════════════
+  // 
   // RatePlan CRUD
-  // ═══════════════════════════════════════════════════════
+  // 
 
   test.describe('GET /admin/rate-plans', () => {
     test('returns list with correct shape', async ({ request }) => {
@@ -216,19 +216,19 @@ test.describe('📐 Rate Plans API', () => {
   });
 
   test.describe('GET /admin/rate-plans/:id', () => {
-    test('invalid ID → 400', async ({ request }) => {
+    test('invalid ID  400', async ({ request }) => {
       const res = await request.get('/api/admin/rate-plans/abc', { headers: auth() });
       expect(res.status()).toBe(400);
     });
 
-    test('nonexistent → 404', async ({ request }) => {
+    test('nonexistent  404', async ({ request }) => {
       const res = await request.get('/api/admin/rate-plans/999999', { headers: auth() });
       expect(res.status()).toBe(404);
       const body = await res.json();
       expect(body.success).toBe(false);
     });
 
-    test('valid ID → returns plan with rate_count', async ({ request }) => {
+    test('valid ID  returns plan with rate_count', async ({ request }) => {
       const listRes = await request.get('/api/admin/rate-plans', {
         headers: auth(),
         params: { hotel_id: SEED.hotel.id },
@@ -247,7 +247,7 @@ test.describe('📐 Rate Plans API', () => {
   });
 
   test.describe('POST /admin/rate-plans', () => {
-    test('missing required fields → 400', async ({ request }) => {
+    test('missing required fields  400', async ({ request }) => {
       const res = await request.post('/api/admin/rate-plans', {
         headers: auth(),
         data: { hotel_id: SEED.hotel.id, rate_plan_code: 'X' },
@@ -257,7 +257,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(body.error).toMatch(/required/i);
     });
 
-    test('invalid rate_plan_type → 400', async ({ request }) => {
+    test('invalid rate_plan_type  400', async ({ request }) => {
       const res = await request.post('/api/admin/rate-plans', {
         headers: auth(),
         data: {
@@ -272,7 +272,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(body.error).toMatch(/rate_plan_type/i);
     });
 
-    test('invalid meal_inclusion → 400', async ({ request }) => {
+    test('invalid meal_inclusion  400', async ({ request }) => {
       const res = await request.post('/api/admin/rate-plans', {
         headers: auth(),
         data: {
@@ -288,7 +288,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(body.error).toMatch(/meal_inclusion/i);
     });
 
-    test('nonexistent hotel → 404', async ({ request }) => {
+    test('nonexistent hotel  404', async ({ request }) => {
       const res = await request.post('/api/admin/rate-plans', {
         headers: auth(),
         data: {
@@ -301,7 +301,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(res.status()).toBe(404);
     });
 
-    test('valid payload → 201 with created plan', async ({ request }) => {
+    test('valid payload  201 with created plan', async ({ request }) => {
       const res = await request.post('/api/admin/rate-plans', {
         headers: auth(),
         data: {
@@ -330,7 +330,7 @@ test.describe('📐 Rate Plans API', () => {
       createdPlanId = body.data.rate_plan_id;
     });
 
-    test('duplicate code for same hotel → 409', async ({ request }) => {
+    test('duplicate code for same hotel  409', async ({ request }) => {
       if (!createdPlanId) return test.skip();
       const res = await request.post('/api/admin/rate-plans', {
         headers: auth(),
@@ -349,7 +349,7 @@ test.describe('📐 Rate Plans API', () => {
     // All 6 valid plan types
     const TYPES = ['BAR', 'NON_REFUNDABLE', 'MEMBER', 'PACKAGE', 'CORPORATE', 'PROMO'];
     TYPES.forEach(type => {
-      test(`POST — valid type '${type}' → 201`, async ({ request }) => {
+      test(`POST  valid type '${type}'  201`, async ({ request }) => {
         const code = `PW_${type}_${Date.now().toString(36).slice(-4).toUpperCase()}`.slice(0, 20);
         const res = await request.post('/api/admin/rate-plans', {
           headers: auth(),
@@ -371,7 +371,7 @@ test.describe('📐 Rate Plans API', () => {
     // All 5 meal inclusions
     const MEALS = ['ROOM_ONLY', 'BREAKFAST', 'HALF_BOARD', 'FULL_BOARD', 'ALL_INCLUSIVE'];
     MEALS.forEach(meal => {
-      test(`POST — valid meal_inclusion '${meal}' → 201`, async ({ request }) => {
+      test(`POST  valid meal_inclusion '${meal}'  201`, async ({ request }) => {
         const code = `PW_M_${meal.slice(0, 3)}_${Date.now().toString(36).slice(-3).toUpperCase()}`.slice(0, 20);
         const res = await request.post('/api/admin/rate-plans', {
           headers: auth(),
@@ -392,7 +392,7 @@ test.describe('📐 Rate Plans API', () => {
   });
 
   test.describe('PUT /admin/rate-plans/:id', () => {
-    test('invalid ID → 400', async ({ request }) => {
+    test('invalid ID  400', async ({ request }) => {
       const res = await request.put('/api/admin/rate-plans/abc', {
         headers: auth(),
         data: { rate_plan_name: 'X' },
@@ -400,7 +400,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(res.status()).toBe(400);
     });
 
-    test('nonexistent → 404', async ({ request }) => {
+    test('nonexistent  404', async ({ request }) => {
       const res = await request.put('/api/admin/rate-plans/999999', {
         headers: auth(),
         data: { status: 'INACTIVE' },
@@ -408,7 +408,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(res.status()).toBe(404);
     });
 
-    test('invalid status → 400', async ({ request }) => {
+    test('invalid status  400', async ({ request }) => {
       if (!createdPlanId) return test.skip();
       const res = await request.put(`/api/admin/rate-plans/${createdPlanId}`, {
         headers: auth(),
@@ -419,7 +419,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(body.error).toMatch(/status/i);
     });
 
-    test('patch name + meal_inclusion → 200', async ({ request }) => {
+    test('patch name + meal_inclusion  200', async ({ request }) => {
       if (!createdPlanId) return test.skip();
       const res = await request.put(`/api/admin/rate-plans/${createdPlanId}`, {
         headers: auth(),
@@ -435,7 +435,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(body.data.meal_inclusion).toBe('HALF_BOARD');
     });
 
-    test('toggle status ACTIVE → INACTIVE → 200', async ({ request }) => {
+    test('toggle status ACTIVE  INACTIVE  200', async ({ request }) => {
       if (!createdPlanId) return test.skip();
       const res = await request.put(`/api/admin/rate-plans/${createdPlanId}`, {
         headers: auth(),
@@ -446,7 +446,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(body.data.status).toBe('INACTIVE');
     });
 
-    test('toggle status INACTIVE → ACTIVE → 200', async ({ request }) => {
+    test('toggle status INACTIVE  ACTIVE  200', async ({ request }) => {
       if (!createdPlanId) return test.skip();
       const res = await request.put(`/api/admin/rate-plans/${createdPlanId}`, {
         headers: auth(),
@@ -459,17 +459,17 @@ test.describe('📐 Rate Plans API', () => {
   });
 
   test.describe('DELETE /admin/rate-plans/:id', () => {
-    test('invalid ID → 400', async ({ request }) => {
+    test('invalid ID  400', async ({ request }) => {
       const res = await request.delete('/api/admin/rate-plans/abc', { headers: auth() });
       expect(res.status()).toBe(400);
     });
 
-    test('nonexistent → 404', async ({ request }) => {
+    test('nonexistent  404', async ({ request }) => {
       const res = await request.delete('/api/admin/rate-plans/999999', { headers: auth() });
       expect(res.status()).toBe(404);
     });
 
-    test('plan with linked rates → 409', async ({ request }) => {
+    test('plan with linked rates  409', async ({ request }) => {
       // Get first existing plan that has rate_count > 0
       const listRes = await request.get('/api/admin/rate-plans', { headers: auth() });
       const planWithRates = (await listRes.json()).data?.find(p => p.rate_count > 0);
@@ -482,7 +482,7 @@ test.describe('📐 Rate Plans API', () => {
       expect(body.linked_rate_count).toBeGreaterThan(0);
     });
 
-    test('soft-delete plan with no linked rates → 200', async ({ request }) => {
+    test('soft-delete plan with no linked rates  200', async ({ request }) => {
       if (!createdPlanId) return test.skip();
       const res = await request.delete(`/api/admin/rate-plans/${createdPlanId}`, { headers: auth() });
       expect(res.status()).toBe(200);

@@ -1,18 +1,18 @@
 /**
- * ══════════════════════════════════════════════════════════════
- * [13] HOTEL-CANCEL API — Cancellation Lifecycle Tests
+ * 
+ * [13] HOTEL-CANCEL API  Cancellation Lifecycle Tests
  * Endpoints:
  *   POST /api/reservations/:id/hotel-cancel
- * ══════════════════════════════════════════════════════════════
+ * 
  */
 const { test, expect } = require('@playwright/test');
 const { SEED, futureDate } = require('./helpers');
 
-test.describe('🏨 Hotel-Cancel API', () => {
+test.describe(' Hotel-Cancel API', () => {
 
   let cancelResv = null;
 
-  // ── Setup: create a fresh reservation to cancel ──────────
+  //  Setup: create a fresh reservation to cancel 
   test.beforeAll(async ({ request }) => {
     // Find an available room for far-future dates
     const cin  = futureDate(110);
@@ -43,8 +43,8 @@ test.describe('🏨 Hotel-Cancel API', () => {
     }
   });
 
-  // ── Input validation ─────────────────────────────────────
-  test('POST /hotel-cancel — missing reason → 400', async ({ request }) => {
+  //  Input validation 
+  test('POST /hotel-cancel  missing reason  400', async ({ request }) => {
     const id = cancelResv?.reservation_id ?? 1;
     const res = await request.post(`/api/reservations/${id}/hotel-cancel`, {
       data: { agent_id: SEED.staff.id }, // no reason
@@ -55,14 +55,14 @@ test.describe('🏨 Hotel-Cancel API', () => {
     expect(body.error).toMatch(/reason/i);
   });
 
-  test('POST /hotel-cancel — invalid ID → 400', async ({ request }) => {
+  test('POST /hotel-cancel  invalid ID  400', async ({ request }) => {
     const res = await request.post('/api/reservations/not-a-number/hotel-cancel', {
       data: { reason: 'test', agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(400);
   });
 
-  test('POST /hotel-cancel — nonexistent reservation → 404', async ({ request }) => {
+  test('POST /hotel-cancel  nonexistent reservation  404', async ({ request }) => {
     const res = await request.post('/api/reservations/999999/hotel-cancel', {
       data: { reason: 'test', agent_id: SEED.staff.id },
     });
@@ -71,17 +71,17 @@ test.describe('🏨 Hotel-Cancel API', () => {
     expect(body.success).toBe(false);
   });
 
-  // ── Full cancellation lifecycle ──────────────────────────
-  test('POST /hotel-cancel — full 7-step transaction', async ({ request }) => {
+  //  Full cancellation lifecycle 
+  test('POST /hotel-cancel  full 7-step transaction', async ({ request }) => {
     if (!cancelResv) return test.skip();
 
     const res = await request.post(`/api/reservations/${cancelResv.reservation_id}/hotel-cancel`, {
-      data: { reason: 'Overbooking — Playwright test', agent_id: SEED.staff.id },
+      data: { reason: 'Overbooking  Playwright test', agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
 
-    // ── Response shape ───────────────────────────────────────
+    //  Response shape 
     expect(body.success).toBe(true);
     expect(body.message).toMatch(/cancelled by hotel/i);
     expect(body.data.reservation_id).toBe(cancelResv.reservation_id);
@@ -89,30 +89,30 @@ test.describe('🏨 Hotel-Cancel API', () => {
     expect(body.data.new_status).toBe('CANCELLED');
     expect(body.data.old_status).toBe('CONFIRMED');
     expect(body.data.cancelled_by).toBe('HOTEL');
-    expect(body.data.reason).toBe('Overbooking — Playwright test');
+    expect(body.data.reason).toBe('Overbooking  Playwright test');
     expect(body.data).toHaveProperty('refund_amount');
     // No deposit was paid, so refund_amount = 0 and refund_payment = null
     expect(Number(body.data.refund_amount)).toBeGreaterThanOrEqual(0);
 
-    // ── Verify: status = CANCELLED via GET ──────────────────
+    //  Verify: status = CANCELLED via GET 
     const detRes = await request.get(`/api/reservations/${cancelResv.reservation_code}`);
     expect(detRes.status()).toBe(200);
     const detail = (await detRes.json()).data;
     expect(detail.reservation_status).toBe('CANCELLED');
 
-    // ── Verify: status_history has correct entry ─────────────
+    //  Verify: status_history has correct entry 
     const entry = detail.status_history?.find(
       h => h.new_status === 'CANCELLED' && h.old_status === 'CONFIRMED'
     );
     expect(entry).toBeTruthy();
     expect(entry.change_reason).toMatch(/HOTEL CANCEL/i);
 
-    // ── Verify: rooms array shows CANCELLED occupancy ────────
+    //  Verify: rooms array shows CANCELLED occupancy 
     expect(detail.rooms?.[0]?.occupancy_status).toBe('CANCELLED');
   });
 
-  // ── Already-cancelled guard ──────────────────────────────
-  test('POST /hotel-cancel — already CANCELLED → 409', async ({ request }) => {
+  //  Already-cancelled guard 
+  test('POST /hotel-cancel  already CANCELLED  409', async ({ request }) => {
     if (!cancelResv) return test.skip();
     // Reservation was cancelled in the previous test
     const res = await request.post(`/api/reservations/${cancelResv.reservation_id}/hotel-cancel`, {
@@ -124,12 +124,12 @@ test.describe('🏨 Hotel-Cancel API', () => {
     expect(body.error).toMatch(/Cannot cancel/i);
   });
 
-  // ── Statuses that cannot be cancelled ────────────────────
+  //  Statuses that cannot be cancelled 
   test.describe('Uncancellable status guards', () => {
     const blockedStatuses = ['CANCELLED', 'CHECKED_OUT', 'NO_SHOW'];
 
     blockedStatuses.forEach(status => {
-      test(`POST /hotel-cancel — ${status} reservation → 409`, async ({ request }) => {
+      test(`POST /hotel-cancel  ${status} reservation  409`, async ({ request }) => {
         // We just test the 409 contract; actual DB states are managed by other lifecycle tests
         // Using nonexistent ID to trigger 404, verifying the guard path exists
         const res = await request.post('/api/reservations/999999/hotel-cancel', {
@@ -141,8 +141,8 @@ test.describe('🏨 Hotel-Cancel API', () => {
     });
   });
 
-  // ── Refund issued when deposit was paid ──────────────────
-  test('POST /hotel-cancel — refund_payment returned when deposit exists', async ({ request }) => {
+  //  Refund issued when deposit was paid 
+  test('POST /hotel-cancel  refund_payment returned when deposit exists', async ({ request }) => {
     // Create reservation with a deposit payment pre-recorded  
     const cin  = futureDate(120);
     const cout = futureDate(121);
@@ -183,7 +183,7 @@ test.describe('🏨 Hotel-Cancel API', () => {
     });
     if (payRes.status() !== 201) return test.skip();
 
-    // Now hotel-cancel — should auto-create REFUND payment
+    // Now hotel-cancel  should auto-create REFUND payment
     const cancelRes = await request.post(`/api/reservations/${newResv.reservation_id}/hotel-cancel`, {
       data: { reason: 'Test refund path', agent_id: SEED.staff.id },
     });

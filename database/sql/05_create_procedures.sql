@@ -1,6 +1,6 @@
 -- ============================================================
--- LuxeReserve — 05: Stored Procedures
--- sp_ReserveRoom — Pessimistic Locking (UPDLOCK + HOLDLOCK)
+-- LuxeReserve - 05: Stored Procedures
+-- sp_ReserveRoom - Pessimistic Locking (UPDLOCK + HOLDLOCK)
 -- ============================================================
 
 USE LuxeReserve;
@@ -25,13 +25,13 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
 
-        -- ═══════════════════════════════════════════════
+        -- ============================================================
         -- STEP 1: PESSIMISTIC LOCK on inventory row
         -- UPDLOCK  = Prevent other transactions from
         --            acquiring update/exclusive locks
         -- HOLDLOCK = Hold lock until COMMIT/ROLLBACK
         --            (equivalent to SERIALIZABLE on row)
-        -- ═══════════════════════════════════════════════
+        -- ============================================================
         SELECT @current_status = availability_status
         FROM RoomAvailability WITH (UPDLOCK, HOLDLOCK)
         WHERE room_id  = @room_id
@@ -57,9 +57,9 @@ BEGIN
             RETURN;
         END
 
-        -- ═══════════════════════════════════════════════
+        -- ============================================================
         -- STEP 2: Check availability
-        -- ═══════════════════════════════════════════════
+        -- ============================================================
         IF @current_status <> 'OPEN'
         BEGIN
             SET @result_status  = 2;
@@ -80,9 +80,9 @@ BEGIN
             RETURN;
         END
 
-        -- ═══════════════════════════════════════════════
+        -- ============================================================
         -- STEP 3: Reserve the room (update inventory)
-        -- ═══════════════════════════════════════════════
+        -- ============================================================
         UPDATE RoomAvailability
         SET availability_status = 'BOOKED',
             sellable_flag       = 0,
@@ -91,9 +91,9 @@ BEGIN
         WHERE room_id  = @room_id
           AND stay_date = @stay_date;
 
-        -- ═══════════════════════════════════════════════
+        -- ============================================================
         -- STEP 4: Log successful lock
-        -- ═══════════════════════════════════════════════
+        -- ============================================================
         INSERT INTO InventoryLockLog
             (reservation_code_attempt, room_id, stay_date,
              lock_acquired_at, lock_released_at, lock_status,
@@ -136,12 +136,12 @@ BEGIN
 END;
 GO
 
-PRINT '✅ PROCEDURE sp_ReserveRoom created.';
+PRINT 'OK PROCEDURE sp_ReserveRoom created.';
 GO
 
 -- ============================================================
--- sp_TransferRoom — Atomic Room Transfer with Pessimistic Locking
--- Release old room → Lock new room (all dates in range)
+-- sp_TransferRoom - Atomic Room Transfer with Pessimistic Locking
+-- Release old room -> Lock new room (all dates in range)
 -- Uses UPDLOCK + HOLDLOCK for concurrency safety
 -- Returns: 0=SUCCESS, 1=OLD_NOT_FOUND, 2=NEW_NOT_AVAILABLE, 9=ERROR
 -- ============================================================
@@ -174,9 +174,9 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
 
-        -- ═══════════════════════════════════════
+        -- ============================================================
         -- PHASE 1: Validate & release OLD room
-        -- ═══════════════════════════════════════
+        -- ============================================================
         WHILE @i < @night_count
         BEGIN
             SET @stay_date = DATEADD(DAY, @i, @checkin_date);
@@ -205,7 +205,7 @@ BEGIN
                 RETURN;
             END
 
-            -- Release old room → OPEN
+            -- Release old room -> OPEN
             UPDATE RoomAvailability
             SET availability_status = 'OPEN',
                 sellable_flag = 1,
@@ -228,9 +228,9 @@ BEGIN
             SET @i = @i + 1;
         END
 
-        -- ═══════════════════════════════════════
+        -- ============================================================
         -- PHASE 2: Lock & book NEW room
-        -- ═══════════════════════════════════════
+        -- ============================================================
         SET @i = 0;
         WHILE @i < @night_count
         BEGIN
@@ -258,7 +258,7 @@ BEGIN
                      GETDATE(), GETDATE(), 'FAILED',
                      @session_id, @transaction_id, @result_message);
 
-                -- ROLLBACK releases the old room changes too → atomic
+                -- ROLLBACK releases the old room changes too -> atomic
                 ROLLBACK TRANSACTION;
                 RETURN;
             END
@@ -286,22 +286,22 @@ BEGIN
             SET @i = @i + 1;
         END
 
-        -- ═══════════════════════════════════════
+        -- ============================================================
         -- PHASE 3: Update ReservationRoom
-        -- ═══════════════════════════════════════
+        -- ============================================================
         UPDATE ReservationRoom
         SET room_id = @new_room_id,
             updated_at = GETDATE()
         WHERE reservation_id = @reservation_id
           AND room_id = @old_room_id;
 
-        -- ═══════════════════════════════════════
+        -- ============================================================
         -- PHASE 4: Update physical Room status
-        -- ═══════════════════════════════════════
+        -- ============================================================
         UPDATE Room
         SET room_status = 'AVAILABLE',
             maintenance_status = CASE
-                WHEN @reason LIKE '%sự cố%' OR @reason LIKE '%maintenance%' OR @reason LIKE '%repair%'
+                WHEN @reason LIKE '%issue%' OR @reason LIKE '%maintenance%' OR @reason LIKE '%repair%'
                 THEN 'UNDER_REPAIR' ELSE maintenance_status END,
             updated_at = GETDATE()
         WHERE room_id = @old_room_id;
@@ -313,13 +313,13 @@ BEGIN
             updated_at = GETDATE()
         WHERE room_id = @new_room_id;
 
-        -- ═══════════════════════════════════════
+        -- ============================================================
         -- PHASE 5: Status history log
-        -- ═══════════════════════════════════════
+        -- ============================================================
         INSERT INTO ReservationStatusHistory
             (reservation_id, old_status, new_status, changed_by, change_reason)
         SELECT reservation_status, reservation_status, reservation_status, @agent_id,
-               N'Room transferred: ' + CAST(@old_room_id AS NVARCHAR) + N' → ' + CAST(@new_room_id AS NVARCHAR)
+               N'Room transferred: ' + CAST(@old_room_id AS NVARCHAR) + N' -> ' + CAST(@new_room_id AS NVARCHAR)
                + N'. Reason: ' + ISNULL(@reason, N'N/A')
         FROM Reservation WHERE reservation_id = @reservation_id;
 
@@ -352,6 +352,7 @@ BEGIN
 END;
 GO
 
-PRINT '✅ PROCEDURE sp_TransferRoom created.';
+PRINT 'OK PROCEDURE sp_TransferRoom created.';
 GO
+
 

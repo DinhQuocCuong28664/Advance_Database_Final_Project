@@ -206,7 +206,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/invoices/:id/issue
-// Issue invoice: DRAFT -> ISSUED
+// Issue invoice: DRAFT ? ISSUED
 router.post('/:id/issue', async (req, res) => {
   try {
     const invoiceId = parseInt(req.params.id, 10);

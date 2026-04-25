@@ -1,9 +1,9 @@
-/* ═══════════════════════════════════════════════════════════
+/* 
    Admin Dashboard Styles
    Imported by AdminPage.jsx sub-components
-   ═══════════════════════════════════════════════════════════ */
+    */
 
-/* ─── Hero ─────────────────────────────────────────────────── */
+/*  Hero  */
 .admin-hero {
   display: flex;
   justify-content: space-between;
@@ -34,7 +34,7 @@
   gap: 12px;
 }
 
-/* ─── Metric cards ─────────────────────────────────────────── */
+/*  Metric cards  */
 .admin-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -144,7 +144,7 @@
   text-align: center;
 }
 
-/* ─── Account management ───────────────────────────────────── */
+/*  Account management  */
 .admin-account-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -236,7 +236,7 @@
   min-width: 132px;
 }
 
-/* ───────────────────────── Front desk ───────────────────────── */
+/*  Front desk  */
 .fd-toolbar-note {
   display: grid;
   gap: 4px;
@@ -379,7 +379,7 @@
   color: var(--text-soft);
 }
 
-/* ─── Inventory ────────────────────────────────────────────── */
+/*  Inventory  */
 .inventory-toolbar {
   display: grid;
   grid-template-columns: minmax(240px, 1.4fr) repeat(2, minmax(160px, 0.8fr)) auto;
@@ -520,7 +520,7 @@
   border-radius: 22px;
 }
 
-/* ─── Reports & Analytics ──────────────────────────────────── */
+/*  Reports & Analytics  */
 .report-export-btns {
   display: flex; gap: 10px; align-items: center; flex-shrink: 0;
 }
@@ -603,6 +603,7 @@
   border: 1px solid rgba(20,61,66,0.1);
 }
 .report-table-scroll .report-table { min-width: 750px; }
+.report-table-scroll .report-table--brand { min-width: 1220px; }
 
 /* Status badges for reservation table */
 .rsv-badge {
@@ -616,9 +617,9 @@
 .rsv-no_show           { background: rgba(180,130,20,0.15); color: #7a5500; }
 .rsv-pending           { background: rgba(240,160,30,0.15); color: #7a5500; }
 
-/* ???????????????????????????????????????
+/* ->->->->->->->->->->->->->
    CASHIER / FRONT-DESK PORTAL
-??????????????????????????????????????? */
+->->->->->->->->->->->->-> */
 .cashier-topbar {
   display: flex;
   align-items: center;
@@ -653,7 +654,7 @@
 }
 .cashier-topbar-user { display:flex; align-items:center; gap:14px; }
 .cashier-topbar-name { color:rgba(255,255,255,0.72); font-size:0.9rem; }
-/* Sign out — luôn hiển thị màu Teal thương hiệu */
+/* Sign out  always display brand Teal color */
 .cashier-signout {
   color: #f7f1e7 !important;
   background: #143d42 !important;
@@ -667,9 +668,9 @@
   border-color: #0d2b2f !important;
 }
 
-/* ???????????????????????????????????????
+/* ->->->->->->->->->->->->->
    PAYMENT METHOD MODAL (check-in)
-??????????????????????????????????????? */
+->->->->->->->->->->->->-> */
 .pm-overlay {
   position: fixed;
   inset: 0;
@@ -814,9 +815,9 @@
 }
 .pm-confirm-btn { min-width: 200px; }
 
-/* ???????????????????????????????????????????
+/* ->->->->->->->->->->->->->->->
    Front Desk - Tab Bar
-??????????????????????????????????????????? */
+->->->->->->->->->->->->->->-> */
 .fd-tab-bar {
   display: flex;
   gap: 8px;
@@ -857,9 +858,9 @@
   text-align: center;
 }
 
-/* ???????????????????????????????????????????
+/* ->->->->->->->->->->->->->->->
    Service Orders Panel
-??????????????????????????????????????????? */
+->->->->->->->->->->->->->->-> */
 .svc-orders-panel {
   padding: 8px 0 24px;
 }
@@ -993,9 +994,9 @@
 .svc-order-status-pill--delivered  { background: #dbeafe; color: #1e3a8a; }
 .svc-order-status-pill--cancelled  { background: #fee2e2; color: #7f1d1d; }
 
-/* ???????????????????????????????????????????
+/* ->->->->->->->->->->->->->->->
    Maintenance Module
-??????????????????????????????????????????? */
+->->->->->->->->->->->->->->-> */
 .maint-stats-row {
   display: flex;
   gap: 12px;
@@ -1129,9 +1130,9 @@
   flex-wrap: wrap;
 }
 
-/* ???????????????????????????????????????????
+/* ->->->->->->->->->->->->->->->
    Invoice Module
-??????????????????????????????????????????? */
+->->->->->->->->->->->->->->-> */
 .inv-dialog { max-width: 780px !important; width: 95vw; }
 .inv-detail-body { padding: 0 24px 28px; }
 
@@ -1294,9 +1295,9 @@
 .inv-list-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .inv-list-right strong { font-size: 1rem; color: var(--text-strong); }
 
-/* ???????????????????????????????????????????
-   Admin � Promotions Module
-??????????????????????????????????????????? */
+/* ->->->->->->->->->->->->->->->
+   Admin  Promotions Module
+->->->->->->->->->->->->->->-> */
 .promo-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -1433,9 +1434,9 @@
   border-color: var(--panel-strong, #143d42);
 }
 
-/* ═══════════════════════════════════════════════
-   Service Orders — Charge Guest button & Paid badge
-═══════════════════════════════════════════════ */
+/* 
+   Service Orders  Charge Guest button & Paid badge
+ */
 .svc-charge-btn {
   display: inline-flex;
   align-items: center;
@@ -1485,9 +1486,9 @@
   margin-bottom: 4px;
 }
 
-/* ═══════════════════════════════════════════════
+/* 
    pm-dialog--light override (Charge Guest Modal)
-═══════════════════════════════════════════════ */
+ */
 .pm-dialog--light {
   background: #ffffff;
   border: 1.5px solid #e0d5c8;
@@ -1526,9 +1527,9 @@
   padding: 28px;
 }
 
-/* ═══════════════════════════════════════════════
+/* 
    Payment History Module
-═══════════════════════════════════════════════ */
+ */
 .pay-hist-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1651,9 +1652,9 @@
   font-family: monospace;
 }
 
-/* ═══════════════════════════════════════════════
+/* 
    Rate Management Module
-═══════════════════════════════════════════════ */
+ */
 
 /* Alerts pill + panel */
 .rate-alerts-pill {
@@ -1799,9 +1800,9 @@
 .rate-badge--override { background: #dbeafe; color: #1e40af; }
 .rate-badge--auto     { background: #f1f5f9; color: #475569; }
 
-/* ═══════════════════════════════════════════════
+/* 
    Revenue by Brand section
-═══════════════════════════════════════════════ */
+ */
 .report-tag--blue {
   background: #dbeafe;
   color: #1e40af;
@@ -1824,19 +1825,30 @@
 .brand-rank-badge--other { background: #f1f5f9; color: #64748b; }
 
 /* Share bar */
-.brand-share-bar-wrap {
-  display: inline-flex;
+.brand-share-col {
+  min-width: 130px;
+  white-space: nowrap;
+}
+.brand-share-cell {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 90px;
+  gap: 10px;
+  min-width: 132px;
+}
+.brand-share-track {
+  flex: 1 1 84px;
+  min-width: 84px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(20, 61, 66, 0.12);
+  overflow: hidden;
 }
 .brand-share-bar {
-  display: inline-block;
-  height: 6px;
-  border-radius: 99px;
+  display: block;
+  height: 100%;
+  border-radius: 999px;
   background: linear-gradient(90deg, #143d42, #1a7a8a);
-  min-width: 2px;
-  flex-shrink: 0;
+  min-width: 3px;
   transition: width 0.3s;
 }
 .brand-share-label {
@@ -1844,11 +1856,21 @@
   font-weight: 700;
   color: #143d42;
   white-space: nowrap;
+  min-width: 48px;
+  text-align: right;
+}
+.brand-share-plain {
+  display: inline-block;
+  min-width: 52px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #143d42;
+  white-space: nowrap;
 }
 
-/* ═══════════════════════════════════════════════
+/* 
    Reservation Status Timeline
-═══════════════════════════════════════════════ */
+ */
 
 /* Transition stats bar */
 .tl-stats {
@@ -2022,9 +2044,9 @@
 }
 .tl-expand-btn:hover { text-decoration: underline; }
 
-/* ═══════════════════════════════════════════════
+/* 
    Additional Guests Panel
-═══════════════════════════════════════════════ */
+ */
 .ag-panel {
   border: 1.5px solid #e8e3dc;
   border-radius: 12px;
@@ -2109,9 +2131,9 @@
 .ag-form-field--wide { flex: 2 1 180px; }
 .ag-form-field label { font-size: 0.72rem; font-weight: 700; color: #4a6670; text-transform: uppercase; letter-spacing: .04em; }
 
-/* ═══════════════════════════════════════════════
+/* 
    Location Tree
-═══════════════════════════════════════════════ */
+ */
 .loc-tree-wrap {
   border: 1.5px solid #e8e3dc;
   border-radius: 12px;
@@ -2142,9 +2164,9 @@
 .chan-share-label { font-size: 0.78rem; font-weight: 700; color: #143d42; white-space: nowrap; }
 .chan-name { font-weight: 600; color: #0f2830; }
 
-/* ═══════════════════════════════════════════════
-   AdminAccounts — Premium Account Management UI
-═══════════════════════════════════════════════ */
+/* 
+   AdminAccounts  Premium Account Management UI
+ */
 
 /* KPI Strip */
 .acct-kpi-strip {

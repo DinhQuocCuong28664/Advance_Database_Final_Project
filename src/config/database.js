@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — Database Configuration
+ * LuxeReserve  Database Configuration
  * Polyglot Persistence: SQL Server + MongoDB Atlas
  */
 
@@ -7,9 +7,9 @@ require('dotenv').config();
 const sql = process.env.SQL_TRUSTED_CONNECTION === 'true' ? require('mssql/msnodesqlv8') : require('mssql');
 const { MongoClient } = require('mongodb');
 
-// ═══════════════════════════════════
+// 
 // SQL Server Configuration
-// ═══════════════════════════════════
+// 
 const sqlConfig = {
   server: process.env.SQL_SERVER || 'localhost',
   database: process.env.SQL_DATABASE || 'LuxeReserve',
@@ -36,11 +36,11 @@ async function connectSQL() {
   try {
     if (!sqlPool) {
       sqlPool = await sql.connect(sqlConfig);
-      console.log('✅ SQL Server connected:', sqlConfig.database);
+      console.log(' SQL Server connected:', sqlConfig.database);
     }
     return sqlPool;
   } catch (err) {
-    console.error('❌ SQL Server connection failed:', err.message);
+    console.error(' SQL Server connection failed:', err.message);
     throw err;
   }
 }
@@ -50,9 +50,9 @@ function getSqlPool() {
   return sqlPool;
 }
 
-// ═══════════════════════════════════
+// 
 // MongoDB Configuration
-// ═══════════════════════════════════
+// 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/luxereserve';
 const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || 'luxereserve';
 
@@ -65,11 +65,11 @@ async function connectMongo() {
       mongoClient = new MongoClient(MONGODB_URI);
       await mongoClient.connect();
       mongoDb = mongoClient.db(MONGODB_DB_NAME);
-      console.log('✅ MongoDB connected:', MONGODB_DB_NAME);
+      console.log(' MongoDB connected:', MONGODB_DB_NAME);
     }
     return mongoDb;
   } catch (err) {
-    console.error('❌ MongoDB connection failed:', err.message);
+    console.error(' MongoDB connection failed:', err.message);
     throw err;
   }
 }
@@ -79,9 +79,9 @@ function getMongoDb() {
   return mongoDb;
 }
 
-// ═══════════════════════════════════
+// 
 // Graceful Shutdown
-// ═══════════════════════════════════
+// 
 async function closeAll() {
   if (sqlPool) { await sqlPool.close(); console.log('  SQL Server closed'); }
   if (mongoClient) { await mongoClient.close(); console.log('  MongoDB closed'); }

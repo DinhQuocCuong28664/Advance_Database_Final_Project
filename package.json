@@ -1,7 +1,7 @@
 {
   "name": "luxereserve",
   "version": "1.0.0",
-  "description": "Global Luxury Hotel Reservation Engine — Polyglot Persistence (SQL Server + MongoDB)",
+  "description": "Global Luxury Hotel Reservation Engine  Polyglot Persistence (SQL Server + MongoDB)",
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
@@ -16,6 +16,7 @@
     "db:triggers": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/04_create_triggers.sql -C",
     "db:procedures": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/05_create_procedures.sql -C",
     "db:auth": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/07_auth_extension.sql -C",
+    "db:demo": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/19_seed_demo_operations.sql -C",
     "db:all": "npm run db:init && npm run db:views && npm run db:triggers && npm run db:procedures && npm run db:seed",
     "mongo:init": "node database/mongodb/02_seed_data.js",
     "mongo:seed": "node database/mongodb/02_seed_data.js",

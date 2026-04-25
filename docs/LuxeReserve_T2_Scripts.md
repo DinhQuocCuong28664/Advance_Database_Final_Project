@@ -1,25 +1,25 @@
-# LuxeReserve — Bộ Script T2 (SQL Server + MongoDB)
+# LuxeReserve  Bo Script T2 (SQL Server + MongoDB)
 
-> **Dựa trên**: `GlobalLuxuryHotelReservationEngine_REMAKE.groovy`
+> **Dua tren**: `GlobalLuxuryHotelReservationEngine_REMAKE.groovy`
 > **Database Engine**: SQL Server | MongoDB (Hybrid)
-> **Mục đích**: Cung cấp script hoàn chỉnh cho nhóm 3 người thực hiện
+> **Muc ich**: Cung cap script hoan chinh cho nhom 3 nguoi thuc hien
 
 ---
 
-## 🧑‍💻 Người 1 — SQL Server Database Architect
+##  Nguoi 1  SQL Server Database Architect
 
 ---
 
-### T2.1 — DDL: Guest, RoomFeature, Location (Schema & Computed Columns)
+### T2.1  DDL: Guest, RoomFeature, Location (Schema & Computed Columns)
 
 ```sql
 -- ============================================================
--- T2.1: CREATE TABLE — Guest, RoomFeature, Location
+-- T2.1: CREATE TABLE  Guest, RoomFeature, Location
 -- Engine: SQL Server (T-SQL)
 -- ============================================================
 
 -- -------------------------------------------------------
--- 1. Bảng Location — Adjacency List (self-referencing FK)
+-- 1. Bang Location  Adjacency List (self-referencing FK)
 --    [FIX-7] Hierarchy: Region > Country > State > City > District
 -- -------------------------------------------------------
 CREATE TABLE Location (
@@ -43,13 +43,13 @@ CREATE TABLE Location (
     CONSTRAINT CK_Location_Level       CHECK (level BETWEEN 0 AND 4)
 );
 
--- Index hỗ trợ Recursive CTE
+-- Index ho tro Recursive CTE
 CREATE INDEX IX_Location_Parent  ON Location(parent_location_id);
 CREATE INDEX IX_Location_TypeName ON Location(location_type, location_name);
 GO
 
 -- -------------------------------------------------------
--- 2. Bảng Guest
+-- 2. Bang Guest
 --    [FIX-4] full_name = Computed Column (PERSISTED)
 -- -------------------------------------------------------
 CREATE TABLE Guest (
@@ -60,7 +60,7 @@ CREATE TABLE Guest (
     middle_name               NVARCHAR(100) NULL,
     last_name                 NVARCHAR(100) NOT NULL,
 
-    -- [FIX-4] Computed Column — PERSISTED để có thể đánh index
+    -- [FIX-4] Computed Column  PERSISTED e co the anh index
     full_name AS (
         CONCAT(
             COALESCE(first_name, N''),
@@ -95,8 +95,8 @@ CREATE INDEX IX_Guest_Phone ON Guest(phone_country_code, phone_number);
 GO
 
 -- -------------------------------------------------------
--- 3. Bảng RoomFeature
---    [FIX-8] CHECK constraint: ít nhất 1 FK phải NOT NULL
+-- 3. Bang RoomFeature
+--    [FIX-8] CHECK constraint: it nhat 1 FK phai NOT NULL
 -- -------------------------------------------------------
 CREATE TABLE RoomFeature (
     room_feature_id   BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -109,30 +109,30 @@ CREATE TABLE RoomFeature (
     is_premium        BIT          NOT NULL DEFAULT 0,
     created_at        DATETIME     NOT NULL DEFAULT GETDATE(),
 
-    -- FK tới Room và RoomType (giả sử đã tạo)
+    -- FK toi Room va RoomType (gia su a tao)
     CONSTRAINT FK_RoomFeature_Room     FOREIGN KEY (room_id)      REFERENCES Room(room_id),
     CONSTRAINT FK_RoomFeature_RoomType FOREIGN KEY (room_type_id) REFERENCES RoomType(room_type_id),
 
-    -- [FIX-8] CHECK: ít nhất 1 trong 2 FK phải NOT NULL
+    -- [FIX-8] CHECK: it nhat 1 trong 2 FK phai NOT NULL
     CONSTRAINT CK_RoomFeature_AtLeastOneFK
         CHECK (room_id IS NOT NULL OR room_type_id IS NOT NULL)
 );
 GO
 ```
 
-> **Giải thích FIX-4**: `PERSISTED` lưu giá trị computed vào disk thay vì tính lại mỗi lần query → cho phép tạo INDEX trên `full_name`, cải thiện performance khi tìm kiếm theo tên.
+> **Giai thich FIX-4**: `PERSISTED` luu gia tri computed vao disk thay vi tinh lai moi lan query  cho phep tao INDEX tren `full_name`, cai thien performance khi tim kiem theo ten.
 
-> **Giải thích FIX-8**: CHECK constraint đảm bảo mỗi feature phải gắn vào ít nhất 1 đối tượng (phòng vật lý hoặc loại phòng), tránh dữ liệu "mồ côi".
+> **Giai thich FIX-8**: CHECK constraint am bao moi feature phai gan vao it nhat 1 oi tuong (phong vat ly hoac loai phong), tranh du lieu "mo coi".
 
 ---
 
-### T2.2 — Trigger bảo vệ giá (Price Integrity Guard)
+### T2.2  Trigger bao ve gia (Price Integrity Guard)
 
 ```sql
 -- ============================================================
--- T2.2: AFTER UPDATE Trigger trên RoomRate
--- Mục đích: Tự động ghi cảnh báo vào RateChangeLog
---           khi giá thay đổi > 50%
+-- T2.2: AFTER UPDATE Trigger tren RoomRate
+-- Muc ich: Tu ong ghi canh bao vao RateChangeLog
+--           khi gia thay oi > 50%
 -- ============================================================
 CREATE OR ALTER TRIGGER trg_RoomRate_PriceIntegrityGuard
 ON RoomRate
@@ -141,7 +141,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Chỉ xử lý khi cột final_rate bị thay đổi
+    -- Chi xu ly khi cot final_rate bi thay oi
     IF NOT UPDATE(final_rate)
         RETURN;
 
@@ -165,7 +165,7 @@ BEGIN
             d.final_rate                           AS old_rate,
             i.final_rate                           AS new_rate,
             i.final_rate - d.final_rate            AS change_amount,
-            -- Tính % thay đổi, tránh chia cho 0
+            -- Tinh % thay oi, tranh chia cho 0
             CASE
                 WHEN d.final_rate = 0 THEN 100.0000
                 ELSE CAST(
@@ -173,7 +173,7 @@ BEGIN
                     AS DECIMAL(9,4)
                 )
             END                                    AS change_percent,
-            N'[AUTO] Rate changed > 50% — flagged by Price Integrity Guard',
+            N'[AUTO] Rate changed > 50%  flagged by Price Integrity Guard',
             GETDATE(),
             i.updated_by,
             -- Chia severity: > 50% = CRITICAL
@@ -190,7 +190,7 @@ BEGIN
         IF @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
 
-        -- Ghi lỗi ra error log (không block UPDATE gốc)
+        -- Ghi loi ra error log (khong block UPDATE goc)
         DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
         DECLARE @ErrSev INT = ERROR_SEVERITY();
         RAISERROR(@ErrMsg, @ErrSev, 1);
@@ -199,20 +199,20 @@ END;
 GO
 ```
 
-> **Cách hoạt động**:
-> - `inserted` = dòng **sau** UPDATE (giá mới)
-> - `deleted` = dòng **trước** UPDATE (giá cũ)
-> - So sánh `ABS(new - old) / old > 50%` → INSERT vào `RateChangeLog` với `severity = CRITICAL`
-> - Bọc trong `TRY...CATCH` + `TRANSACTION` để đảm bảo atomicity
+> **Cach hoat ong**:
+> - `inserted` = dong **sau** UPDATE (gia moi)
+> - `deleted` = dong **truoc** UPDATE (gia cu)
+> - So sanh `ABS(new - old) / old > 50%`  INSERT vao `RateChangeLog` voi `severity = CRITICAL`
+> - Boc trong `TRY...CATCH` + `TRANSACTION` e am bao atomicity
 
 ---
 
-### T2.3 — Stored Procedure: Pessimistic Locking chống Double-Booking
+### T2.3  Stored Procedure: Pessimistic Locking chong Double-Booking
 
 ```sql
 -- ============================================================
--- T2.3: sp_ReserveRoom — Pessimistic Locking
--- Chống Double-Booking bằng UPDLOCK + HOLDLOCK
+-- T2.3: sp_ReserveRoom  Pessimistic Locking
+-- Chong Double-Booking bang UPDLOCK + HOLDLOCK
 -- ============================================================
 CREATE OR ALTER PROCEDURE sp_ReserveRoom
     @room_id              BIGINT,
@@ -223,7 +223,7 @@ CREATE OR ALTER PROCEDURE sp_ReserveRoom
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET XACT_ABORT ON; -- Tự động ROLLBACK khi có lỗi nghiêm trọng
+    SET XACT_ABORT ON; -- Tu ong ROLLBACK khi co loi nghiem trong
 
     DECLARE @current_status   VARCHAR(20);
     DECLARE @lock_acquired_at DATETIME = GETDATE();
@@ -233,25 +233,25 @@ BEGIN
         BEGIN TRANSACTION;
 
         -- =======================================================
-        -- BƯỚC 1: PESSIMISTIC LOCK — Khóa dòng inventory
+        -- BUOC 1: PESSIMISTIC LOCK  Khoa dong inventory
         -- -------------------------------------------------------
-        -- UPDLOCK  = Đặt Update Lock, ngăn transaction khác cũng
-        --            lấy lock trên cùng dòng này
-        -- HOLDLOCK = Giữ lock đến khi COMMIT/ROLLBACK
-        --            (tương đương SERIALIZABLE trên dòng này)
+        -- UPDLOCK  = at Update Lock, ngan transaction khac cung
+        --            lay lock tren cung dong nay
+        -- HOLDLOCK = Giu lock en khi COMMIT/ROLLBACK
+        --            (tuong uong SERIALIZABLE tren dong nay)
         -- -------------------------------------------------------
-        -- → Transaction B đến sau sẽ BỊ BLOCK (chờ) tại đây
-        --   cho đến khi Transaction A COMMIT hoặc ROLLBACK
+        --  Transaction B en sau se BI BLOCK (cho) tai ay
+        --   cho en khi Transaction A COMMIT hoac ROLLBACK
         -- =======================================================
         SELECT @current_status = availability_status
         FROM RoomAvailability WITH (UPDLOCK, HOLDLOCK)
         WHERE room_id   = @room_id
           AND stay_date  = @stay_date;
 
-        -- Kiểm tra tồn tại
+        -- Kiem tra ton tai
         IF @current_status IS NULL
         BEGIN
-            SET @result_message = N'ERROR: Không tìm thấy inventory cho room_id='
+            SET @result_message = N'ERROR: Khong tim thay inventory cho room_id='
                 + CAST(@room_id AS NVARCHAR) + N', date=' + CAST(@stay_date AS NVARCHAR);
 
             -- Log lock FAILED
@@ -271,11 +271,11 @@ BEGIN
         END
 
         -- =======================================================
-        -- BƯỚC 2: Kiểm tra phòng còn trống
+        -- BUOC 2: Kiem tra phong con trong
         -- =======================================================
         IF @current_status <> 'OPEN'
         BEGIN
-            SET @result_message = N'REJECTED: Phòng đã được đặt/khóa. Status hiện tại: '
+            SET @result_message = N'REJECTED: Phong a uoc at/khoa. Status hien tai: '
                 + @current_status;
 
             INSERT INTO InventoryLockLog (
@@ -294,7 +294,7 @@ BEGIN
         END
 
         -- =======================================================
-        -- BƯỚC 3: Cập nhật inventory → BOOKED
+        -- BUOC 3: Cap nhat inventory  BOOKED
         -- =======================================================
         UPDATE RoomAvailability
         SET availability_status = 'BOOKED',
@@ -305,7 +305,7 @@ BEGIN
           AND stay_date = @stay_date;
 
         -- =======================================================
-        -- BƯỚC 4: Ghi log lock thành công
+        -- BUOC 4: Ghi log lock thanh cong
         -- =======================================================
         INSERT INTO InventoryLockLog (
             reservation_code_attempt, room_id, stay_date,
@@ -320,7 +320,7 @@ BEGIN
 
         COMMIT TRANSACTION;
 
-        SET @result_message = N'SUCCESS: Đặt phòng thành công. Room='
+        SET @result_message = N'SUCCESS: at phong thanh cong. Room='
             + CAST(@room_id AS NVARCHAR) + N', Date=' + CAST(@stay_date AS NVARCHAR);
 
     END TRY
@@ -345,7 +345,7 @@ BEGIN
 END;
 GO
 
--- Cách gọi:
+-- Cach goi:
 DECLARE @msg NVARCHAR(500);
 EXEC sp_ReserveRoom
     @room_id          = 101,
@@ -357,37 +357,36 @@ PRINT @msg;
 GO
 ```
 
-> **Giải thích Pessimistic Locking chống Race Condition:**
+> **Giai thich Pessimistic Locking chong Race Condition:**
 >
-> | Thời điểm | Transaction A | Transaction B |
+> | Thoi iem | Transaction A | Transaction B |
 > |-----------|--------------|--------------|
-> | T1 | `SELECT ... WITH (UPDLOCK, HOLDLOCK)` → Lấy lock thành công, đọc status = `OPEN` | — |
-> | T2 | — | `SELECT ... WITH (UPDLOCK, HOLDLOCK)` → **BỊ BLOCK** (chờ A giải phóng lock) |
-> | T3 | `UPDATE ... SET status = 'BOOKED'` → `COMMIT` → Giải phóng lock | — |
-> | T4 | — | Lock được cấp → Đọc status = `BOOKED` → **REJECTED** (phòng đã được đặt) |
+> | T1 | `SELECT ... WITH (UPDLOCK, HOLDLOCK)`  Lay lock thanh cong, oc status = `OPEN` |  |
+> | T2 |  | `SELECT ... WITH (UPDLOCK, HOLDLOCK)`  **BI BLOCK** (cho A giai phong lock) |
+> | T3 | `UPDATE ... SET status = 'BOOKED'`  `COMMIT`  Giai phong lock |  |
+> | T4 |  | Lock uoc cap  oc status = `BOOKED`  **REJECTED** (phong a uoc at) |
 >
-> - `UPDLOCK`: Ngăn transaction khác lấy Update/Exclusive lock trên cùng dòng
-> - `HOLDLOCK`: Giữ lock từ lúc SELECT đến khi COMMIT/ROLLBACK (không release sớm)
-> - Kết quả: **Chỉ 1 transaction được đặt phòng**, transaction còn lại bị từ chối → **Không bao giờ Double-Booking**
+> - `UPDLOCK`: Ngan transaction khac lay Update/Exclusive lock tren cung dong
+> - `HOLDLOCK`: Giu lock tu luc SELECT en khi COMMIT/ROLLBACK (khong release som)
+> - Ket qua: **Chi 1 transaction uoc at phong**, transaction con lai bi tu choi  **Khong bao gio Double-Booking**
 
 ---
 
-## 🗄️ Người 2 — NoSQL Specialist (Dữ liệu lai)
+##  Nguoi 2  NoSQL Specialist (Du lieu lai)
 
 ---
 
-### T2.4 — MongoDB Document: Hotel_Catalog (Embedded Design)
+### T2.4  MongoDB Document: Hotel_Catalog (Embedded Design)
 
 ```json
-// ============================================================
-// T2.4: Hotel_Catalog — Collection cho MongoDB
-// Thiết kế: Embedded (nhúng) amenities + room_types
-// Mục tiêu: Read-heavy, 1 query trả về toàn bộ thông tin hotel
-// ============================================================
-
+// ------------------------------------------------------------
+// T2.4: Hotel_Catalog  Collection cho MongoDB
+// Thiet ke: Embedded (nhung) amenities + room_types
+// Muc tieu: Read-heavy, 1 query tra ve toan bo thong tin hotel
+// ------------------------------------------------------------
 {
   "_id": ObjectId("665a1b2c3d4e5f6a7b8c9d0e"),
-  "hotel_id": 1,                              // Map với SQL Server Hotel.hotel_id
+  "hotel_id": 1,                              // Map voi SQL Server Hotel.hotel_id
   "hotel_code": "RITZ-HCMC-001",
   "hotel_name": "The Ritz-Carlton, Saigon",
   "brand": "The Ritz-Carlton",
@@ -396,7 +395,7 @@ GO
   "star_rating": 5,
   "luxury_segment": "ULTRA_LUXURY",
 
-  // Thông tin mô tả (rich content — không lưu ở SQL)
+  // Thong tin mo ta (rich content  khong luu o SQL)
   "description": {
     "short": "Experience unparalleled luxury in the heart of Ho Chi Minh City with breathtaking views of the Saigon River.",
     "long": "Nestled in the vibrant District 1, The Ritz-Carlton Saigon offers 300 elegantly appointed rooms and suites, world-class dining, and an award-winning spa. Every detail is crafted to deliver the legendary Ritz-Carlton service.",
@@ -433,11 +432,11 @@ GO
     }
   ],
 
-  // -------------------------------------------------------
-  // EMBEDDED: Amenities (nhúng) — link key = amenity_code
-  // Operational data (fee, schedule) ở SQL HotelAmenity
-  // Rich content (name, category, desc) ở đây
-  // -------------------------------------------------------
+// ------------------------------------------------------------
+  // EMBEDDED: Amenities (nhung)  link key = amenity_code
+  // Operational data (fee, schedule) o SQL HotelAmenity
+  // Rich content (name, category, desc) o ay
+// ------------------------------------------------------------
   "amenities": [
     {
       "amenity_code": "AMN-POOL-PRIV",
@@ -470,7 +469,7 @@ GO
       "amenity_code": "AMN-DINING-MICH",
       "name": "Michelin-Star Dining",
       "category": "DINING",
-      "description": "The Dining Room — 2 Michelin stars, contemporary French-Vietnamese cuisine",
+      "description": "The Dining Room  2 Michelin stars, contemporary French-Vietnamese cuisine",
       "icon": "restaurant",
       "tags": ["michelin", "fine-dining"],
       "images": ["https://cdn.ritzcarlton.com/hcmc/dining-room.jpg"]
@@ -486,11 +485,11 @@ GO
     }
   ],
 
-  // -------------------------------------------------------
-  // EMBEDDED: Room Types (nhúng) — link key = room_type_code
-  // Operational data (max_adults, rate) ở SQL RoomType
-  // Rich content (description, features, images) ở đây
-  // -------------------------------------------------------
+// ------------------------------------------------------------
+  // EMBEDDED: Room Types (nhung)  link key = room_type_code
+  // Operational data (max_adults, rate) o SQL RoomType
+  // Rich content (description, features, images) o ay
+// ------------------------------------------------------------
   "room_types": [
     {
       "room_type_code": "RT-DLX-CITY",
@@ -509,7 +508,7 @@ GO
     },
     {
       "room_type_code": "RT-STE-RIVER",
-      "name": "Ritz-Carlton Suite — River View",
+      "name": "Ritz-Carlton Suite  River View",
       "category": "SUITE",
       "description": "120 sqm signature suite with separate living room, panoramic Saigon River views, and exclusive Club Lounge access.",
       "features": {
@@ -564,23 +563,22 @@ GO
 }
 ```
 
-> **Tại sao Embedded (nhúng)?**
-> - **1 query = toàn bộ data**: App chỉ cần `findOne({ hotel_id: 1 })` → nhận đủ amenities, room_types, images
-> - **Read-heavy optimization**: Không cần JOIN → latency thấp, throughput cao
-> - **Atomic update**: Cập nhật 1 amenity trong mảng = 1 atomic operation (`$set` với positional `$`)
-> - **Trade-off**: Document size phải < 16MB (BSON limit) — với hotel data thông thường hoàn toàn đủ
+> **Tai sao Embedded (nhung)->**
+> - **1 query = toan bo data**: App chi can `findOne({ hotel_id: 1 })`  nhan u amenities, room_types, images
+> - **Read-heavy optimization**: Khong can JOIN  latency thap, throughput cao
+> - **Atomic update**: Cap nhat 1 amenity trong mang = 1 atomic operation (`$set` voi positional `$`)
+> - **Trade-off**: Document size phai < 16MB (BSON limit)  voi hotel data thong thuong hoan toan u
 
 ---
 
-### T2.5 — MongoDB Query: Tìm hotel có Private Pool VÀ Butler Service
+### T2.5  MongoDB Query: Tim hotel co Private Pool VA Butler Service
 
 ```javascript
-// ============================================================
-// T2.5: Query tìm hotel có ĐỒNG THỜI Private Pool + Butler Service
-// Sử dụng $all trên trường amenities.name
-// ============================================================
-
-// --- Cách 1: Dùng $all (khuyến nghị) ---
+// ------------------------------------------------------------
+// T2.5: Query tim hotel co ONG THOI Private Pool + Butler Service
+// Su dung $all tren truong amenities.name
+// ------------------------------------------------------------
+// --- Cach 1: Dung $all (khuyen nghi) ---
 db.Hotel_Catalog.find({
   "amenities.name": {
     $all: ["Private Pool", "Butler Service"]
@@ -593,9 +591,9 @@ db.Hotel_Catalog.find({
   "amenities.category": 1
 });
 
-// --- Cách 2: Dùng Aggregation Framework (nâng cao) ---
+// --- Cach 2: Dung Aggregation Framework (nang cao) ---
 db.Hotel_Catalog.aggregate([
-  // Stage 1: Lọc hotel có CẢ HAI amenities
+  // Stage 1: Loc hotel co CA HAI amenities
   {
     $match: {
       "amenities.name": {
@@ -603,7 +601,7 @@ db.Hotel_Catalog.aggregate([
       }
     }
   },
-  // Stage 2: Chỉ giữ các amenities matching
+  // Stage 2: Chi giu cac amenities matching
   {
     $project: {
       hotel_name: 1,
@@ -621,58 +619,58 @@ db.Hotel_Catalog.aggregate([
       }
     }
   },
-  // Stage 3: Sắp xếp theo star rating
+  // Stage 3: Sap xep theo star rating
   { $sort: { star_rating: -1 } }
 ]);
 
-// --- Index khuyến nghị ---
+// --- Index khuyen nghi ---
 db.Hotel_Catalog.createIndex({ "amenities.name": 1 });
 ```
 
-> **Tại sao `$all` tối ưu hơn query thông thường?**
+> **Tai sao `$all` toi uu hon query thong thuong->**
 >
-> | Cách | Query | Vấn đề |
+> | Cach | Query | Van e |
 > |------|-------|--------|
-> | **Sai** | `{ $and: [{ "amenities.name": "Private Pool" }, { "amenities.name": "Butler Service" }] }` | Hoạt động đúng nhưng dài dòng, khó maintain |
-> | **Sai** | 2 lần `find()` rồi merge ở application | 2 lần roundtrip, tốn bandwidth, logic phức tạp |
-> | **✅ Đúng** | `{ "amenities.name": { $all: [...] } }` | 1 lần query, MongoDB engine tối ưu sẵn bằng index intersection. Cú pháp ngắn gọn, declarative |
+> | **Sai** | `{ $and: [{ "amenities.name": "Private Pool" }, { "amenities.name": "Butler Service" }] }` | Hoat ong ung nhung dai dong, kho maintain |
+> | **Sai** | 2 lan `find()` roi merge o application | 2 lan roundtrip, ton bandwidth, logic phuc tap |
+> | ** ung** | `{ "amenities.name": { $all: [...] } }` | 1 lan query, MongoDB engine toi uu san bang index intersection. Cu phap ngan gon, declarative |
 >
-> **Khi nào dùng `$elemMatch` thay `$all`?**
-> - `$all`: Khi chỉ kiểm tra **1 field** trong embedded doc (vd: chỉ `name`)
-> - `$elemMatch`: Khi cần kiểm tra **nhiều field cùng 1 element** (vd: `name = "Pool" AND category = "RECREATION"` trên cùng 1 object trong mảng)
+> **Khi nao dung `$elemMatch` thay `$all`->**
+> - `$all`: Khi chi kiem tra **1 field** trong embedded doc (vd: chi `name`)
+> - `$elemMatch`: Khi can kiem tra **nhieu field cung 1 element** (vd: `name = "Pool" AND category = "RECREATION"` tren cung 1 object trong mang)
 
 ---
 
-### T2.6 — Recursive CTE: Duyệt cây phân cấp Location
+### T2.6  Recursive CTE: Duyet cay phan cap Location
 
 ```sql
 -- ============================================================
--- T2.6: Recursive CTE — Lấy toàn bộ location con từ gốc
--- Input: Tên hoặc ID của Region gốc (VD: 'Châu Á')
--- Output: Toàn bộ hierarchy con kèm Level
+-- T2.6: Recursive CTE  Lay toan bo location con tu goc
+-- Input: Ten hoac ID cua Region goc (VD: 'Chau A')
+-- Output: Toan bo hierarchy con kem Level
 -- ============================================================
 
--- Bước 0: Insert dữ liệu mẫu
+-- Buoc 0: Insert du lieu mau
 INSERT INTO Location (parent_location_id, location_code, location_name, location_type, level, iso_code) VALUES
-(NULL,  'REG-ASIA',       N'Châu Á',           'REGION',         0, NULL),
-(1,     'CTR-VN',          N'Việt Nam',         'COUNTRY',        1, 'VN'),
-(1,     'CTR-TH',          N'Thái Lan',         'COUNTRY',        1, 'TH'),
+(NULL,  'REG-ASIA',       N'Chau A',           'REGION',         0, NULL),
+(1,     'CTR-VN',          N'Viet Nam',         'COUNTRY',        1, 'VN'),
+(1,     'CTR-TH',          N'Thai Lan',         'COUNTRY',        1, 'TH'),
 (1,     'CTR-SG',          N'Singapore',        'COUNTRY',        1, 'SG'),
-(2,     'STP-HCM',         N'Hồ Chí Minh',     'STATE_PROVINCE', 2, NULL),
-(2,     'STP-KH',          N'Khánh Hòa',       'STATE_PROVINCE', 2, NULL),
-(5,     'CTY-HCMC',        N'TP. Hồ Chí Minh', 'CITY',           3, NULL),
+(2,     'STP-HCM',         N'Ho Chi Minh',     'STATE_PROVINCE', 2, NULL),
+(2,     'STP-KH',          N'Khanh Hoa',       'STATE_PROVINCE', 2, NULL),
+(5,     'CTY-HCMC',        N'TP. Ho Chi Minh', 'CITY',           3, NULL),
 (6,     'CTY-NT',          N'Nha Trang',        'CITY',           3, NULL),
-(7,     'DST-Q1',          N'Quận 1',           'DISTRICT',       4, NULL),
-(7,     'DST-Q7',          N'Quận 7',           'DISTRICT',       4, NULL),
+(7,     'DST-Q1',          N'Quan 1',           'DISTRICT',       4, NULL),
+(7,     'DST-Q7',          N'Quan 7',           'DISTRICT',       4, NULL),
 (3,     'CTY-BKK',         N'Bangkok',          'CITY',           3, NULL),
 (4,     'DST-MARINA',      N'Marina Bay',       'DISTRICT',       4, NULL);
 GO
 
--- Bước 1: Recursive CTE
-DECLARE @root_name NVARCHAR(150) = N'Châu Á';
+-- Buoc 1: Recursive CTE
+DECLARE @root_name NVARCHAR(150) = N'Chau A';
 
 WITH LocationTree AS (
-    -- ======= Anchor Member: Node gốc =======
+    -- ======= Anchor Member: Node goc =======
     SELECT
         location_id,
         parent_location_id,
@@ -681,13 +679,13 @@ WITH LocationTree AS (
         location_type,
         level,
         iso_code,
-        0 AS depth                           -- Depth tính từ node gốc
+        0 AS depth                           -- Depth tinh tu node goc
     FROM Location
     WHERE location_name = @root_name
 
     UNION ALL
 
-    -- ======= Recursive Member: Các node con =======
+    -- ======= Recursive Member: Cac node con =======
     SELECT
         child.location_id,
         child.parent_location_id,
@@ -708,33 +706,33 @@ SELECT
     location_name,
     location_type,
     level         AS schema_level,  -- Level theo schema (0-4)
-    depth         AS tree_depth,    -- Depth tính từ node query
+    depth         AS tree_depth,    -- Depth tinh tu node query
     REPLICATE('  ', depth) + location_name AS hierarchy_display
 FROM LocationTree
 ORDER BY level, location_name;
 GO
 ```
 
-**Kết quả mong đợi:**
+**Ket qua mong oi:**
 
 ```
 schema_level | tree_depth | hierarchy_display
--------------|------------|----------------------------------
-0            | 0          | Châu Á
+------------------------------------------------------------
+0            | 0          | Chau A
 1            | 1          |   Singapore
-1            | 1          |   Thái Lan
-1            | 1          |   Việt Nam
-2            | 2          |     Hồ Chí Minh
-2            | 2          |     Khánh Hòa
+1            | 1          |   Thai Lan
+1            | 1          |   Viet Nam
+2            | 2          |     Ho Chi Minh
+2            | 2          |     Khanh Hoa
 3            | 3          |       Bangkok
 3            | 3          |       Nha Trang
-3            | 3          |       TP. Hồ Chí Minh
+3            | 3          |       TP. Ho Chi Minh
 4            | 4          |         Marina Bay
-4            | 4          |         Quận 1
-4            | 4          |         Quận 7
+4            | 4          |         Quan 1
+4            | 4          |         Quan 7
 ```
 
-> **Ứng dụng thực tế**: Tìm tất cả hotel trong "Châu Á":
+> **Ung dung thuc te**: Tim tat ca hotel trong "Chau A":
 > ```sql
 > SELECT H.* FROM Hotel H
 > WHERE H.location_id IN (SELECT location_id FROM LocationTree);
@@ -742,17 +740,17 @@ schema_level | tree_depth | hierarchy_display
 
 ---
 
-## 📊 Người 3 — Analytics & Report
+##  Nguoi 3  Analytics & Report
 
 ---
 
-### T2.7 — VIEW tài chính: vw_ReservationTotal
+### T2.7  VIEW tai chinh: vw_ReservationTotal
 
 ```sql
 -- ============================================================
 -- T2.7: VIEW vw_ReservationTotal
--- Source of Truth cho tổng tiền reservation
--- Thay thế financial fields lưu cứng trong Reservation [FIX-3]
+-- Source of Truth cho tong tien reservation
+-- Thay the financial fields luu cung trong Reservation [FIX-3]
 -- ============================================================
 CREATE OR ALTER VIEW vw_ReservationTotal
 AS
@@ -767,14 +765,14 @@ SELECT
     r.checkout_date,
     r.nights,
 
-    -- ------- Room Revenue (từ ReservationRoom) -------
+    -- ------- Room Revenue (tu ReservationRoom) -------
     ISNULL(room_totals.room_subtotal, 0)      AS room_subtotal,
     ISNULL(room_totals.room_tax, 0)           AS room_tax,
     ISNULL(room_totals.room_discount, 0)      AS room_discount,
     ISNULL(room_totals.room_final, 0)         AS room_final,
     ISNULL(room_totals.room_count, 0)         AS actual_room_count,
 
-    -- ------- Service Revenue (từ ReservationService) -------
+    -- ------- Service Revenue (tu ReservationService) -------
     ISNULL(svc_totals.svc_subtotal, 0)        AS service_subtotal,
     ISNULL(svc_totals.svc_discount, 0)        AS service_discount,
     ISNULL(svc_totals.svc_final, 0)           AS service_final,
@@ -817,7 +815,7 @@ LEFT JOIN (
     GROUP BY reservation_id
 ) svc_totals ON r.reservation_id = svc_totals.reservation_id
 
--- Aggregate payments (chỉ CAPTURED)
+-- Aggregate payments (chi CAPTURED)
 LEFT JOIN (
     SELECT
         reservation_id,
@@ -828,11 +826,11 @@ LEFT JOIN (
 ) pay_totals ON r.reservation_id = pay_totals.reservation_id;
 GO
 
--- Cách dùng:
+-- Cach dung:
 SELECT * FROM vw_ReservationTotal
 WHERE reservation_code = 'RES-20260415-001';
 
--- Báo cáo doanh thu theo hotel:
+-- Bao cao doanh thu theo hotel:
 SELECT hotel_id, COUNT(*) AS bookings, SUM(grand_total) AS revenue
 FROM vw_ReservationTotal
 WHERE reservation_status IN ('CONFIRMED','CHECKED_IN','CHECKED_OUT')
@@ -842,16 +840,16 @@ GO
 
 ---
 
-### T2.8 — Revenue Intelligence: Top 3 Room Types per Hotel (Window Functions)
+### T2.8  Revenue Intelligence: Top 3 Room Types per Hotel (Window Functions)
 
 ```sql
 -- ============================================================
--- T2.8: Top 3 loại phòng doanh thu cao nhất / Hotel — Q1 2026
--- BẮT BUỘC: Window Functions (SUM OVER + DENSE_RANK)
--- KHÔNG dùng GROUP BY + TOP đơn giản
+-- T2.8: Top 3 loai phong doanh thu cao nhat / Hotel  Q1 2026
+-- BAT BUOC: Window Functions (SUM OVER + DENSE_RANK)
+-- KHONG dung GROUP BY + TOP on gian
 -- ============================================================
 WITH RoomRevenue AS (
-    -- Bước 1: Tính doanh thu theo hotel + room_type, dùng SUM() OVER()
+    -- Buoc 1: Tinh doanh thu theo hotel + room_type, dung SUM() OVER()
     SELECT
         rr.room_type_id,
         rt.room_type_name,
@@ -865,7 +863,7 @@ WITH RoomRevenue AS (
             PARTITION BY res.hotel_id, rr.room_type_id
         ) AS total_revenue_by_room_type,
 
-        -- Window Function: Tổng doanh thu hotel (để tính %)
+        -- Window Function: Tong doanh thu hotel (e tinh %)
         SUM(rr.final_amount) OVER (
             PARTITION BY res.hotel_id
         ) AS total_hotel_revenue
@@ -878,7 +876,7 @@ WITH RoomRevenue AS (
       AND res.checkin_date >= '2026-01-01'
       AND res.checkin_date <  '2026-04-01'    -- Q1 2026
 ),
--- Bước 2: Deduplicate + Rank
+-- Buoc 2: Deduplicate + Rank
 RankedRevenue AS (
     SELECT DISTINCT
         hotel_id,
@@ -903,7 +901,7 @@ RankedRevenue AS (
 
     FROM RoomRevenue
 )
--- Bước 3: Lọc Top 3
+-- Buoc 3: Loc Top 3
 SELECT
     hotel_id,
     hotel_name,
@@ -919,11 +917,11 @@ ORDER BY hotel_id, revenue_rank;
 GO
 ```
 
-**Kết quả mẫu:**
+**Ket qua mau:**
 
 ```
 hotel_id | hotel_name                 | rank | room_type_name           | revenue     | share  | hotel_total
----------|----------------------------|------|--------------------------|-------------|--------|------------
+------------------------------------------------------------
 1        | The Ritz-Carlton, Saigon   | 1    | Presidential Skyline     | 2,450,000   | 45.2%  | 5,420,000
 1        | The Ritz-Carlton, Saigon   | 2    | Ritz-Carlton Suite       | 1,870,000   | 34.5%  | 5,420,000
 1        | The Ritz-Carlton, Saigon   | 3    | Deluxe City View         | 830,000     | 15.3%  | 5,420,000
@@ -931,76 +929,76 @@ hotel_id | hotel_name                 | rank | room_type_name           | revenu
 ...
 ```
 
-> **Tại sao dùng DENSE_RANK thay vì ROW_NUMBER?**
-> - `DENSE_RANK`: Nếu 2 room types có cùng doanh thu → cùng rank (1,1,2,3)
-> - `ROW_NUMBER`: Luôn unique → 1 trong 2 bị đẩy xuống rank thấp hơn (không công bằng)
+> **Tai sao dung DENSE_RANK thay vi ROW_NUMBER->**
+> - `DENSE_RANK`: Neu 2 room types co cung doanh thu  cung rank (1,1,2,3)
+> - `ROW_NUMBER`: Luon unique  1 trong 2 bi ay xuong rank thap hon (khong cong bang)
 
 ---
 
-### T2.9 — AI Audit: Post-mortem Analysis Template
+### T2.9  AI Audit: Post-mortem Analysis Template
 
 ```markdown
-## Post-mortem Analysis — AI-Generated Trigger Error
+## Post-mortem Analysis  AI-Generated Trigger Error
 
-### 1. Đoạn code sai (do AI viết)
+### 1. oan code sai (do AI viet)
 
-> [Dán đoạn code Trigger bị sai của AI vào đây]
-> Ví dụ: Trigger không có TRY...CATCH, thiếu ROLLBACK, 
-> hoặc dùng cú pháp MySQL (FOR UPDATE) thay vì SQL Server
+> [Dan oan code Trigger bi sai cua AI vao ay]
+> Vi du: Trigger khong co TRY...CATCH, thieu ROLLBACK, 
+> hoac dung cu phap MySQL (FOR UPDATE) thay vi SQL Server
 
-### 2. Phân tích lỗi
+### 2. Phan tich loi
 
-| # | Lỗi | Mức nghiêm trọng | Giải thích |
-|---|------|-------------------|------------|
-| 1 | **Thiếu Deadlock handling** | 🔴 CRITICAL | Trigger thực thi trong context
-    của transaction gốc. Nếu xảy ra Deadlock, SQL Server chọn 1 transaction
-    làm victim và tự động ROLLBACK. Trigger không có `TRY...CATCH`
-    → error không được xử lý → transaction gốc (UPDATE rate) cũng bị ROLLBACK
-    mà caller không biết lý do. |
-| 2 | **Không ROLLBACK trong CATCH** | 🔴 CRITICAL | Nếu INSERT vào
-    RateChangeLog gặp lỗi (vd: constraint violation), transaction giữ trạng
-    thái mở (@@TRANCOUNT > 0) → lock không giải phóng → các session khác
-    bị BLOCK vô thời hạn → có thể gây **sự cố production**. |
-| 3 | **Dùng cú pháp sai engine** | 🟡 WARNING | AI sinh code dùng
-    `FOR UPDATE` (MySQL/PostgreSQL syntax) thay vì `WITH (UPDLOCK)` 
-    (SQL Server). Lỗi syntax → trigger không deploy được. |
+| # | Loi | Muc nghiem trong | Giai thich |
+------------------------------------------------------------
+| 1 | **Thieu Deadlock handling** |  CRITICAL | Trigger thuc thi trong context
+    cua transaction goc. Neu xay ra Deadlock, SQL Server chon 1 transaction
+    lam victim va tu ong ROLLBACK. Trigger khong co `TRY...CATCH`
+     error khong uoc xu ly  transaction goc (UPDATE rate) cung bi ROLLBACK
+    ma caller khong biet ly do. |
+| 2 | **Khong ROLLBACK trong CATCH** |  CRITICAL | Neu INSERT vao
+    RateChangeLog gap loi (vd: constraint violation), transaction giu trang
+    thai mo (@@TRANCOUNT > 0)  lock khong giai phong  cac session khac
+    bi BLOCK vo thoi han  co the gay **su co production**. |
+| 3 | **Dung cu phap sai engine** |  WARNING | AI sinh code dung
+    `FOR UPDATE` (MySQL/PostgreSQL syntax) thay vi `WITH (UPDLOCK)` 
+    (SQL Server). Loi syntax  trigger khong deploy uoc. |
 
-### 3. Nguyên nhân gốc (Root Cause)
+### 3. Nguyen nhan goc (Root Cause)
 
-AI không được cung cấp đủ bối cảnh kiến trúc hệ thống:
-- Không biết target engine là **SQL Server** → sinh code generic/MySQL
-- Không hiểu Trigger chạy **trong** transaction gốc → thiếu error handling
-- Không có thông tin về cấu trúc `RateChangeLog` → INSERT fields sai
+AI khong uoc cung cap u boi canh kien truc he thong:
+- Khong biet target engine la **SQL Server**  sinh code generic/MySQL
+- Khong hieu Trigger chay **trong** transaction goc  thieu error handling
+- Khong co thong tin ve cau truc `RateChangeLog`  INSERT fields sai
 
-### 4. Prompt đã sửa (Corrective Prompt)
+### 4. Prompt a sua (Corrective Prompt)
 
-Nhóm đã dùng prompt sau để ép AI sửa lại:
+Nhom a dung prompt sau e ep AI sua lai:
 
-> "Đoạn Trigger sau bị sai nghiêm trọng: [dán code sai]. 
-> Hãy sửa lại theo các yêu cầu BẮT BUỘC:
-> 1. Engine là SQL Server (T-SQL), KHÔNG dùng MySQL syntax
-> 2. Bọc logic INSERT vào TRY...CATCH
-> 3. Trong CATCH: kiểm tra @@TRANCOUNT > 0 thì ROLLBACK
-> 4. Xử lý Deadlock: kiểm tra ERROR_NUMBER() = 1205
-> 5. Sử dụng bảng ảo INSERTED và DELETED để so sánh giá cũ/mới
-> 6. Tham chiếu cấu trúc bảng RateChangeLog đính kèm: [dán schema]"
+> "oan Trigger sau bi sai nghiem trong: [dan code sai]. 
+> Hay sua lai theo cac yeu cau BAT BUOC:
+> 1. Engine la SQL Server (T-SQL), KHONG dung MySQL syntax
+> 2. Boc logic INSERT vao TRY...CATCH
+> 3. Trong CATCH: kiem tra @@TRANCOUNT > 0 thi ROLLBACK
+> 4. Xu ly Deadlock: kiem tra ERROR_NUMBER() = 1205
+> 5. Su dung bang ao INSERTED va DELETED e so sanh gia cu/moi
+> 6. Tham chieu cau truc bang RateChangeLog inh kem: [dan schema]"
 
-### 5. Bài học rút ra
+### 5. Bai hoc rut ra
 
-1. **Luôn set context đầu tiên**: Dán schema/summary vào đầu prompt
-2. **Chỉ định engine rõ ràng**: "SQL Server (T-SQL)" thay vì chỉ "SQL"
-3. **Yêu cầu error handling**: Yêu cầu TRY...CATCH + Deadlock handling
-4. **Review mọi output của AI**: Đặc biệt kiểm tra syntax engine và 
-   transaction safety trước khi chạy
+1. **Luon set context au tien**: Dan schema/summary vao au prompt
+2. **Chi inh engine ro rang**: "SQL Server (T-SQL)" thay vi chi "SQL"
+3. **Yeu cau error handling**: Yeu cau TRY...CATCH + Deadlock handling
+4. **Review moi output cua AI**: ac biet kiem tra syntax engine va 
+   transaction safety truoc khi chay
 ```
 
 ---
 
-## 💡 Checklist vận hành nhóm
+##  Checklist van hanh nhom
 
-- [ ] Mỗi thành viên bật **New Chat** khi bắt đầu task mới
-- [ ] Dán `GlobalLuxuryHotelReservationEngine_REMAKE_Summary.md` vào dòng đầu prompt
-- [ ] Luôn ghi rõ: **"Engine: SQL Server (T-SQL)"** hoặc **"Engine: MongoDB"**
-- [ ] Nếu AI dùng `FOR UPDATE` (MySQL) → yêu cầu sửa sang `WITH (UPDLOCK, HOLDLOCK)`
-- [ ] Nếu AI dùng `LIMIT` (MySQL) → yêu cầu sửa sang `TOP` (SQL Server)
-- [ ] Lưu lại mọi prompt + response để làm AI Audit (15% điểm)
+- [ ] Moi thanh vien bat **New Chat** khi bat au task moi
+- [ ] Dan `GlobalLuxuryHotelReservationEngine_REMAKE_Summary.md` vao dong au prompt
+- [ ] Luon ghi ro: **"Engine: SQL Server (T-SQL)"** hoac **"Engine: MongoDB"**
+- [ ] Neu AI dung `FOR UPDATE` (MySQL)  yeu cau sua sang `WITH (UPDLOCK, HOLDLOCK)`
+- [ ] Neu AI dung `LIMIT` (MySQL)  yeu cau sua sang `TOP` (SQL Server)
+- [ ] Luu lai moi prompt + response e lam AI Audit (15% iem)

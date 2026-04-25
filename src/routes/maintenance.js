@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — Maintenance Routes
+ * LuxeReserve  Maintenance Routes
  * Manage maintenance tickets: create, assign, resolve
  * Activates: MaintenanceTicket (14 cols), Room.maintenance_status
  */
@@ -8,10 +8,10 @@ const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 
-// ═══════════════════════════════════════════════
+// 
 // GET /api/maintenance?hotel_id=1&status=OPEN
 // List maintenance tickets
-// ═══════════════════════════════════════════════
+// 
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -59,10 +59,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // POST /api/maintenance
-// Create maintenance ticket → auto-update Room.maintenance_status
-// ═══════════════════════════════════════════════
+// Create maintenance ticket  auto-update Room.maintenance_status
+// 
 router.post('/', async (req, res) => {
   try {
     const { hotel_id, room_id, reported_by, issue_category, issue_description, severity_level } = req.body;
@@ -95,7 +95,7 @@ router.post('/', async (req, res) => {
           VALUES (@hotelId, @roomId, @reporter, @category, @desc, @severity, 'OPEN')
         `);
 
-      // STEP 2: If room-linked and severity HIGH/CRITICAL → mark room UNDER_REPAIR
+      // STEP 2: If room-linked and severity HIGH/CRITICAL  mark room UNDER_REPAIR
       if (room_id && ['HIGH', 'CRITICAL'].includes(severity_level || 'MEDIUM')) {
         const req2 = new sql.Request(transaction);
         await req2.input('roomId', sql.BigInt, room_id).query(`
@@ -117,10 +117,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════
+// 
 // PUT /api/maintenance/:id
 // Update ticket: assign, resolve, close
-// ═══════════════════════════════════════════════
+// 
 router.put('/:id', async (req, res) => {
   try {
     const ticketId = parseInt(req.params.id);
@@ -169,7 +169,7 @@ router.put('/:id', async (req, res) => {
           WHERE maintenance_ticket_id = @id
         `);
 
-      // STEP 3: If RESOLVED/CLOSED and room is linked → reset Room.maintenance_status to NORMAL
+      // STEP 3: If RESOLVED/CLOSED and room is linked  reset Room.maintenance_status to NORMAL
       if (['RESOLVED', 'CLOSED'].includes(status) && ticket.room_id) {
         // Check if there are other OPEN/IN_PROGRESS tickets for this room
         const req2 = new sql.Request(transaction);

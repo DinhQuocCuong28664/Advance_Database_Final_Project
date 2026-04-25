@@ -30,24 +30,18 @@ GO
 
 UPDATE SystemUser
 SET password_hash = CASE username
-    WHEN 'admin' THEN '$2b$10$JcsOWTu5PIkaKfo5mJOX2uTjhRd2LNeBUmTfoK9xuFIYZWBqaFeZq'
-    WHEN 'fd.nguyen' THEN '$2b$10$Y2II8hvj4oUwso5gaKHBVe0qK9ad.M04TCofqPCxIlaD0iIlvaOCq'
-    WHEN 'rev.tran' THEN '$2b$10$9DPo8uBPW3gVNHGD8Ce3MeHSHghUGyFuLXXqHypnhRXeXVnp/P.7a'
-    WHEN 'fd.somchai' THEN '$2b$10$Y2II8hvj4oUwso5gaKHBVe0qK9ad.M04TCofqPCxIlaD0iIlvaOCq'
-    WHEN 'fd.lim' THEN '$2b$10$Y2II8hvj4oUwso5gaKHBVe0qK9ad.M04TCofqPCxIlaD0iIlvaOCq'
+    WHEN 'admin' THEN '$2b$10$LRArHF87Ay2k8uPTI0scPenxOBIehsGYeKOQnFgWUC/nRmr7RoK3K'
+    WHEN 'cashier' THEN '$2b$10$Sml4F/p99J/tvZbRXS.CJuxBAul4U/vnkN.QMSs0YwnHiARYBlnuW'
     ELSE password_hash
 END,
 updated_at = GETDATE()
-WHERE username IN ('admin', 'fd.nguyen', 'rev.tran', 'fd.somchai', 'fd.lim');
+WHERE username IN ('admin', 'cashier');
 GO
 
 MERGE GuestAuth AS target
 USING (
-    SELECT CAST(1 AS BIGINT) AS guest_id, 'quoc.nguyen@gmail.com' AS login_email,
-           '$2b$10$K3Kp5MKFb48b8phwwwhokuKHshaw7hBmeW75CSXbqYiicUeMPAle2' AS password_hash
-    UNION ALL
-    SELECT CAST(2 AS BIGINT), 'sakura.t@yahoo.co.jp',
-           '$2b$10$0tAP4OlXtTYWX4ze4PF8ReQ1S48G4vNIXcaobGU./dhsPPHA7JO6y'
+    SELECT CAST(1 AS BIGINT) AS guest_id, 'dqc@luxereserve.local' AS login_email,
+           '$2b$10$YPOMA6bXP0aBwnuckX1.4OiYRHnG.YuLHC5dzNYN3jDAE4ZKGD5Ai' AS password_hash
 ) AS source
 ON target.guest_id = source.guest_id
 WHEN MATCHED THEN
@@ -63,7 +57,7 @@ WHEN NOT MATCHED THEN
 GO
 
 PRINT 'Auth extension applied.';
-PRINT 'Admin test credentials: admin / admin123';
-PRINT 'Guest test credentials: quoc.nguyen@gmail.com / guest12345';
-PRINT 'Guest test credentials: sakura.t@yahoo.co.jp / member12345';
+PRINT 'Admin test credentials: admin / admin';
+PRINT 'Cashier test credentials: cashier / cashier';
+PRINT 'Guest test credentials: dqc / dqc';
 GO

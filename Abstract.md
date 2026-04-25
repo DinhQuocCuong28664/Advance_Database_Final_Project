@@ -1,148 +1,148 @@
 # LuxeReserve Abstract
 
-## 1. Tổng quan
+## 1. Tong quan
 
-LuxeReserve là một hệ thống quản lý đặt phòng khách sạn cao cấp theo hướng **Advanced Database / Hybrid Backend**, được xây dựng để chứng minh cách kết hợp:
+LuxeReserve la mot he thong quan ly at phong khach san cao cap theo huong **Advanced Database / Hybrid Backend**, uoc xay dung e chung minh cach ket hop:
 
-- **SQL Server** cho dữ liệu giao dịch và toàn bộ business logic quan trọng
-- **MongoDB** cho rich content linh hoạt như mô tả khách sạn, gallery ảnh, room features, amenity metadata
-- **Node.js Express API** làm lớp tích hợp giữa hai nguồn dữ liệu
+- **SQL Server** cho du lieu giao dich va toan bo business logic quan trong
+- **MongoDB** cho rich content linh hoat nhu mo ta khach san, gallery anh, room features, amenity metadata
+- **Node.js Express API** lam lop tich hop giua hai nguon du lieu
 
-Trọng tâm của project không phải frontend, mà là cách thiết kế và vận hành một hệ thống booking có tính toàn vẹn dữ liệu cao, có kiểm soát cạnh tranh, có báo cáo phân tích, và có thể mở rộng theo nhiều domain vận hành khách sạn.
+Trong tam cua project khong phai frontend, ma la cach thiet ke va van hanh mot he thong booking co tinh toan ven du lieu cao, co kiem soat canh tranh, co bao cao phan tich, va co the mo rong theo nhieu domain van hanh khach san.
 
-## 2. Hệ thống hiện đang làm được gì
+## 2. He thong hien ang lam uoc gi
 
 ### Booking lifecycle
 
-- Tạo reservation theo khoảng ngày lưu trú
-- Kiểm tra room availability theo khách sạn và ngày
+- Tao reservation theo khoang ngay luu tru
+- Kiem tra room availability theo khach san va ngay
 - Check-in / check-out
-- Guest cancel và hotel cancel
-- Room transfer cho reservation đang hoạt động
+- Guest cancel va hotel cancel
+- Room transfer cho reservation ang hoat ong
 
 ### Financial flow
 
 - Thu deposit
 - Thu full payment
-- Theo dõi tổng tiền, đã thanh toán, công nợ còn lại
-- Sinh invoice từ view tài chính
-- Issue invoice từ `DRAFT` sang `ISSUED`
+- Theo doi tong tien, a thanh toan, cong no con lai
+- Sinh invoice tu view tai chinh
+- Issue invoice tu `DRAFT` sang `ISSUED`
 
 ### Hotel operations
 
-- Quản lý service order phát sinh trong thời gian lưu trú
-- Quản lý housekeeping task
-- Quản lý maintenance ticket
-- Đồng bộ trạng thái room theo quy trình vận hành
+- Quan ly service order phat sinh trong thoi gian luu tru
+- Quan ly housekeeping task
+- Quan ly maintenance ticket
+- ong bo trang thai room theo quy trinh van hanh
 
 ### Customer and catalog
 
-- Danh sách guest và guest profile
-- Danh sách hotel
-- Hotel detail dạng hybrid: dữ liệu vận hành từ SQL + rich content từ MongoDB
-- Location hierarchy theo cây vùng/quốc gia/thành phố/quận
+- Danh sach guest va guest profile
+- Danh sach hotel
+- Hotel detail dang hybrid: du lieu van hanh tu SQL + rich content tu MongoDB
+- Location hierarchy theo cay vung/quoc gia/thanh pho/quan
 
 ### Admin and analytics
 
-- Quản lý giá phòng
-- Cảnh báo thay đổi giá bất thường
+- Quan ly gia phong
+- Canh bao thay oi gia bat thuong
 - Revenue report theo hotel
 - Revenue report theo chain > brand > hotel
 - Optimistic locking cho inventory update
 
-## 3. Điểm mạnh về Advanced Database
+## 3. iem manh ve Advanced Database
 
-Project này thể hiện khá rõ các kỹ thuật CSDL nâng cao:
+Project nay the hien kha ro cac ky thuat CSDL nang cao:
 
 1. **Pessimistic locking**
-   - Booking engine khóa inventory theo ngày để tránh double booking.
-   - Concurrent booking đã được kiểm tra end-to-end: 2 request cùng lúc cho cùng phòng cho ra kết quả đúng là `1 success + 1 reject`.
+   - Booking engine khoa inventory theo ngay e tranh double booking.
+   - Concurrent booking a uoc kiem tra end-to-end: 2 request cung luc cho cung phong cho ra ket qua ung la `1 success + 1 reject`.
 
 2. **Optimistic locking**
-   - `RoomAvailability.version_no` dùng để phát hiện conflict khi cập nhật trạng thái inventory.
+   - `RoomAvailability.version_no` dung e phat hien conflict khi cap nhat trang thai inventory.
 
 3. **Multi-step transaction**
-   - Các flow như booking, payment, check-in, check-out, cancellation, housekeeping, maintenance đều đi qua nhiều bảng trong một transaction.
+   - Cac flow nhu booking, payment, check-in, check-out, cancellation, housekeeping, maintenance eu i qua nhieu bang trong mot transaction.
 
 4. **Computed financial source of truth**
-   - View `vw_ReservationTotal` tổng hợp dữ liệu từ reservation room, service, payment để làm nguồn tài chính chuẩn.
+   - View `vw_ReservationTotal` tong hop du lieu tu reservation room, service, payment e lam nguon tai chinh chuan.
 
 5. **Trigger-based auditing**
-   - Trigger phát hiện thay đổi giá vượt ngưỡng.
+   - Trigger phat hien thay oi gia vuot nguong.
    - Trigger audit cancellation.
 
 6. **Window functions**
    - Revenue ranking
    - Cumulative revenue
-   - Revenue share theo nhiều cấp độ
+   - Revenue share theo nhieu cap o
 
 7. **Recursive CTE**
-   - Dùng cho cây `Location` nhiều tầng.
+   - Dung cho cay `Location` nhieu tang.
 
 8. **Computed column**
-   - `Guest.full_name` được thiết kế theo kiểu computed/persisted.
+   - `Guest.full_name` uoc thiet ke theo kieu computed/persisted.
 
 9. **Polyglot persistence**
-   - SQL Server giữ dữ liệu chuẩn hóa và transaction-heavy.
-   - MongoDB giữ dữ liệu mô tả linh hoạt, phù hợp read-heavy và nested documents.
+   - SQL Server giu du lieu chuan hoa va transaction-heavy.
+   - MongoDB giu du lieu mo ta linh hoat, phu hop read-heavy va nested documents.
 
-## 4. Trạng thái hiện tại
+## 4. Trang thai hien tai
 
-- Backend API đã có thể chạy độc lập.
-- MongoDB và SQL Server đã được tích hợp.
-- Các flow quan trọng đã xác nhận chạy được:
+- Backend API a co the chay oc lap.
+- MongoDB va SQL Server a uoc tich hop.
+- Cac flow quan trong a xac nhan chay uoc:
   - Booking
   - Deposit payment
   - Full payment
   - Check-in
   - Check-out
   - Concurrent booking protection
-- Hiện tại **chưa có frontend chính thức**.
+- Hien tai **chua co frontend chinh thuc**.
 
-## 5. Cách đọc folder `docs` cho đúng
+## 5. Cach oc folder `docs` cho ung
 
-Sau khi đọc lại các file trong `docs` và đối chiếu với code hiện tại, cách dùng hợp lý hơn là:
+Sau khi oc lai cac file trong `docs` va oi chieu voi code hien tai, cach dung hop ly hon la:
 
-### Nhóm 1: Tài liệu thiết kế gốc, nên đọc trước
+### Nhom 1: Tai lieu thiet ke goc, nen oc truoc
 
 1. [docs/GlobalLuxuryHotelReservationEngine_REMAKE_Summary.md](C:\Users\cbzer\Downloads\HCSDLNC\docs\GlobalLuxuryHotelReservationEngine_REMAKE_Summary.md)
-   - Đây là file mô tả tư duy thiết kế tổng thể, các fix lớn, hybrid architecture, table groups và định hướng hệ thống.
+   - ay la file mo ta tu duy thiet ke tong the, cac fix lon, hybrid architecture, table groups va inh huong he thong.
 
 2. [docs/LuxeReserve_ERD.md](C:\Users\cbzer\Downloads\HCSDLNC\docs\LuxeReserve_ERD.md)
-   - Dùng để hiểu domain model, quan hệ bảng và cách tách hệ thống thành các cụm nghiệp vụ.
+   - Dung e hieu domain model, quan he bang va cach tach he thong thanh cac cum nghiep vu.
 
 3. [docs/LuxeReserve_SequenceDiagrams.md](C:\Users\cbzer\Downloads\HCSDLNC\docs\LuxeReserve_SequenceDiagrams.md)
-   - Dùng để hiểu intent của các core flow, nhất là booking, payment, operations, trigger, concurrency.
+   - Dung e hieu intent cua cac core flow, nhat la booking, payment, operations, trigger, concurrency.
 
 4. [docs/LuxeReserve_T2_Scripts.md](C:\Users\cbzer\Downloads\HCSDLNC\docs\LuxeReserve_T2_Scripts.md)
-   - Hữu ích nếu muốn hiểu sâu theo góc nhìn môn học: trigger, procedure, MongoDB document design, recursive CTE, window functions.
+   - Huu ich neu muon hieu sau theo goc nhin mon hoc: trigger, procedure, MongoDB document design, recursive CTE, window functions.
 
-### Nhóm 2: Tài liệu mô tả chức năng hiện hành, đọc sau nhóm 1
+### Nhom 2: Tai lieu mo ta chuc nang hien hanh, oc sau nhom 1
 
 5. [docs/System_Features_DataSource.md](C:\Users\cbzer\Downloads\HCSDLNC\docs\System_Features_DataSource.md)
-   - File này tốt để nhìn hệ thống theo chức năng và nguồn dữ liệu.
-   - Nên dùng nó để map từng tính năng sang SQL, MongoDB hoặc Hybrid.
+   - File nay tot e nhin he thong theo chuc nang va nguon du lieu.
+   - Nen dung no e map tung tinh nang sang SQL, MongoDB hoac Hybrid.
 
 6. [docs/Test_Scenarios.md](C:\Users\cbzer\Downloads\HCSDLNC\docs\Test_Scenarios.md)
-   - Nên dùng cho mục đích demo, testcase, và bảo vệ đồ án.
-   - Nhưng file này có một vài giả định cũ hơn code hiện tại, nên khi chạy thật vẫn cần đối chiếu API/code.
+   - Nen dung cho muc ich demo, testcase, va bao ve o an.
+   - Nhung file nay co mot vai gia inh cu hon code hien tai, nen khi chay that van can oi chieu API/code.
 
-### Nhóm 3: Tài liệu tham khảo, không nên coi là nguồn đúng tuyệt đối
+### Nhom 3: Tai lieu tham khao, khong nen coi la nguon ung tuyet oi
 
 7. [docs/API_Documentation.md](C:\Users\cbzer\Downloads\HCSDLNC\docs\API_Documentation.md)
-   - Nên dùng như tài liệu tham khảo endpoint.
-   - Không nên xem đây là nguồn đúng nhất, vì file này có dấu hiệu chưa sync hoàn toàn với code mới.
+   - Nen dung nhu tai lieu tham khao endpoint.
+   - Khong nen xem ay la nguon ung nhat, vi file nay co dau hieu chua sync hoan toan voi code moi.
 
-### Các điểm tôi thấy có khả năng đã cũ so với code hiện tại
+### Cac iem toi thay co kha nang a cu so voi code hien tai
 
-- `API_Documentation.md` chưa phản ánh hết response mới của `GET /api/rooms/availability`, hiện tại API đã trả thêm `availability_records` để phục vụ optimistic locking.
-- `API_Documentation.md` cũng chưa theo sát toàn bộ validation mới ở payment và reservation flow.
-- `LuxeReserve_SequenceDiagrams.md` đang mô tả một số endpoint/flow ở mức design intent, không hoàn toàn khớp 1-1 với route thực tế hiện tại.
-- `Test_Scenarios.md` vẫn giả định mạnh vào `sp_ReserveRoom` và `InventoryLockLog` như implementation path chính, trong khi code hiện tại đã được chỉnh thêm ở lớp API.
+- `API_Documentation.md` chua phan anh het response moi cua `GET /api/rooms/availability`, hien tai API a tra them `availability_records` e phuc vu optimistic locking.
+- `API_Documentation.md` cung chua theo sat toan bo validation moi o payment va reservation flow.
+- `LuxeReserve_SequenceDiagrams.md` ang mo ta mot so endpoint/flow o muc design intent, khong hoan toan khop 1-1 voi route thuc te hien tai.
+- `Test_Scenarios.md` van gia inh manh vao `sp_ReserveRoom` va `InventoryLockLog` nhu implementation path chinh, trong khi code hien tai a uoc chinh them o lop API.
 
-### Kết luận ngắn
+### Ket luan ngan
 
-Nếu muốn hiểu đúng tinh thần project của anh, nên đọc theo thứ tự:
+Neu muon hieu ung tinh than project cua anh, nen oc theo thu tu:
 
 1. `REMAKE_Summary`
 2. `ERD`
@@ -150,64 +150,64 @@ Nếu muốn hiểu đúng tinh thần project của anh, nên đọc theo thứ
 4. `T2_Scripts`
 5. `System_Features_DataSource`
 6. `Test_Scenarios`
-7. `API_Documentation` để tham khảo endpoint, nhưng luôn đối chiếu lại với code
+7. `API_Documentation` e tham khao endpoint, nhung luon oi chieu lai voi code
 
-## 6. Kế hoạch frontend đề xuất
+## 6. Ke hoach frontend e xuat
 
-Vì đây là project về **Advanced Database**, frontend nên được làm theo hướng **demo được kỹ thuật DB**, không chỉ là giao diện đẹp.
+Vi ay la project ve **Advanced Database**, frontend nen uoc lam theo huong **demo uoc ky thuat DB**, khong chi la giao dien ep.
 
 ### Phase 1: FE foundation
 
-- Chọn stack FE: **React + Vite** hoặc **Next.js** nếu muốn routing rõ ràng hơn
-- Tạo API client chung cho toàn bộ backend
-- Tạo layout dùng chung: sidebar, topbar, breadcrumb, notification
-- Chuẩn hóa model response từ API (`success`, `data`, `error`)
-- Tạo environment config cho base URL API
+- Chon stack FE: **React + Vite** hoac **Next.js** neu muon routing ro rang hon
+- Tao API client chung cho toan bo backend
+- Tao layout dung chung: sidebar, topbar, breadcrumb, notification
+- Chuan hoa model response tu API (`success`, `data`, `error`)
+- Tao environment config cho base URL API
 
 ### Phase 2: Customer / booking demo
 
-- Trang danh sách hotel
+- Trang danh sach hotel
 - Trang hotel detail
 - Trang search availability theo `hotel_id`, `checkin`, `checkout`
-- Form tạo reservation
+- Form tao reservation
 - Trang reservation detail theo `reservation_code`
-- Hiển thị payment summary: `grand_total`, `total_paid`, `balance_due`
+- Hien thi payment summary: `grand_total`, `total_paid`, `balance_due`
 
 ### Phase 3: Reservation operations
 
-- Nút check-in / check-out
-- Nút guest cancel / hotel cancel
+- Nut check-in / check-out
+- Nut guest cancel / hotel cancel
 - Form room transfer
-- Timeline trạng thái reservation
-- Hiển thị room assignment và status history
+- Timeline trang thai reservation
+- Hien thi room assignment va status history
 
 ### Phase 4: Payments and invoices
 
 - Form thu deposit
-- Form thu phần còn lại
-- Danh sách payment theo reservation
-- Tạo invoice
+- Form thu phan con lai
+- Danh sach payment theo reservation
+- Tao invoice
 - Xem invoice detail
 - Issue invoice
 
 ### Phase 5: Hotel operations dashboard
 
-- Màn hình service catalog và service order
-- Màn hình housekeeping board theo trạng thái
-- Màn hình maintenance tickets
-- Màn hình location tree
+- Man hinh service catalog va service order
+- Man hinh housekeeping board theo trang thai
+- Man hinh maintenance tickets
+- Man hinh location tree
 
 ### Phase 6: Admin / advanced database showcase
 
-- Màn hình update room rate
-- Màn hình price integrity alerts
-- Màn hình revenue report
-- Màn hình revenue-by-brand report
-- Màn hình optimistic locking demo cho availability update
+- Man hinh update room rate
+- Man hinh price integrity alerts
+- Man hinh revenue report
+- Man hinh revenue-by-brand report
+- Man hinh optimistic locking demo cho availability update
 
-## 7. Ưu tiên FE để demo đồ án
+## 7. Uu tien FE e demo o an
 
-Nếu thời gian ít, nên làm MVP theo đúng thứ tự này:
+Neu thoi gian it, nen lam MVP theo ung thu tu nay:
 
 1. Hotel list + hotel detail
 2. Availability search
@@ -218,14 +218,14 @@ Nếu thời gian ít, nên làm MVP theo đúng thứ tự này:
 7. Revenue report
 8. Price alert
 
-Bộ này là đủ để thể hiện:
+Bo nay la u e the hien:
 
 - Hybrid SQL + MongoDB
 - Transaction flow
 - Financial aggregation
 - Pessimistic locking
-- Reporting bằng window functions
+- Reporting bang window functions
 
-## 8. Kết luận
+## 8. Ket luan
 
-Hiện tại LuxeReserve đã là một backend khá đầy đủ cho một đồ án Advanced Database: có booking engine, payment flow, hotel operations, reporting, hybrid persistence, concurrency control, và audit logic. Phần còn thiếu lớn nhất là frontend để đóng gói các flow này thành một sản phẩm dễ demo, dễ bảo vệ, và dễ thuyết trình hơn.
+Hien tai LuxeReserve a la mot backend kha ay u cho mot o an Advanced Database: co booking engine, payment flow, hotel operations, reporting, hybrid persistence, concurrency control, va audit logic. Phan con thieu lon nhat la frontend e ong goi cac flow nay thanh mot san pham de demo, de bao ve, va de thuyet trinh hon.

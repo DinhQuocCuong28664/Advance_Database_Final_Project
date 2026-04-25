@@ -17,13 +17,13 @@ function isConfigured() {
   return Boolean(VNPAY_TMN_CODE && VNPAY_HASH_SECRET && VNPAY_URL);
 }
 
-// ─── Format date yyyyMMddHHmmss (GMT+7) ──────────────────────
+//  Format date yyyyMMddHHmmss (GMT+7) 
 function vnpDate(date = new Date()) {
   const d = new Date(date.getTime() + 7 * 60 * 60 * 1000); // GMT+7
   return d.toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
 }
 
-// ─── HMAC-SHA512 signature ────────────────────────────────────
+//  HMAC-SHA512 signature 
 function sign(data) {
   return crypto
     .createHmac('sha512', VNPAY_HASH_SECRET)
@@ -31,7 +31,7 @@ function sign(data) {
     .digest('hex');
 }
 
-// ─── Build sorted query string for signing ────────────────────
+//  Build sorted query string for signing 
 function sortedQueryString(params) {
   const keys = Object.keys(params).sort();
   const parts = keys

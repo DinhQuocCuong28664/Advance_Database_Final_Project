@@ -1,5 +1,5 @@
 -- ============================================================
--- LuxeReserve — 02: Create All Tables (30 tables)
+-- LuxeReserve - 02: Create All Tables (30 tables)
 -- Engine: SQL Server 2022 (T-SQL)
 -- Order: Dependency-safe (parents before children)
 -- ============================================================
@@ -12,9 +12,9 @@ SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 1: LOCATION HIERARCHY [FIX-7]
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
 CREATE TABLE Location (
     location_id         BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -39,12 +39,12 @@ CREATE INDEX IX_Location_Parent   ON Location(parent_location_id);
 CREATE INDEX IX_Location_TypeName ON Location(location_type, location_name);
 GO
 
-PRINT '  ✅ Location';
+PRINT '  OK Location';
 GO
 
--- ████████████████████████████████████████████████████████
--- DOMAIN 2: HOTEL CHAIN → BRAND → HOTEL
--- ████████████████████████████████████████████████████████
+-- ============================================================
+-- DOMAIN 2: HOTEL CHAIN -> BRAND -> HOTEL
+-- ============================================================
 
 CREATE TABLE HotelChain (
     chain_id                    BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -66,7 +66,7 @@ CREATE TABLE HotelChain (
 );
 GO
 
-PRINT '  ✅ HotelChain';
+PRINT '  OK HotelChain';
 GO
 
 CREATE TABLE Brand (
@@ -87,7 +87,7 @@ CREATE TABLE Brand (
 );
 GO
 
-PRINT '  ✅ Brand';
+PRINT '  OK Brand';
 GO
 
 CREATE TABLE Hotel (
@@ -128,12 +128,12 @@ CREATE TABLE Hotel (
 );
 GO
 
-PRINT '  ✅ Hotel';
+PRINT '  OK Hotel';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 3: HOTEL POLICIES & AMENITIES
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
 CREATE TABLE HotelPolicy (
     policy_id                   BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -160,14 +160,14 @@ CREATE TABLE HotelPolicy (
 );
 GO
 
-PRINT '  ✅ HotelPolicy';
+PRINT '  OK HotelPolicy';
 GO
 
--- [FIX-1] Xóa currency_code, [FIX-5] Xóa amenity_name/category → MongoDB
+-- [FIX-1] Removed currency_code, [FIX-5] moved amenity_name/category to MongoDB
 CREATE TABLE HotelAmenity (
     hotel_amenity_id    BIGINT IDENTITY(1,1) PRIMARY KEY,
     hotel_id            BIGINT          NOT NULL,
-    amenity_code        VARCHAR(50)     NOT NULL, -- Link key → MongoDB amenity_master
+    amenity_code        VARCHAR(50)     NOT NULL, -- Link key -> MongoDB amenity_master
     is_complimentary    BIT             NOT NULL DEFAULT 1,
     is_chargeable       BIT             NOT NULL DEFAULT 0,
     base_fee            DECIMAL(18,2)   NULL,
@@ -182,18 +182,18 @@ CREATE TABLE HotelAmenity (
 );
 GO
 
-PRINT '  ✅ HotelAmenity';
+PRINT '  OK HotelAmenity';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 4: ROOM MANAGEMENT
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
--- [FIX-6] Xóa base_description, boolean features → MongoDB room_type_catalog
+-- [FIX-6] Removed base_description and boolean features -> MongoDB room_type_catalog
 CREATE TABLE RoomType (
     room_type_id    BIGINT IDENTITY(1,1) PRIMARY KEY,
     hotel_id        BIGINT          NOT NULL,
-    room_type_code  VARCHAR(50)     NOT NULL, -- Link key → MongoDB room_type_catalog
+    room_type_code  VARCHAR(50)     NOT NULL, -- Link key -> MongoDB room_type_catalog
     room_type_name  NVARCHAR(150)   NOT NULL,
     category        VARCHAR(25)     NOT NULL,
     bed_type        VARCHAR(15)     NOT NULL,
@@ -216,7 +216,7 @@ CREATE TABLE RoomType (
 );
 GO
 
-PRINT '  ✅ RoomType';
+PRINT '  OK RoomType';
 GO
 
 CREATE TABLE Room (
@@ -248,7 +248,7 @@ CREATE TABLE Room (
 );
 GO
 
-PRINT '  ✅ Room';
+PRINT '  OK Room';
 GO
 
 -- [FIX-8] CHECK constraint: at least 1 FK must be NOT NULL
@@ -269,10 +269,10 @@ CREATE TABLE RoomFeature (
 );
 GO
 
-PRINT '  ✅ RoomFeature';
+PRINT '  OK RoomFeature';
 GO
 
--- Critical inventory table — supports pessimistic locking
+-- Critical inventory table - supports pessimistic locking
 CREATE TABLE RoomAvailability (
     availability_id     BIGINT IDENTITY(1,1) PRIMARY KEY,
     hotel_id            BIGINT          NOT NULL, -- Denormalized for performance
@@ -300,12 +300,12 @@ CREATE INDEX IX_RoomAvail_HotelDate   ON RoomAvailability(hotel_id, stay_date);
 CREATE INDEX IX_RoomAvail_HotelStatus ON RoomAvailability(hotel_id, availability_status, stay_date);
 GO
 
-PRINT '  ✅ RoomAvailability';
+PRINT '  OK RoomAvailability';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 5: GUEST MANAGEMENT
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
 -- [FIX-4] full_name = Computed Column (PERSISTED)
 CREATE TABLE Guest (
@@ -346,7 +346,7 @@ CREATE INDEX IX_Guest_Email ON Guest(email);
 CREATE INDEX IX_Guest_Phone ON Guest(phone_country_code, phone_number);
 GO
 
-PRINT '  ✅ Guest';
+PRINT '  OK Guest';
 GO
 
 CREATE TABLE GuestAddress (
@@ -368,7 +368,7 @@ CREATE TABLE GuestAddress (
 );
 GO
 
-PRINT '  ✅ GuestAddress';
+PRINT '  OK GuestAddress';
 GO
 
 CREATE TABLE GuestPreference (
@@ -390,7 +390,7 @@ CREATE TABLE GuestPreference (
 CREATE INDEX IX_GuestPref_Type ON GuestPreference(guest_id, preference_type);
 GO
 
-PRINT '  ✅ GuestPreference';
+PRINT '  OK GuestPreference';
 GO
 
 CREATE TABLE LoyaltyAccount (
@@ -416,7 +416,7 @@ CREATE TABLE LoyaltyAccount (
 );
 GO
 
-PRINT '  ✅ LoyaltyAccount';
+PRINT '  OK LoyaltyAccount';
 GO
 
 CREATE TABLE GuestAuth (
@@ -438,12 +438,12 @@ CREATE TABLE GuestAuth (
 CREATE INDEX IX_GuestAuth_LoginEmail ON GuestAuth(login_email);
 GO
 
-PRINT '  ✅ GuestAuth';
+PRINT '  OK GuestAuth';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 6: SYSTEM USERS & ROLES
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
 CREATE TABLE SystemUser (
     user_id         BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -467,7 +467,7 @@ CREATE TABLE SystemUser (
 );
 GO
 
-PRINT '  ✅ SystemUser';
+PRINT '  OK SystemUser';
 GO
 
 CREATE TABLE Role (
@@ -481,7 +481,7 @@ CREATE TABLE Role (
 );
 GO
 
-PRINT '  ✅ Role';
+PRINT '  OK Role';
 GO
 
 CREATE TABLE UserRole (
@@ -498,12 +498,12 @@ CREATE TABLE UserRole (
 );
 GO
 
-PRINT '  ✅ UserRole';
+PRINT '  OK UserRole';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 7: RATE & PRICING
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
 CREATE TABLE RatePlan (
     rate_plan_id            BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -532,10 +532,10 @@ CREATE TABLE RatePlan (
 );
 GO
 
-PRINT '  ✅ RatePlan';
+PRINT '  OK RatePlan';
 GO
 
--- [FIX-1] Xóa currency_code → JOIN Hotel.currency_code
+-- [FIX-1] Removed currency_code -> JOIN Hotel.currency_code
 CREATE TABLE RoomRate (
     room_rate_id            BIGINT IDENTITY(1,1) PRIMARY KEY,
     hotel_id                BIGINT          NOT NULL,
@@ -567,10 +567,10 @@ CREATE TABLE RoomRate (
 CREATE INDEX IX_RoomRate_HotelDate ON RoomRate(hotel_id, rate_date);
 GO
 
-PRINT '  ✅ RoomRate';
+PRINT '  OK RoomRate';
 GO
 
--- [FIX-2] Xóa hotel_id, room_type_id, rate_plan_id → JOIN from RoomRate
+-- [FIX-2] Removed hotel_id, room_type_id, rate_plan_id -> JOIN from RoomRate
 CREATE TABLE RateChangeLog (
     rate_change_log_id  BIGINT IDENTITY(1,1) PRIMARY KEY,
     room_rate_id        BIGINT          NOT NULL,
@@ -592,7 +592,7 @@ CREATE TABLE RateChangeLog (
 CREATE INDEX IX_RCL_RateTime ON RateChangeLog(room_rate_id, triggered_at);
 GO
 
-PRINT '  ✅ RateChangeLog';
+PRINT '  OK RateChangeLog';
 GO
 
 CREATE TABLE Promotion (
@@ -603,7 +603,7 @@ CREATE TABLE Promotion (
     promotion_name  NVARCHAR(150)   NOT NULL,
     promotion_type  VARCHAR(50)     NOT NULL,
     discount_value  DECIMAL(18,2)   NOT NULL,
-    currency_code   CHAR(3)         NULL, -- Cross-hotel → keep own currency
+    currency_code   CHAR(3)         NULL, -- Cross-hotel -> keep own currency
     applies_to      VARCHAR(30)     NOT NULL,
     booking_start_date DATE         NOT NULL,
     booking_end_date   DATE         NOT NULL,
@@ -622,12 +622,12 @@ CREATE TABLE Promotion (
 );
 GO
 
-PRINT '  ✅ Promotion';
+PRINT '  OK Promotion';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 8: BOOKING & RESERVATION
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
 CREATE TABLE BookingChannel (
     booking_channel_id  BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -646,10 +646,10 @@ CREATE TABLE BookingChannel (
 );
 GO
 
-PRINT '  ✅ BookingChannel';
+PRINT '  OK BookingChannel';
 GO
 
--- [FIX-3] Financial fields kept for backward compat — use vw_ReservationTotal instead
+-- [FIX-3] Financial fields kept for backward compat - use vw_ReservationTotal instead
 CREATE TABLE Reservation (
     reservation_id          BIGINT IDENTITY(1,1) PRIMARY KEY,
     reservation_code        VARCHAR(50)     NOT NULL,
@@ -696,7 +696,7 @@ CREATE INDEX IX_Resv_GuestDate      ON Reservation(guest_id, booking_datetime);
 CREATE INDEX IX_Resv_HotelStatus    ON Reservation(hotel_id, reservation_status, checkin_date);
 GO
 
-PRINT '  ✅ Reservation';
+PRINT '  OK Reservation';
 GO
 
 CREATE TABLE ReservationRoom (
@@ -732,7 +732,7 @@ CREATE INDEX IX_ResvRoom_Room       ON ReservationRoom(room_id, stay_start_date,
 CREATE INDEX IX_ResvRoom_RoomType   ON ReservationRoom(room_type_id, stay_start_date, stay_end_date);
 GO
 
-PRINT '  ✅ ReservationRoom';
+PRINT '  OK ReservationRoom';
 GO
 
 CREATE TABLE ReservationGuest (
@@ -754,7 +754,7 @@ CREATE TABLE ReservationGuest (
 );
 GO
 
-PRINT '  ✅ ReservationGuest';
+PRINT '  OK ReservationGuest';
 GO
 
 CREATE TABLE ReservationStatusHistory (
@@ -772,12 +772,12 @@ CREATE TABLE ReservationStatusHistory (
 CREATE INDEX IX_ResvHist_ResvTime ON ReservationStatusHistory(reservation_id, changed_at);
 GO
 
-PRINT '  ✅ ReservationStatusHistory';
+PRINT '  OK ReservationStatusHistory';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 9: PAYMENT & INVOICE
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
 CREATE TABLE Payment (
     payment_id              BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -804,7 +804,7 @@ CREATE TABLE Payment (
 CREATE INDEX IX_Payment_ResvStatus ON Payment(reservation_id, payment_status);
 GO
 
-PRINT '  ✅ Payment';
+PRINT '  OK Payment';
 GO
 
 CREATE TABLE PaymentCardToken (
@@ -828,7 +828,7 @@ CREATE TABLE PaymentCardToken (
 );
 GO
 
-PRINT '  ✅ PaymentCardToken';
+PRINT '  OK PaymentCardToken';
 GO
 
 CREATE TABLE Invoice (
@@ -855,14 +855,14 @@ CREATE TABLE Invoice (
 );
 GO
 
-PRINT '  ✅ Invoice';
+PRINT '  OK Invoice';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 10: SERVICES & STAY
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
--- [FIX-1] Xóa currency_code → JOIN Hotel.currency_code
+-- [FIX-1] Removed currency_code -> JOIN Hotel.currency_code
 CREATE TABLE ServiceCatalog (
     service_id              BIGINT IDENTITY(1,1) PRIMARY KEY,
     hotel_id                BIGINT          NOT NULL,
@@ -884,7 +884,7 @@ CREATE TABLE ServiceCatalog (
 );
 GO
 
-PRINT '  ✅ ServiceCatalog';
+PRINT '  OK ServiceCatalog';
 GO
 
 CREATE TABLE ReservationService (
@@ -909,7 +909,7 @@ CREATE TABLE ReservationService (
 );
 GO
 
-PRINT '  ✅ ReservationService';
+PRINT '  OK ReservationService';
 GO
 
 CREATE TABLE StayRecord (
@@ -931,12 +931,12 @@ CREATE TABLE StayRecord (
 );
 GO
 
-PRINT '  ✅ StayRecord';
+PRINT '  OK StayRecord';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 11: OPERATIONS
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
 CREATE TABLE HousekeepingTask (
     hk_task_id          BIGINT IDENTITY(1,1) PRIMARY KEY,
@@ -964,7 +964,7 @@ CREATE INDEX IX_HK_HotelStatus ON HousekeepingTask(hotel_id, task_status, schedu
 CREATE INDEX IX_HK_RoomStatus  ON HousekeepingTask(room_id, task_status);
 GO
 
-PRINT '  ✅ HousekeepingTask';
+PRINT '  OK HousekeepingTask';
 GO
 
 CREATE TABLE MaintenanceTicket (
@@ -992,14 +992,14 @@ CREATE TABLE MaintenanceTicket (
 );
 GO
 
-PRINT '  ✅ MaintenanceTicket';
+PRINT '  OK MaintenanceTicket';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- DOMAIN 12: AUDIT & LOCK LOGGING
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
--- [FIX-2] Xóa hotel_id → JOIN Room.hotel_id
+-- [FIX-2] Removed hotel_id -> JOIN Room.hotel_id
 CREATE TABLE InventoryLockLog (
     lock_log_id                 BIGINT IDENTITY(1,1) PRIMARY KEY,
     reservation_code_attempt    VARCHAR(50)     NULL,
@@ -1018,7 +1018,7 @@ CREATE TABLE InventoryLockLog (
 CREATE INDEX IX_LockLog_RoomDate ON InventoryLockLog(room_id, stay_date);
 GO
 
-PRINT '  ✅ InventoryLockLog';
+PRINT '  OK InventoryLockLog';
 GO
 
 CREATE TABLE AuditLog (
@@ -1037,15 +1037,15 @@ CREATE TABLE AuditLog (
 );
 GO
 
-PRINT '  ✅ AuditLog';
+PRINT '  OK AuditLog';
 GO
 
--- ████████████████████████████████████████████████████████
+-- ============================================================
 -- SUMMARY
--- ████████████████████████████████████████████████████████
+-- ============================================================
 
 PRINT '';
-PRINT '══════════════════════════════════════════';
-PRINT '  ✅ ALL 30 TABLES CREATED SUCCESSFULLY';
-PRINT '══════════════════════════════════════════';
+PRINT '==========================================';
+PRINT '  OK ALL 30 TABLES CREATED SUCCESSFULLY';
+PRINT '==========================================';
 GO

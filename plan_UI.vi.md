@@ -1,179 +1,179 @@
-# Kế Hoạch Làm Lại UI Dựa Trên Cấu Trúc Booking.com
+# Ke Hoach Lam Lai UI Dua Tren Cau Truc Booking.com
 
-## 1. Lý Do Reset UI
+## 1. Ly Do Reset UI
 
-Frontend hiện tại không nên được xem là nền tảng cho các bước tiếp theo.
+Frontend hien tai khong nen uoc xem la nen tang cho cac buoc tiep theo.
 
-Lý do:
+Ly do:
 
-- Frontend được làm quá sớm, trước khi luồng booking public cốt lõi được chốt.
-- Nhiều màn hình đang giống công cụ thao tác hơn là hành trình sản phẩm dành cho người dùng thật.
-- Guest flow, loyalty flow, reservation self-service và admin operations đã bị trộn vào nhau quá sớm.
-- Quyết định về layout và navigation được làm trước khi page architecture được khóa đúng.
-- Lượt làm frontend tiếp theo cần bắt đầu từ business flow trước, không phải từ component tree hiện tại.
+- Frontend uoc lam qua som, truoc khi luong booking public cot loi uoc chot.
+- Nhieu man hinh ang giong cong cu thao tac hon la hanh trinh san pham danh cho nguoi dung that.
+- Guest flow, loyalty flow, reservation self-service va admin operations a bi tron vao nhau qua som.
+- Quyet inh ve layout va navigation uoc lam truoc khi page architecture uoc khoa ung.
+- Luot lam frontend tiep theo can bat au tu business flow truoc, khong phai tu component tree hien tai.
 
-Tài liệu này là source of truth mới để làm lại frontend từ đầu.
+Tai lieu nay la source of truth moi e lam lai frontend tu au.
 
-Frontend cũ không còn là baseline.
+Frontend cu khong con la baseline.
 
-## 2. Phạm Vi Sản Phẩm Cho Nền Tảng Chỉ Tập Trung Vào Khách Sạn
+## 2. Pham Vi San Pham Cho Nen Tang Chi Tap Trung Vao Khach San
 
-Sản phẩm được làm lại là một website đặt phòng cho chuỗi khách sạn, không phải travel super-app.
+San pham uoc lam lai la mot website at phong cho chuoi khach san, khong phai travel super-app.
 
-Trong phạm vi:
+Trong pham vi:
 
-- tìm kiếm destination nơi chuỗi có khách sạn
-- so sánh các khách sạn trong chuỗi
-- mở trang chi tiết khách sạn trước khi booking
-- hoàn tất booking dưới dạng anonymous hoặc guest loyalty đã đăng nhập
-- tra cứu reservation và self-service cho guest
-- các phần cơ bản của guest account
-- admin portal riêng cho vận hành
+- tim kiem destination noi chuoi co khach san
+- so sanh cac khach san trong chuoi
+- mo trang chi tiet khach san truoc khi booking
+- hoan tat booking duoi dang anonymous hoac guest loyalty a ang nhap
+- tra cuu reservation va self-service cho guest
+- cac phan co ban cua guest account
+- admin portal rieng cho van hanh
 
-Ngoài phạm vi:
+Ngoai pham vi:
 
 - flights
 - flight + hotel
 - car rental
 - attractions
 - airport taxi
-- review ecosystem kiểu marketplace quy mô lớn
-- danh sách property bên thứ ba quy mô lớn
-- smart filters sâu mà backend chưa hỗ trợ thật
-- wallet, đổi thưởng, hoặc voucher marketplace trong v1
+- review ecosystem kieu marketplace quy mo lon
+- danh sach property ben thu ba quy mo lon
+- smart filters sau ma backend chua ho tro that
+- wallet, oi thuong, hoac voucher marketplace trong v1
 
-## 3. Các Pattern Tham Chiếu Từ Booking.com
+## 3. Cac Pattern Tham Chieu Tu Booking.com
 
-Các ảnh chụp Booking.com trong folder [hotel](C:\Users\cbzer\Downloads\HCSDLNC\hotel) chỉ được dùng làm tham chiếu về cấu trúc.
+Cac anh chup Booking.com trong folder [hotel](C:\Users\cbzer\Downloads\HCSDLNC\hotel) chi uoc dung lam tham chieu ve cau truc.
 
-Những gì nên áp dụng:
+Nhung gi nen ap dung:
 
-- homepage có search bar lớn nằm above the fold
+- homepage co search bar lon nam above the fold
 - destination-first search
-- search results là một trang riêng
-- sidebar filters bên trái ở trang search results
-- hàng sort nằm phía trên hotel cards
-- khái niệm list/grid results
-- có trang hotel detail trước khi booking
-- trang booking kiểu checkout với summary sidebar bên phải hoặc bên trái
-- account area tách khỏi public browsing
+- search results la mot trang rieng
+- sidebar filters ben trai o trang search results
+- hang sort nam phia tren hotel cards
+- khai niem list/grid results
+- co trang hotel detail truoc khi booking
+- trang booking kieu checkout voi summary sidebar ben phai hoac ben trai
+- account area tach khoi public browsing
 
-Những gì không nên áp dụng:
+Nhung gi khong nen ap dung:
 
-- branding, hệ màu, hoặc clone toàn bộ giao diện Booking.com
-- các tab flights, taxis, attractions, rental cars
-- độ phức tạp kiểu marketplace dựa mạnh vào review
-- các filter cần dữ liệu mà backend hiện không có
+- branding, he mau, hoac clone toan bo giao dien Booking.com
+- cac tab flights, taxis, attractions, rental cars
+- o phuc tap kieu marketplace dua manh vao review
+- cac filter can du lieu ma backend hien khong co
 
-Định hướng visual:
+inh huong visual:
 
-- dùng Booking.com làm chuẩn về information hierarchy và page order
-- giữ LuxeReserve là identity của sản phẩm
-- visual polish đứng sau workflow correctness trong lượt rebuild này
+- dung Booking.com lam chuan ve information hierarchy va page order
+- giu LuxeReserve la identity cua san pham
+- visual polish ung sau workflow correctness trong luot rebuild nay
 
-## 4. Kiến Trúc Trang
+## 4. Kien Truc Trang
 
-Lượt rebuild nên dùng route map sau:
+Luot rebuild nen dung route map sau:
 
 - `/`
   - public homepage
 - `/search`
   - trang search results theo destination
 - `/hotel/:id`
-  - trang chi tiết khách sạn
+  - trang chi tiet khach san
 - `/booking/:hotelId`
-  - điểm vào luồng booking cho khách sạn đã chọn
+  - iem vao luong booking cho khach san a chon
 - `/booking/:hotelId/:roomId`
-  - luồng booking cho room option đã chọn
+  - luong booking cho room option a chon
 - `/reservation`
-  - guest reservation lookup và self-service
+  - guest reservation lookup va self-service
 - `/login`
   - guest login
 - `/register`
   - guest registration
 - `/account`
-  - trang tổng quan tài khoản guest
+  - trang tong quan tai khoan guest
 - `/admin/login`
   - admin login
 - `/admin/*`
   - admin operational portal
 
-Các route này sẽ thay thế mô hình trang bị trộn lẫn trước đó.
+Cac route nay se thay the mo hinh trang bi tron lan truoc o.
 
-## 5. Các Hành Trình Người Dùng Cốt Lõi
+## 5. Cac Hanh Trinh Nguoi Dung Cot Loi
 
-### 5.1 Hành Trình Anonymous Guest
+### 5.1 Hanh Trinh Anonymous Guest
 
-Luồng:
+Luong:
 
-1. Mở homepage
-2. Nhập destination, ngày ở và số guest tại hero search bar
-3. Chuyển sang `/search`
-4. So sánh các khách sạn trong chuỗi tại destination đó
-5. Mở `/hotel/:id`
-6. Xem nội dung khách sạn, amenities, room options và promotions
-7. Chọn phòng và chuyển sang booking
-8. Nhập guest details thủ công
-9. Xác nhận booking và payment details
-10. Đi tới reservation confirmation và sau đó dùng `/reservation` để tra cứu
+1. Mo homepage
+2. Nhap destination, ngay o va so guest tai hero search bar
+3. Chuyen sang `/search`
+4. So sanh cac khach san trong chuoi tai destination o
+5. Mo `/hotel/:id`
+6. Xem noi dung khach san, amenities, room options va promotions
+7. Chon phong va chuyen sang booking
+8. Nhap guest details thu cong
+9. Xac nhan booking va payment details
+10. i toi reservation confirmation va sau o dung `/reservation` e tra cuu
 
-Quy tắc:
+Quy tac:
 
-- anonymous user phải có thể booking mà không cần tạo tài khoản
-- anonymous user không được thấy các giả định chỉ dành cho account trong form booking
-- hotel comparison phải diễn ra trước room selection
+- anonymous user phai co the booking ma khong can tao tai khoan
+- anonymous user khong uoc thay cac gia inh chi danh cho account trong form booking
+- hotel comparison phai dien ra truoc room selection
 
-### 5.2 Hành Trình Loyalty Guest
+### 5.2 Hanh Trinh Loyalty Guest
 
-Luồng:
+Luong:
 
-1. Guest đăng nhập qua `/login`
-2. Search và browse giống anonymous flow
-3. Form booking được prefill từ guest profile
-4. Member context được hiển thị trong quá trình booking
-5. Có thể hiển thị member-only promotions nếu áp dụng
-6. Reservation sẽ được xem lại ở `/account` và `/reservation`
+1. Guest ang nhap qua `/login`
+2. Search va browse giong anonymous flow
+3. Form booking uoc prefill tu guest profile
+4. Member context uoc hien thi trong qua trinh booking
+5. Co the hien thi member-only promotions neu ap dung
+6. Reservation se uoc xem lai o `/account` va `/reservation`
 
-Quy tắc:
+Quy tac:
 
-- loyalty là phần tăng cường cho booking, không phải một mô hình booking riêng
-- phạm vi loyalty v1 chỉ gồm profile + status + offers
-- không có đổi điểm hay wallet trong v1
+- loyalty la phan tang cuong cho booking, khong phai mot mo hinh booking rieng
+- pham vi loyalty v1 chi gom profile + status + offers
+- khong co oi iem hay wallet trong v1
 
 ### 5.3 Guest Reservation Self-Service
 
-`/reservation` chỉ nên là trang dành cho guest.
+`/reservation` chi nen la trang danh cho guest.
 
-Được phép:
+uoc phep:
 
-- tra cứu bằng reservation code
+- tra cuu bang reservation code
 - reservation summary
 - payment summary
-- guest-facing payment actions nếu được bật
-- guest cancellation nếu backend rule cho phép
-- timeline/trạng thái chỉ đọc
+- guest-facing payment actions neu uoc bat
+- guest cancellation neu backend rule cho phep
+- timeline/trang thai chi oc
 
-Không được phép:
+Khong uoc phep:
 
 - check-in
 - check-out
 - issue invoice
 - service operations
-- housekeeping hoặc maintenance actions
-- các workflow vận hành phía khách sạn
+- housekeeping hoac maintenance actions
+- cac workflow van hanh phia khach san
 
-### 5.4 Hành Trình Admin
+### 5.4 Hanh Trinh Admin
 
-Admin phải là một khu sản phẩm riêng.
+Admin phai la mot khu san pham rieng.
 
-Luồng:
+Luong:
 
-1. Đăng nhập qua `/admin/login`
-2. Vào admin portal
-3. Truy cập các công cụ front desk, inventory và operations
-4. Quản lý lifecycle reservation và các hoạt động vận hành phía khách sạn
+1. ang nhap qua `/admin/login`
+2. Vao admin portal
+3. Truy cap cac cong cu front desk, inventory va operations
+4. Quan ly lifecycle reservation va cac hoat ong van hanh phia khach san
 
-Admin sở hữu:
+Admin so huu:
 
 - reservation operations
 - check-in
@@ -181,43 +181,43 @@ Admin sở hữu:
 - hotel cancellation
 - inventory management
 - issue invoice
-- housekeeping và maintenance views
-- operational feeds và reporting
+- housekeeping va maintenance views
+- operational feeds va reporting
 
-Public guest pages tuyệt đối không được lộ admin actions.
+Public guest pages tuyet oi khong uoc lo admin actions.
 
-## 6. Hành Vi Cụ Thể Theo Từng Trang
+## 6. Hanh Vi Cu The Theo Tung Trang
 
 ### 6.1 Homepage `/`
 
-Các section của homepage:
+Cac section cua homepage:
 
-- header có brand và auth entry points
-- hero banner với search bar chính
+- header co brand va auth entry points
+- hero banner voi search bar chinh
 - curated hot destinations
-- featured hotels hoặc promotions
+- featured hotels hoac promotions
 - trust/value section
 - footer
 
-Các field của hero search bar:
+Cac field cua hero search bar:
 
 - destination
 - check-in / check-out
 - guests
 - search button
 
-Homepage không được chứa:
+Homepage khong uoc chua:
 
 - booking steps
 - room cards
 - admin workflow shortcuts
-- các operational widget lớn
+- cac operational widget lon
 
 ### 6.2 Search Results `/search`
 
-Mục tiêu:
+Muc tieu:
 
-- so sánh các khách sạn trong destination đã chọn trước khi vào trang hotel detail
+- so sanh cac khach san trong destination a chon truoc khi vao trang hotel detail
 
 Layout:
 
@@ -225,22 +225,22 @@ Layout:
 - top sort row
 - optional map placeholder area
 - left filter sidebar
-- right result list hoặc grid
+- right result list hoac grid
 
-Result cards nên hiển thị:
+Result cards nen hien thi:
 
-- tên khách sạn
+- ten khach san
 - location summary
 - star rating
 - brand
 - chain
-- giá khởi điểm nếu có
-- một vài highlights hoặc amenity cues
-- CTA để mở hotel detail
+- gia khoi iem neu co
+- mot vai highlights hoac amenity cues
+- CTA e mo hotel detail
 
-Search results phải so sánh hotel trước, không phải các room variant riêng lẻ.
+Search results phai so sanh hotel truoc, khong phai cac room variant rieng le.
 
-Các filter được phép trong v1:
+Cac filter uoc phep trong v1:
 
 - budget per night
 - district / area
@@ -248,45 +248,45 @@ Các filter được phép trong v1:
 - hotel type
 - star rating
 
-Các filter để sau:
+Cac filter e sau:
 
-- smart filters bằng ngôn ngữ tự nhiên
-- review-score filters nếu chưa có dữ liệu thật
+- smart filters bang ngon ngu tu nhien
+- review-score filters neu chua co du lieu that
 - landmark distance filters
 - accessibility filters
 - pet-friendly filters
-- breakfast-specific filters nếu backend chưa có dữ liệu thật
-- các cụm checkbox dày đặc kiểu Booking.com marketplace
+- breakfast-specific filters neu backend chua co du lieu that
+- cac cum checkbox day ac kieu Booking.com marketplace
 
 ### 6.3 Hotel Detail `/hotel/:id`
 
-Trang này bắt buộc phải tồn tại trước bước booking.
+Trang nay bat buoc phai ton tai truoc buoc booking.
 
-Các section:
+Cac section:
 
 - image gallery
-- hotel title và location summary
-- address và map summary
+- hotel title va location summary
+- address va map summary
 - overview / description
 - amenities
 - room options
 - active promotions
 - primary reserve CTA
 
-Room options là cầu nối từ bước xem khách sạn sang bước booking.
+Room options la cau noi tu buoc xem khach san sang buoc booking.
 
-Hành vi của reserve CTA:
+Hanh vi cua reserve CTA:
 
-- chọn phòng sẽ mở `/booking/:hotelId/:roomId`
-- nếu chưa chọn phòng, trang hotel cần dẫn người dùng chọn phòng trước
+- chon phong se mo `/booking/:hotelId/:roomId`
+- neu chua chon phong, trang hotel can dan nguoi dung chon phong truoc
 
-### 6.4 Booking `/booking/:hotelId` hoặc `/booking/:hotelId/:roomId`
+### 6.4 Booking `/booking/:hotelId` hoac `/booking/:hotelId/:roomId`
 
-Trang này phải hoạt động như một checkout flow, không phải search.
+Trang nay phai hoat ong nhu mot checkout flow, khong phai search.
 
-Các bước booking:
+Cac buoc booking:
 
-1. selected hotel và room summary
+1. selected hotel va room summary
 2. guest details
 3. payment / confirmation
 
@@ -295,7 +295,7 @@ Layout:
 - main form area
 - summary sidebar
 
-Summary sidebar nên gồm:
+Summary sidebar nen gom:
 
 - hotel
 - stay dates
@@ -304,60 +304,60 @@ Summary sidebar nên gồm:
 - pricing summary
 - guarantee/payment summary
 
-Quy tắc:
+Quy tac:
 
-- anonymous guest nhập thông tin thủ công
-- guest đã đăng nhập được autofill và có loyalty context
-- trang booking không được chứa admin hay service operations
-- hotel comparison và room discovery phải hoàn thành trước khi vào trang này
+- anonymous guest nhap thong tin thu cong
+- guest a ang nhap uoc autofill va co loyalty context
+- trang booking khong uoc chua admin hay service operations
+- hotel comparison va room discovery phai hoan thanh truoc khi vao trang nay
 
 ### 6.5 Account `/account`
 
-Đây là guest account area cơ bản.
+ay la guest account area co ban.
 
-Các section:
+Cac section:
 
 - profile basics
 - account identity
 - upcoming stays
 - reservation history
-- loyalty summary nếu có
+- loyalty summary neu co
 
-Không làm trong v1:
+Khong lam trong v1:
 
 - wallet
 - reward redemption
 - voucher center
-- preference center quá phức tạp
+- preference center qua phuc tap
 
 ### 6.6 Admin `/admin/*`
 
-Admin vẫn phải tách hoàn toàn khỏi guest/public journey.
+Admin van phai tach hoan toan khoi guest/public journey.
 
-Các nhóm trang admin:
+Cac nhom trang admin:
 
 - front desk
 - inventory
 - operations
 - reports
 
-Khu vực này không được chia sẻ workflow assumptions với public pages.
+Khu vuc nay khong uoc chia se workflow assumptions voi public pages.
 
-## 7. Các Giai Đoạn Rebuild
+## 7. Cac Giai oan Rebuild
 
-Việc rebuild phải diễn ra theo đúng thứ tự sau:
+Viec rebuild phai dien ra theo ung thu tu sau:
 
 ### Phase 1: Architecture And Routing
 
 - finalize page map
-- tạo global shell
-- tách public routes, account routes và admin routes
-- định nghĩa auth entry points
+- tao global shell
+- tach public routes, account routes va admin routes
+- inh nghia auth entry points
 
 ### Phase 2: Homepage
 
-- build header và footer
-- build hero banner và destination search
+- build header va footer
+- build hero banner va destination search
 - build hot destination cards
 - build featured properties/promotions section
 - build trust/value section
@@ -366,52 +366,52 @@ Việc rebuild phải diễn ra theo đúng thứ tự sau:
 
 - build `/search`
 - implement destination-driven hotel comparison
-- chỉ implement allowed filters
-- thêm sort row
-- thêm result list/grid mode nếu cần
-- thêm optional map placeholder block
+- chi implement allowed filters
+- them sort row
+- them result list/grid mode neu can
+- them optional map placeholder block
 
 ### Phase 4: Hotel Detail
 
 - build `/hotel/:id`
-- thêm gallery, overview, amenities, room options và promotions
-- nối reserve CTA sang booking flow
+- them gallery, overview, amenities, room options va promotions
+- noi reserve CTA sang booking flow
 
 ### Phase 5: Booking Flow
 
 - build checkout-style booking page
-- hỗ trợ anonymous booking
-- hỗ trợ loyalty autofill cho guest đã đăng nhập
+- ho tro anonymous booking
+- ho tro loyalty autofill cho guest a ang nhap
 - build summary sidebar
-- chốt confirmation state
+- chot confirmation state
 
 ### Phase 6: Reservation Self-Service
 
 - build guest lookup page
-- thêm summary, timeline, payment summary và guest actions
-- giữ admin actions ra ngoài
+- them summary, timeline, payment summary va guest actions
+- giu admin actions ra ngoai
 
 ### Phase 7: Account
 
 - build guest account shell
-- thêm profile summary, upcoming stays, history và loyalty snapshot
+- them profile summary, upcoming stays, history va loyalty snapshot
 
 ### Phase 8: Admin
 
-- build admin login riêng
-- rebuild admin portal độc lập với public flow
+- build admin login rieng
+- rebuild admin portal oc lap voi public flow
 
 ### Phase 9: Polish
 
 - refine responsive behavior
 - improve visual system
-- improve consistency và accessibility
+- improve consistency va accessibility
 
-Không được bắt đầu visual polish nâng cao trước khi Phase 1 đến Phase 6 đúng cấu trúc.
+Khong uoc bat au visual polish nang cao truoc khi Phase 1 en Phase 6 ung cau truc.
 
-## 8. Mapping Với Backend
+## 8. Mapping Voi Backend
 
-Frontend mới nên dùng backend hiện tại làm nền tảng triển khai.
+Frontend moi nen dung backend hien tai lam nen tang trien khai.
 
 ### Homepage / Search / Hotel Detail
 
@@ -437,25 +437,25 @@ Frontend mới nên dùng backend hiện tại làm nền tảng triển khai.
 
 - `/api/admin/*`
 
-Quy tắc quan trọng:
+Quy tac quan trong:
 
-- filters, widgets và comparisons chỉ được dựa trên các field thật sự có trong backend response
-- UI không được tự bịa ra các marketplace-style features mà backend không hỗ trợ đúng bản chất
+- filters, widgets va comparisons chi uoc dua tren cac field that su co trong backend response
+- UI khong uoc tu bia ra cac marketplace-style features ma backend khong ho tro ung ban chat
 
-## 9. Chiến Lược Tận Dụng Endpoint
+## 9. Chien Luoc Tan Dung Endpoint
 
-Backend hiện có nhiều endpoint hơn rất nhiều so với những gì UI lượt đầu cần dùng. Lượt rebuild này không nên cố “dùng hết” toàn bộ endpoint cùng lúc. Thay vào đó, mọi nhóm endpoint phải được phân loại rõ để frontend tận dụng backend một cách có chủ đích.
+Backend hien co nhieu endpoint hon rat nhieu so voi nhung gi UI luot au can dung. Luot rebuild nay khong nen co dung het toan bo endpoint cung luc. Thay vao o, moi nhom endpoint phai uoc phan loai ro e frontend tan dung backend mot cach co chu ich.
 
 ### 9.1 Endpoint Public V1
 
-Các endpoint sau nên được nối vào lượt rebuild public đầu tiên:
+Cac endpoint sau nen uoc noi vao luot rebuild public au tien:
 
 - hotels
   - `/api/hotels`
   - `/api/hotels/:id`
 - promotions
   - `/api/promotions`
-- search và inventory
+- search va inventory
   - `/api/rooms/availability`
   - `/api/locations`
   - `/api/locations/tree`
@@ -464,36 +464,36 @@ Các endpoint sau nên được nối vào lượt rebuild public đầu tiên:
   - `/api/auth/guest/register`
   - `/api/auth/guest/login`
   - `/api/auth/me`
-- booking và reservation
+- booking va reservation
   - `/api/reservations`
   - `/api/reservations/:code`
 - guest-facing payment
   - `/api/payments`
-  - `/api/payments?reservation_id=`
+  - `/api/payments->reservation_id=`
 - guest-facing cancellation
   - `/api/reservations/:id/guest-cancel`
 
 ### 9.2 Endpoint Cho Guest Account / Loyalty
 
-Các endpoint này thuộc về account area và trải nghiệm của guest đã đăng nhập:
+Cac endpoint nay thuoc ve account area va trai nghiem cua guest a ang nhap:
 
 - `/api/auth/me`
-- `/api/promotions?guest_id=`
+- `/api/promotions->guest_id=`
 - `/api/reservations/:code`
-- `/api/payments?reservation_id=`
+- `/api/payments->reservation_id=`
 
-Chúng nên phục vụ:
+Chung nen phuc vu:
 
 - profile context
 - loyalty display
 - member offers
-- reservation history hoặc upcoming stays khi account UI được làm
+- reservation history hoac upcoming stays khi account UI uoc lam
 
 ### 9.3 Endpoint Cho Admin Portal
 
-Các endpoint này phải được xem là first-class cho admin rebuild, kể cả khi public v1 chưa dùng:
+Cac endpoint nay phai uoc xem la first-class cho admin rebuild, ke ca khi public v1 chua dung:
 
-- admin pricing và revenue
+- admin pricing va revenue
   - `/api/admin/rates/:id`
   - `/api/admin/rates/alerts`
   - `/api/admin/reports/revenue`
@@ -522,67 +522,67 @@ Các endpoint này phải được xem là first-class cho admin rebuild, kể c
   - `/api/invoices/:id`
   - `/api/invoices/:id/issue`
 
-### 9.4 Endpoint Đã Có Nhưng Chưa Ưu Tiên Ở Lượt UI Đầu
+### 9.4 Endpoint a Co Nhung Chua Uu Tien O Luot UI au
 
-Các endpoint này tồn tại và cần được ghi nhận trong roadmap, nhưng không nên làm lệch hướng lượt rebuild đầu tiên:
+Cac endpoint nay ton tai va can uoc ghi nhan trong roadmap, nhung khong nen lam lech huong luot rebuild au tien:
 
 - `/api/guests`
 - `/api/guests/:id`
 - `POST /api/guests`
 
-Chúng hữu ích cho admin/data workflows, nhưng public UI mới không nên phụ thuộc vào guest list tổng để hoạt động.
+Chung huu ich cho admin/data workflows, nhung public UI moi khong nen phu thuoc vao guest list tong e hoat ong.
 
-### 9.5 Quy Tắc Về Coverage Của Endpoint
+### 9.5 Quy Tac Ve Coverage Cua Endpoint
 
-UI plan không nên hướng tới việc dùng toàn bộ endpoint của backend trong release đầu tiên.
+UI plan khong nen huong toi viec dung toan bo endpoint cua backend trong release au tien.
 
-Thay vào đó:
+Thay vao o:
 
-- mọi nhóm endpoint phải được ghi nhận
-- mỗi nhóm endpoint phải được gán vào một product surface rõ ràng
-- thứ gì chưa dùng ở v1 phải được defer có chủ đích, không được bỏ quên một cách im lặng
-- độ rộng của backend sẽ định hình roadmap dài hạn, chứ không làm quá tải lượt rebuild đầu tiên
+- moi nhom endpoint phai uoc ghi nhan
+- moi nhom endpoint phai uoc gan vao mot product surface ro rang
+- thu gi chua dung o v1 phai uoc defer co chu ich, khong uoc bo quen mot cach im lang
+- o rong cua backend se inh hinh roadmap dai han, chu khong lam qua tai luot rebuild au tien
 
-## 10. Các Tính Năng Để Sau / Không Thuộc V1
+## 10. Cac Tinh Nang e Sau / Khong Thuoc V1
 
-Các phần sau phải được hoãn rõ ràng:
+Cac phan sau phai uoc hoan ro rang:
 
 - flights
 - flight + hotel
 - taxi
 - attractions
 - car rental
-- wallet và đổi thưởng
-- smart filters nâng cao
-- review ecosystem quy mô lớn
-- landmark và neighborhood intelligence quy mô lớn
+- wallet va oi thuong
+- smart filters nang cao
+- review ecosystem quy mo lon
+- landmark va neighborhood intelligence quy mo lon
 - public invoice workflow
 - public service operations
-- admin tools bên trong guest pages
+- admin tools ben trong guest pages
 
-## 11. Tiêu Chí Hoàn Thành
+## 11. Tieu Chi Hoan Thanh
 
-`plan_UI.vi.md` được xem là hoàn chỉnh nếu một người implement mới có thể trả lời tất cả các câu sau mà không cần đoán:
+`plan_UI.vi.md` uoc xem la hoan chinh neu mot nguoi implement moi co the tra loi tat ca cac cau sau ma khong can oan:
 
-- các pattern nào từ Booking.com được dùng lại có chủ đích
-- các tính năng nào của Booking.com bị loại bỏ
-- homepage phải chứa những gì
-- trang `/search` chịu trách nhiệm cho phần nào
-- vì sao hotel detail bắt buộc phải tồn tại trước booking
-- anonymous booking hoạt động thế nào
-- loyalty booking khác gì so với anonymous
-- cái gì thuộc về `/reservation`
-- cái gì thuộc về `/account`
-- cái gì chỉ thuộc về `/admin`
-- những filter nào hợp lệ trong v1
-- những nhóm endpoint nào thuộc public v1, loyalty/account, admin, hoặc deferred use
-- những tính năng nào bị để sau
+- cac pattern nao tu Booking.com uoc dung lai co chu ich
+- cac tinh nang nao cua Booking.com bi loai bo
+- homepage phai chua nhung gi
+- trang `/search` chiu trach nhiem cho phan nao
+- vi sao hotel detail bat buoc phai ton tai truoc booking
+- anonymous booking hoat ong the nao
+- loyalty booking khac gi so voi anonymous
+- cai gi thuoc ve `/reservation`
+- cai gi thuoc ve `/account`
+- cai gi chi thuoc ve `/admin`
+- nhung filter nao hop le trong v1
+- nhung nhom endpoint nao thuoc public v1, loyalty/account, admin, hoac deferred use
+- nhung tinh nang nao bi e sau
 
-## 12. Các Rule Mặc Định Khi Build
+## 12. Cac Rule Mac inh Khi Build
 
-- workflow correctness quan trọng hơn visual polish
-- hotel comparison phải diễn ra trước booking
-- room choice diễn ra ở hotel detail, không phải homepage
-- booking là checkout-style, không phải search-style
-- admin tách hoàn toàn khỏi guest product flow
-- độ phức tạp của frontend bị giới hạn bởi backend truth
+- workflow correctness quan trong hon visual polish
+- hotel comparison phai dien ra truoc booking
+- room choice dien ra o hotel detail, khong phai homepage
+- booking la checkout-style, khong phai search-style
+- admin tach hoan toan khoi guest product flow
+- o phuc tap cua frontend bi gioi han boi backend truth

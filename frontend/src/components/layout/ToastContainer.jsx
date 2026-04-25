@@ -1,10 +1,10 @@
 import { useFlash } from '../../context/FlashContext';
 
 const ICONS = {
-  success: '✓',
-  error: '✕',
-  warning: '⚠',
-  info: 'ℹ',
+  success: '',
+  error: '',
+  warning: '',
+  info: 'i',
 };
 
 export default function ToastContainer() {
@@ -24,7 +24,7 @@ export default function ToastContainer() {
             aria-label="Dismiss"
             onClick={() => dismiss(t.id)}
           >
-            ×
+            
           </button>
         </div>
       ))}

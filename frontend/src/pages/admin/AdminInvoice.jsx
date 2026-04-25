@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
+import '../../styles/AdminInvoice.css';
 
 const STATUS_STYLE = {
   DRAFT:     { bg: '#f3f4f6', color: '#374151' },
@@ -10,7 +11,7 @@ const STATUS_STYLE = {
 };
 
 function fmt(dt) {
-  if (!dt) return '—';
+  if (!dt) return '';
   return new Date(dt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
 }
 function money(val, currency = 'USD') {
@@ -34,13 +35,13 @@ export default function AdminInvoice({ hotels }) {
   const [genBusy,      setGenBusy]      = useState(false);
   const [issueBusy,    setIssueBusy]    = useState(null); // invoice_id
 
-  // ── Load invoices by hotel (via all reservations) ──
+  //  Load invoices by hotel (via all reservations) 
   async function loadInvoices() {
     if (!hotelId) { setFlash({ tone: 'error', text: 'Select a hotel.' }); return; }
     setListBusy(true);
     try {
       const payload = await apiRequest('/invoices');
-      // Filter by hotel — backend returns all, we filter client-side by hotel_name match
+      // Filter by hotel  backend returns all, we filter client-side by hotel_name match
       // Or better: look up reservations for hotel then filter
       const hotelObj = hotels.find(h => String(h.hotel_id) === String(hotelId));
       const all = payload.data || [];
@@ -49,7 +50,7 @@ export default function AdminInvoice({ hotels }) {
     finally     { setListBusy(false); }
   }
 
-  // ── Lookup reservation by code ──
+  //  Lookup reservation by code 
   async function handleLookup(e) {
     e.preventDefault();
     if (!resvCode.trim()) return;
@@ -62,7 +63,7 @@ export default function AdminInvoice({ hotels }) {
     finally     { setLookupBusy(false); }
   }
 
-  // ── Generate invoice ──
+  //  Generate invoice 
   async function handleGenerate() {
     if (!lookupResult) return;
     setGenBusy(true);
@@ -79,7 +80,7 @@ export default function AdminInvoice({ hotels }) {
     finally     { setGenBusy(false); }
   }
 
-  // ── Issue invoice ──
+  //  Issue invoice 
   async function handleIssue(invoiceId) {
     setIssueBusy(invoiceId);
     try {
@@ -94,7 +95,7 @@ export default function AdminInvoice({ hotels }) {
     finally     { setIssueBusy(null); }
   }
 
-  // ── View detail ──
+  //  View detail 
   async function handleViewDetail(invoiceId) {
     setDetailBusy(true);
     try {
@@ -107,17 +108,17 @@ export default function AdminInvoice({ hotels }) {
   return (
     <section className="page-card page-card-wide" id="admin-invoice">
 
-      {/* ── Invoice Detail Modal ── */}
+      {/*  Invoice Detail Modal  */}
       {detail && (
         <div className="pm-overlay" onClick={e => { if (e.target === e.currentTarget) setDetail(null); }}>
-          <div className="pm-dialog inv-dialog">
+          <div className="pm-dialog pm-dialog--light inv-dialog">
             <div className="pm-header">
               <div>
-                <p className="pm-eyebrow">Invoice · {detail.invoice_no}</p>
+                <p className="pm-eyebrow">Invoice  {detail.invoice_no}</p>
                 <h2 className="pm-title">{detail.hotel_name}</h2>
-                <p className="pm-guest">{detail.guest_name} · {detail.guest_email}</p>
+                <p className="pm-guest">{detail.guest_name}  {detail.guest_email}</p>
               </div>
-              <button type="button" className="pm-close" onClick={() => setDetail(null)}>✕</button>
+              <button type="button" className="pm-close" onClick={() => setDetail(null)}></button>
             </div>
 
             <div className="inv-detail-body">
@@ -139,7 +140,7 @@ export default function AdminInvoice({ hotels }) {
               {/* Room line items */}
               {detail.line_items?.rooms?.length > 0 && (
                 <div className="inv-section">
-                  <p className="inv-section-title">🛏️ Room charges</p>
+                  <p className="inv-section-title"> Room charges</p>
                   <table className="inv-table">
                     <thead><tr><th>Room</th><th>Type</th><th>Period</th><th>Rate/night</th><th>Amount</th></tr></thead>
                     <tbody>
@@ -147,7 +148,7 @@ export default function AdminInvoice({ hotels }) {
                         <tr key={i}>
                           <td>Room {r.room_number}</td>
                           <td>{r.room_type_name}</td>
-                          <td>{r.stay_start_date?.slice(0,10)} → {r.stay_end_date?.slice(0,10)}</td>
+                          <td>{r.stay_start_date?.slice(0,10)}  {r.stay_end_date?.slice(0,10)}</td>
                           <td>{money(r.nightly_rate_snapshot, detail.currency_code)}</td>
                           <td><strong>{money(r.final_amount, detail.currency_code)}</strong></td>
                         </tr>
@@ -160,7 +161,7 @@ export default function AdminInvoice({ hotels }) {
               {/* Services */}
               {detail.line_items?.services?.length > 0 && (
                 <div className="inv-section">
-                  <p className="inv-section-title">🛎️ In-house services</p>
+                  <p className="inv-section-title"> In-house services</p>
                   <table className="inv-table">
                     <thead><tr><th>Service</th><th>Category</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead>
                     <tbody>
@@ -181,7 +182,7 @@ export default function AdminInvoice({ hotels }) {
               {/* Payments */}
               {detail.payments?.length > 0 && (
                 <div className="inv-section">
-                  <p className="inv-section-title">💳 Payments received</p>
+                  <p className="inv-section-title"> Payments received</p>
                   <table className="inv-table">
                     <thead><tr><th>Reference</th><th>Type</th><th>Method</th><th>Date</th><th>Amount</th></tr></thead>
                     <tbody>
@@ -211,7 +212,7 @@ export default function AdminInvoice({ hotels }) {
                   <button type="button" className="primary-button"
                     disabled={issueBusy === detail.invoice_id}
                     onClick={() => handleIssue(detail.invoice_id)}>
-                    {issueBusy === detail.invoice_id ? 'Issuing…' : '📤 Issue invoice'}
+                    {issueBusy === detail.invoice_id ? 'Issuing...' : ' Issue invoice'}
                   </button>
                 </div>
               )}
@@ -220,7 +221,7 @@ export default function AdminInvoice({ hotels }) {
         </div>
       )}
 
-      {/* ── Header ── */}
+      {/*  Header  */}
       <div className="admin-section-head">
         <div>
           <p className="page-eyebrow">Invoices</p>
@@ -228,7 +229,7 @@ export default function AdminInvoice({ hotels }) {
         </div>
       </div>
 
-      {/* ── Generate Invoice from Reservation ── */}
+      {/*  Generate Invoice from Reservation  */}
       <div className="inv-lookup-card">
         <p className="page-eyebrow" style={{ marginBottom: 8 }}>Generate invoice from reservation</p>
         <form className="inv-lookup-row" onSubmit={handleLookup}>
@@ -240,7 +241,7 @@ export default function AdminInvoice({ hotels }) {
             className="inv-lookup-input"
           />
           <button type="submit" className="primary-button" disabled={lookupBusy}>
-            {lookupBusy ? 'Looking up…' : 'Look up'}
+            {lookupBusy ? 'Looking up...' : 'Look up'}
           </button>
         </form>
 
@@ -249,7 +250,7 @@ export default function AdminInvoice({ hotels }) {
             <div className="inv-preview-info">
               <strong>{lookupResult.guest_name}</strong>
               <span>{lookupResult.hotel_name}</span>
-              <span>{lookupResult.checkin_date?.slice(0,10)} → {lookupResult.checkout_date?.slice(0,10)} · {lookupResult.nights} nights</span>
+              <span>{lookupResult.checkin_date?.slice(0,10)}  {lookupResult.checkout_date?.slice(0,10)}  {lookupResult.nights} nights</span>
               <span className={`maint-status-pill`} style={STATUS_STYLE[lookupResult.reservation_status] || {}}>
                 {lookupResult.reservation_status}
               </span>
@@ -259,13 +260,13 @@ export default function AdminInvoice({ hotels }) {
               <strong>{money(lookupResult.grand_total_amount, lookupResult.currency_code)}</strong>
             </div>
             <button type="button" className="primary-button" disabled={genBusy} onClick={handleGenerate}>
-              {genBusy ? 'Generating…' : '📄 Generate FINAL invoice'}
+              {genBusy ? 'Generating...' : ' Generate FINAL invoice'}
             </button>
           </div>
         )}
       </div>
 
-      {/* ── Invoice List ── */}
+      {/*  Invoice List  */}
       <div className="inv-list-toolbar">
         <label>
           Hotel
@@ -275,15 +276,15 @@ export default function AdminInvoice({ hotels }) {
           </select>
         </label>
         <button type="button" className="primary-button" onClick={loadInvoices} disabled={!hotelId || listBusy}>
-          {listBusy ? 'Loading…' : '↺ Load invoices'}
+          {listBusy ? 'Loading...' : ' Load invoices'}
         </button>
       </div>
 
-      {detailBusy && <p className="fd-loading">Loading invoice detail…</p>}
+      {detailBusy && <p className="fd-loading">Loading invoice detail...</p>}
 
       {!listBusy && invoices.length === 0 && (
         <div className="svc-orders-empty">
-          <span>📄</span><p>No invoices yet.</p>
+          <span></span><p>No invoices yet.</p>
           <small>Select a hotel and click "Load invoices", or generate one from a reservation above.</small>
         </div>
       )}
@@ -297,7 +298,7 @@ export default function AdminInvoice({ hotels }) {
                 <div className="inv-list-left">
                   <code className="inv-no">{inv.invoice_no}</code>
                   <strong>{inv.guest_name}</strong>
-                  <span>{inv.hotel_name} · {inv.reservation_code}</span>
+                  <span>{inv.hotel_name}  {inv.reservation_code}</span>
                   <span style={{ fontSize:'0.78rem', color:'var(--text-soft)' }}>{fmt(inv.created_at)}</span>
                 </div>
                 <div className="inv-list-right">
@@ -311,7 +312,7 @@ export default function AdminInvoice({ hotels }) {
                       <button type="button" className="primary-button"
                         disabled={issueBusy === inv.invoice_id}
                         onClick={() => handleIssue(inv.invoice_id)}>
-                        {issueBusy === inv.invoice_id ? '…' : 'Issue'}
+                        {issueBusy === inv.invoice_id ? '...' : 'Issue'}
                       </button>
                     )}
                   </div>

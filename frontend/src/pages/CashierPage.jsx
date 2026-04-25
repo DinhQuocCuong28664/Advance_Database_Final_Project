@@ -24,11 +24,11 @@ export default function CashierPage() {
       .finally(() => setLoadingHotels(false));
   }, [isSystemUser, setFlash]);
 
-  // ── Access guards ────────────────────────────────────────────
+  //  Access guards 
   if (!isSystemUser) {
     return <Navigate to="/login" replace state={{ nextUrl: '/cashier' }} />;
   }
-  // Admin quản trị riêng → không cần vào cashier portal
+  // Admin has separate management  no need to access cashier portal
   if (!isCashierUser && isAdminUser) {
     return <Navigate to="/admin" replace />;
   }
@@ -39,12 +39,12 @@ export default function CashierPage() {
     navigate('/');
   }
 
-  // ── Render ───────────────────────────────────────────────────
+  //  Render 
   return (
     <div className="app-shell">
       <main className="page-stack">
 
-        {/* ── Top bar ── */}
+        {/*  Top bar  */}
         <header className="cashier-topbar">
           <div className="cashier-topbar-identity">
             <span className="cashier-topbar-logo">LuxeReserve</span>
@@ -64,10 +64,10 @@ export default function CashierPage() {
           </div>
         </header>
 
-        {/* ── Front-Desk module only ── */}
+        {/*  Front-Desk module only  */}
         {loadingHotels ? (
           <p style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            Loading hotels…
+            Loading hotels...
           </p>
         ) : (
           <div style={{ padding: '20px 24px 48px' }}>

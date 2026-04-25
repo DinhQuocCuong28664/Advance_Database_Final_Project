@@ -4,7 +4,7 @@ import { apiRequest } from '../lib/api';
 import { resolveHotelImage, imgError } from '../utils/hotelImages';
 import '../styles/Home.css';
 
-// ─── tiny helpers ──────────────────────────────────────────────────────────
+//  tiny helpers 
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -14,7 +14,7 @@ function addDays(dateStr, n) {
   return d.toISOString().slice(0, 10);
 }
 
-// ─── Hero Search Bar ────────────────────────────────────────────────────────
+//  Hero Search Bar 
 function HeroSearch() {
   const navigate = useNavigate();
   const [locations, setLocations] = useState([]);
@@ -55,7 +55,7 @@ function HeroSearch() {
           <input
             list="dest-list"
             type="text"
-            placeholder="City, hotel name or area…"
+            placeholder="City, hotel name or area..."
             value={form.destination}
             onChange={(e) => setForm((s) => ({ ...s, destination: e.target.value }))}
             required
@@ -92,7 +92,7 @@ function HeroSearch() {
           <div className="guests-stepper">
             <button type="button" className="guests-btn"
               onClick={() => setForm((s) => ({ ...s, guests: Math.max(1, s.guests - 1) }))}
-              disabled={form.guests <= 1}>−</button>
+              disabled={form.guests <= 1}>-</button>
             <input
               type="text" inputMode="numeric"
               className="guests-val guests-input"
@@ -118,7 +118,7 @@ function HeroSearch() {
   );
 }
 
-// ─── Destination Card ───────────────────────────────────────────────────────
+//  Destination Card 
 const DEST_IMAGES = {
   'Vietnam': 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=600&q=80',
   'Thailand': 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=600&q=80',
@@ -147,7 +147,7 @@ function DestCard({ city, country, count }) {
   );
 }
 
-// ─── Promo Card ─────────────────────────────────────────────────────────────
+//  Promo Card 
 function PromoCard({ promo }) {
   const navigate = useNavigate();
   // Backend fields: promotion_name, promotion_type, discount_value, booking_end_date
@@ -170,7 +170,7 @@ function PromoCard({ promo }) {
   );
 }
 
-// ─── Main Page ───────────────────────────────────────────────────────────────
+//  Main Page 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [locations, setLocations] = useState([]);
@@ -186,7 +186,7 @@ export default function DashboardPage() {
       setLocations(list);
     }).catch(() => {});
     apiRequest('/promotions').then((r) => {
-      // JOIN in backend can produce duplicate rows per promotion — deduplicate
+      // JOIN in backend can produce duplicate rows per promotion  deduplicate
       const seen = new Set();
       const unique = (r.data || r.promotions || []).filter((p) => {
         if (seen.has(p.promotion_id)) return false;
@@ -210,7 +210,7 @@ export default function DashboardPage() {
 
   return (
     <div className="home-page">
-      {/* ── HERO ── */}
+      {/*  HERO  */}
       <section className="hero-section">
         <div className="hero-copy">
           <p className="hero-eyebrow">LuxeReserve</p>
@@ -222,7 +222,7 @@ export default function DashboardPage() {
         <HeroSearch />
       </section>
 
-      {/* ── ALREADY HAVE A BOOKING? ── */}
+      {/*  ALREADY HAVE A BOOKING?  */}
       <section className="home-section">
         <div className="resv-banner">
           <div className="resv-banner-copy">
@@ -230,7 +230,7 @@ export default function DashboardPage() {
             <h2 className="resv-banner-title">Already have a reservation?</h2>
             <p className="resv-banner-desc">
               If you received a confirmation code after booking, you can look it up here
-              to check your stay details, dates, and status — no sign-in required.
+              to check your stay details, dates, and status  no sign-in required.
             </p>
           </div>
           <button
@@ -238,12 +238,12 @@ export default function DashboardPage() {
             type="button"
             onClick={() => navigate('/reservation')}
           >
-            Look up my reservation →
+            Look up my reservation 
           </button>
         </div>
       </section>
 
-      {/* ── HOT DESTINATIONS ── */}
+      {/*  HOT DESTINATIONS  */}
       {topDests.length > 0 && (
         <section className="home-section">
           <div className="home-section-head">
@@ -260,7 +260,7 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* ── FEATURED HOTELS ── */}
+      {/*  FEATURED HOTELS  */}
       {hotels.length > 0 && (
         <section className="home-section">
           <div className="home-section-head">
@@ -294,7 +294,7 @@ export default function DashboardPage() {
                       {h.city_name}{h.location_detail?.country ? `, ${h.location_detail.country}` : ''}
                     </p>
                   </div>
-                  <span className="featured-card-cta">View hotel →</span>
+                  <span className="featured-card-cta">View hotel </span>
                 </div>
               </button>
             ))}
@@ -302,7 +302,7 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* ── PROMOTIONS ── */}
+      {/*  PROMOTIONS  */}
       {promos.length > 0 && (
         <section className="home-section">
           <div className="home-section-head">
@@ -319,13 +319,13 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* ── TRUST STRIP ── */}
+      {/*  TRUST STRIP  */}
       <section className="trust-strip">
         {[
-          { icon: '🏆', title: 'Curated luxury', desc: 'Every property vetted for exceptional standards.' },
-          { icon: '🔒', title: 'Secure booking', desc: 'Your data and payments are always protected.' },
-          { icon: '💎', title: 'Loyalty rewards', desc: 'Earn points on every stay. Redeem for upgrades.' },
-          { icon: '🌏', title: 'Global network', desc: "Properties across Asia's top destinations." },
+          { icon: '', title: 'Curated luxury', desc: 'Every property vetted for exceptional standards.' },
+          { icon: '', title: 'Secure booking', desc: 'Your data and payments are always protected.' },
+          { icon: '', title: 'Loyalty rewards', desc: 'Earn points on every stay. Redeem for upgrades.' },
+          { icon: '', title: 'Global network', desc: "Properties across Asia's top destinations." },
         ].map((t) => (
           <div key={t.title} className="trust-item">
             <span className="trust-icon">{t.icon}</span>

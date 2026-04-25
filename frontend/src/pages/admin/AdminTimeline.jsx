@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
 
-// ── Status config ─────────────────────────────────────────────────────
+//  Status config 
 const STATUS_CONFIG = {
   PENDING:     { color: '#d97706', bg: '#fef3c7', icon: '⏳', label: 'Pending' },
   CONFIRMED:   { color: '#1a7a8a', bg: '#e0f2fe', icon: '✅', label: 'Confirmed' },
@@ -17,12 +17,12 @@ const STATUS_CONFIG = {
 const getStatusCfg = (s) => STATUS_CONFIG[s] || { color: '#888', bg: '#f5f5f5', icon: '•', label: s };
 
 const fmtDateTime = (d) =>
-  d ? new Date(d).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  d ? new Date(d).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '';
 
 const fmtDate = (d) =>
-  d ? new Date(d).toLocaleDateString('en-GB', { dateStyle: 'short' }) : '—';
+  d ? new Date(d).toLocaleDateString('en-GB', { dateStyle: 'short' }) : '';
 
-// ── Timeline item ─────────────────────────────────────────────────────
+//  Timeline item 
 function TimelineItem({ row, isLast }) {
   const [expanded, setExpanded] = useState(false);
   const fromCfg = getStatusCfg(row.old_status);
@@ -63,7 +63,7 @@ function TimelineItem({ row, isLast }) {
         <div className="tl-card-body">
           <code className="tl-code">{row.reservation_code}</code>
           <span className="tl-guest">{row.guest_name}</span>
-          {row.hotel_name && <span className="tl-hotel">· {row.hotel_name}</span>}
+          {row.hotel_name && <span className="tl-hotel"> {row.hotel_name}</span>}
           {row.room_number && <span className="tl-room">Rm {row.room_number}</span>}
         </div>
 
@@ -77,8 +77,8 @@ function TimelineItem({ row, isLast }) {
               <span>Reservation ID</span><span>#{row.reservation_id}</span>
             </div>
             <div className="tl-detail-row">
-              <span>Check-in → Check-out</span>
-              <span>{fmtDate(row.checkin_date)} → {fmtDate(row.checkout_date)}</span>
+              <span>Check-in - Check-out</span>
+              <span>{fmtDate(row.checkin_date)} - {fmtDate(row.checkout_date)}</span>
             </div>
             <div className="tl-detail-row">
               <span>Guest email</span><span>{row.guest_email}</span>
@@ -92,26 +92,26 @@ function TimelineItem({ row, isLast }) {
         )}
 
         <button className="tl-expand-btn" onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}>
-          {expanded ? '▲ Less' : '▼ More'}
+          {expanded ? '^ Less' : 'v More'}
         </button>
       </div>
     </div>
   );
 }
 
-// ── Transition Summary Stats ──────────────────────────────────────────
+//  Transition Summary Stats 
 function TransitionStats({ summary }) {
   if (!summary?.by_transition) return null;
   const entries = Object.entries(summary.by_transition).sort((a, b) => b[1] - a[1]);
   return (
     <div className="tl-stats">
       {entries.map(([key, count]) => {
-        const [, to] = key.split(' → ');
+        const [, to] = key.split(' -> ');
         const cfg = getStatusCfg(to);
         return (
           <div key={key} className="tl-stat-pill" style={{ borderColor: cfg.color + '55', background: cfg.bg }}>
             <span className="tl-stat-label" style={{ color: cfg.color }}>{key}</span>
-            <span className="tl-stat-count" style={{ color: cfg.color }}>{count}×</span>
+            <span className="tl-stat-count" style={{ color: cfg.color }}>{count}</span>
           </div>
         );
       })}
@@ -119,7 +119,7 @@ function TransitionStats({ summary }) {
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────
+//  Main Component 
 export default function AdminTimeline({ hotels = [] }) {
   const { setFlash } = useFlash();
 
@@ -180,13 +180,13 @@ export default function AdminTimeline({ hotels = [] }) {
           <p className="page-eyebrow">Audit</p>
           <h2 className="page-title">Reservation Status Timeline</h2>
           <p className="page-sub">
-            Full audit trail of all status transitions — PENDING → CONFIRMED → CHECKED_IN → CHECKED_OUT.
+            Full audit trail of all status transitions  PENDING  CONFIRMED  CHECKED_IN  CHECKED_OUT.
             {' '}<strong>{history.length || ''}</strong>
           </p>
         </div>
       </div>
 
-      {/* ── Filters ── */}
+      {/*  Filters  */}
       <div className="pay-hist-toolbar">
         <select value={hotelId} onChange={e => setHotelId(e.target.value)} className="fd-select">
           <option value="">All hotels</option>
@@ -198,45 +198,45 @@ export default function AdminTimeline({ hotels = [] }) {
         <select value={newStatus} onChange={e => setNewStatus(e.target.value)} className="fd-select">
           <option value="">All transitions</option>
           {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-            <option key={k} value={k}>→ {v.label}</option>
+            <option key={k} value={k}> {v.label}</option>
           ))}
         </select>
 
         <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="fd-input" title="From" />
-        <span style={{ color: 'var(--text-soft)', alignSelf: 'center' }}>→</span>
+        <span style={{ color: 'var(--text-soft)', alignSelf: 'center' }}></span>
         <input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   className="fd-input" title="To" />
 
         <input
           type="text" value={resvCode}
           onChange={e => setResvCode(e.target.value)}
-          placeholder="Reservation code…"
+          placeholder="Reservation code..."
           className="fd-input" style={{ minWidth: 160 }}
         />
 
         <button className="primary-button" onClick={load} disabled={loading} style={{ whiteSpace: 'nowrap' }}>
-          {loading ? 'Loading…' : '🔍 Search'}
+          {loading ? 'Loading...' : ' Search'}
         </button>
       </div>
 
-      {/* ── Transition stats ── */}
+      {/*  Transition stats  */}
       {searched && summary && <TransitionStats summary={summary} />}
 
-      {/* ── States ── */}
-      {loading && <p style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-soft)' }}>Loading history…</p>}
+      {/*  States  */}
+      {loading && <p style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-soft)' }}>Loading history...</p>}
       {!loading && !searched && (
         <div className="svc-orders-empty">
-          <span style={{ fontSize: '2.5rem' }}>📋</span>
+          <span style={{ fontSize: '2.5rem' }}></span>
           <p>Set filters and click <strong>Search</strong> to view the audit timeline.</p>
         </div>
       )}
       {!loading && searched && history.length === 0 && (
         <div className="svc-orders-empty">
-          <span style={{ fontSize: '2.5rem' }}>🔍</span>
+          <span style={{ fontSize: '2.5rem' }}></span>
           <p>No status changes found for the selected filters.</p>
         </div>
       )}
 
-      {/* ── Timeline ── */}
+      {/*  Timeline  */}
       {!loading && Object.entries(grouped).map(([date, rows]) => (
         <div key={date} className="tl-day-group">
           <div className="tl-day-header">

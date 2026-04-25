@@ -1,23 +1,23 @@
-# 🧪 LuxeReserve — Test Scenarios
+#  LuxeReserve  Test Scenarios
 ## Advanced Database Concepts Verification
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 1. [Pessimistic Locking](#1-pessimistic-locking--sp_reserveroom)
 2. [Price Integrity Guard Trigger](#2-price-integrity-guard-trigger)
-3. [Window Functions — Revenue Analytics](#3-window-functions--revenue-analytics)
-4. [Recursive CTE — Location Tree](#4-recursive-cte--location-tree)
+3. [Window Functions  Revenue Analytics](#3-window-functions--revenue-analytics)
+4. [Recursive CTE  Location Tree](#4-recursive-cte--location-tree)
 
 ---
 
-## 1. Pessimistic Locking — sp_ReserveRoom
+## 1. Pessimistic Locking  sp_ReserveRoom
 
-### 📖 Concept
-Stored Procedure `sp_ReserveRoom` sử dụng `UPDLOCK + HOLDLOCK` để khóa bản ghi `RoomAvailability` khi đặt phòng, ngăn chặn race condition khi nhiều người đặt cùng lúc.
+###  Concept
+Stored Procedure `sp_ReserveRoom` su dung `UPDLOCK + HOLDLOCK` e khoa ban ghi `RoomAvailability` khi at phong, ngan chan race condition khi nhieu nguoi at cung luc.
 
-### Test 1.1 ✅ — Đặt phòng thành công
-**Mục tiêu**: Đặt phòng available → status chuyển từ `OPEN` → `BOOKED`
+### Test 1.1   at phong thanh cong
+**Muc tieu**: at phong available  status chuyen tu `OPEN`  `BOOKED`
 
 ```bash
 curl -X POST http://localhost:3000/api/reservations \
@@ -53,7 +53,7 @@ curl -X POST http://localhost:3000/api/reservations \
 }
 ```
 
-**Verify (kiểm tra RoomAvailability đã chuyển sang BOOKED)**:
+**Verify (kiem tra RoomAvailability a chuyen sang BOOKED)**:
 ```sql
 SELECT room_id, stay_date, availability_status, sellable_flag
 FROM RoomAvailability
@@ -63,8 +63,8 @@ WHERE room_id = 7 AND stay_date BETWEEN '2026-04-10' AND '2026-04-11';
 
 ---
 
-### Test 1.2 ❌ — Đặt phòng bị REJECT (phòng đã booked)
-**Mục tiêu**: Cùng phòng, cùng ngày → sp_ReserveRoom trả `result_status = 2 (REJECTED)`
+### Test 1.2   at phong bi REJECT (phong a booked)
+**Muc tieu**: Cung phong, cung ngay  sp_ReserveRoom tra `result_status = 2 (REJECTED)`
 
 ```bash
 curl -X POST http://localhost:3000/api/reservations \
@@ -95,8 +95,8 @@ curl -X POST http://localhost:3000/api/reservations \
 
 ---
 
-### Test 1.3 📋 — Kiểm tra InventoryLockLog
-**Mục tiêu**: Verify cả lần thành công và thất bại đều được ghi log
+### Test 1.3   Kiem tra InventoryLockLog
+**Muc tieu**: Verify ca lan thanh cong va that bai eu uoc ghi log
 
 ```sql
 SELECT reservation_code_attempt, room_id, stay_date,
@@ -104,25 +104,25 @@ SELECT reservation_code_attempt, room_id, stay_date,
 FROM InventoryLockLog
 WHERE room_id = 7
 ORDER BY lock_acquired_at DESC;
--- Expected: Có cả record SUCCESS (Test 1.1) và FAILED (Test 1.2)
+-- Expected: Co ca record SUCCESS (Test 1.1) va FAILED (Test 1.2)
 ```
 
 ---
 
 ## 2. Price Integrity Guard Trigger
 
-### 📖 Concept
-Trigger `trg_RoomRate_PriceIntegrityGuard` tự động phát hiện khi `final_rate` thay đổi > 50%, log vào `RateChangeLog` với severity = `CRITICAL`.
+###  Concept
+Trigger `trg_RoomRate_PriceIntegrityGuard` tu ong phat hien khi `final_rate` thay oi > 50%, log vao `RateChangeLog` voi severity = `CRITICAL`.
 
-### Test 2.1 ✅ — Thay đổi giá nhỏ (< 50%) → KHÔNG trigger
-**Mục tiêu**: Tăng giá 10% → trigger KHÔNG fire
+### Test 2.1   Thay oi gia nho (< 50%)  KHONG trigger
+**Muc tieu**: Tang gia 10%  trigger KHONG fire
 
-Đầu tiên, xem rate hiện tại:
+au tien, xem rate hien tai:
 ```bash
 curl http://localhost:3000/api/admin/rates/alerts
 ```
 
-Sau đó update rate tăng 10%:
+Sau o update rate tang 10%:
 ```bash
 curl -X PUT http://localhost:3000/api/admin/rates/1 \
   -H "Content-Type: application/json" \
@@ -150,8 +150,8 @@ curl -X PUT http://localhost:3000/api/admin/rates/1 \
 
 ---
 
-### Test 2.2 🚨 — Thay đổi giá > 50% → TRIGGER FIRE!
-**Mục tiêu**: Tăng giá 200% → trigger tự động log CRITICAL alert
+### Test 2.2   Thay oi gia > 50%  TRIGGER FIRE!
+**Muc tieu**: Tang gia 200%  trigger tu ong log CRITICAL alert
 
 ```bash
 curl -X PUT http://localhost:3000/api/admin/rates/1 \
@@ -179,7 +179,7 @@ curl -X PUT http://localhost:3000/api/admin/rates/1 \
       "change_percent": "203.0303",
       "severity_level": "CRITICAL",
       "review_status": "OPEN",
-      "change_reason": "[AUTO] Rate change > 50% — flagged by Price Integrity Guard"
+      "change_reason": "[AUTO] Rate change > 50%  flagged by Price Integrity Guard"
     }
   }
 }
@@ -187,16 +187,16 @@ curl -X PUT http://localhost:3000/api/admin/rates/1 \
 
 ---
 
-### Test 2.3 📋 — Xem tất cả alerts
+### Test 2.3   Xem tat ca alerts
 ```bash
 curl http://localhost:3000/api/admin/rates/alerts
 ```
 
-**Expected**: Có ít nhất 1 record với `severity_level = CRITICAL`
+**Expected**: Co it nhat 1 record voi `severity_level = CRITICAL`
 
 ---
 
-### Test 2.4 🔄 — Khôi phục giá gốc
+### Test 2.4   Khoi phuc gia goc
 ```bash
 curl -X PUT http://localhost:3000/api/admin/rates/1 \
   -H "Content-Type: application/json" \
@@ -209,22 +209,22 @@ curl -X PUT http://localhost:3000/api/admin/rates/1 \
 
 ---
 
-## 3. Window Functions — Revenue Analytics
+## 3. Window Functions  Revenue Analytics
 
-### 📖 Concept
-API `/api/admin/reports/revenue` sử dụng các Window Functions:
-- `DENSE_RANK() OVER()` — Xếp hạng doanh thu theo room type trong mỗi hotel
-- `SUM() OVER()` — Tính doanh thu tích lũy (cumulative revenue)
-- Revenue share percentage — Phần trăm đóng góp doanh thu
+###  Concept
+API `/api/admin/reports/revenue` su dung cac Window Functions:
+- `DENSE_RANK() OVER()`  Xep hang doanh thu theo room type trong moi hotel
+- `SUM() OVER()`  Tinh doanh thu tich luy (cumulative revenue)
+- Revenue share percentage  Phan tram ong gop doanh thu
 
-### Test 3.1 — Xem Revenue Report
-**Prerequisite**: Cần có ít nhất 1 reservation đã tồn tại (sample data có sẵn reservation_id = 1)
+### Test 3.1  Xem Revenue Report
+**Prerequisite**: Can co it nhat 1 reservation a ton tai (sample data co san reservation_id = 1)
 
 ```bash
 curl http://localhost:3000/api/admin/reports/revenue
 ```
 
-**Expected Response** (với sample reservation):
+**Expected Response** (voi sample reservation):
 ```json
 {
   "success": true,
@@ -246,8 +246,8 @@ curl http://localhost:3000/api/admin/reports/revenue
 }
 ```
 
-### Test 3.2 — Tạo thêm reservation để thấy ranking
-**Bước 1**: Đặt thêm reservation ở room khác (suite)
+### Test 3.2  Tao them reservation e thay ranking
+**Buoc 1**: at them reservation o room khac (suite)
 
 ```bash
 curl -X POST http://localhost:3000/api/reservations \
@@ -266,20 +266,20 @@ curl -X POST http://localhost:3000/api/reservations \
   }'
 ```
 
-**Bước 2**: Xem lại revenue report
+**Buoc 2**: Xem lai revenue report
 
 ```bash
 curl http://localhost:3000/api/admin/reports/revenue
 ```
 
-**Expected**: Giờ sẽ có **2 rows** cho Ritz-Carlton:
-- Suite (36,000,000 VND) → `revenue_rank_in_hotel = 1`
-- Deluxe (14,850,000 VND) → `revenue_rank_in_hotel = 2`
-- `cumulative_revenue` sẽ tích lũy qua từng quarter
-- `revenue_share_pct` cho thấy tỷ lệ đóng góp của mỗi room type
+**Expected**: Gio se co **2 rows** cho Ritz-Carlton:
+- Suite (36,000,000 VND)  `revenue_rank_in_hotel = 1`
+- Deluxe (14,850,000 VND)  `revenue_rank_in_hotel = 2`
+- `cumulative_revenue` se tich luy qua tung quarter
+- `revenue_share_pct` cho thay ty le ong gop cua moi room type
 
-### Test 3.3 — Báo cáo Doanh thu theo Brand & Chain
-**Mục tiêu**: Kiểm tra Window Functions với multi-level PARTITION BY (brand_id, chain_id) và JOIN toàn bộ hierarchy HotelChain → Brand → Hotel
+### Test 3.3  Bao cao Doanh thu theo Brand & Chain
+**Muc tieu**: Kiem tra Window Functions voi multi-level PARTITION BY (brand_id, chain_id) va JOIN toan bo hierarchy HotelChain  Brand  Hotel
 
 ```bash
 curl http://localhost:3000/api/admin/reports/revenue-by-brand
@@ -309,29 +309,29 @@ curl http://localhost:3000/api/admin/reports/revenue-by-brand
 }
 ```
 
-**Kiểm tra điểm khác biệt với `/reports/revenue`**:
-- Có thêm `chain_name`, `brand_name` (JOIN `HotelChain`, `Brand`)
-- `revenue_rank_in_brand`: xếp hạng TRONG brand (khác với `revenue_rank_in_hotel`)
-- `revenue_share_in_chain_pct`: % đóng góp vào toàn chuỗi
-- `revenue_share_in_brand_pct`: % đóng góp vào brand
-- Khi có nhiều hotel thuộc cùng brand, ranking sẽ thấy rõ sự khác biệt
+**Kiem tra iem khac biet voi `/reports/revenue`**:
+- Co them `chain_name`, `brand_name` (JOIN `HotelChain`, `Brand`)
+- `revenue_rank_in_brand`: xep hang TRONG brand (khac voi `revenue_rank_in_hotel`)
+- `revenue_share_in_chain_pct`: % ong gop vao toan chuoi
+- `revenue_share_in_brand_pct`: % ong gop vao brand
+- Khi co nhieu hotel thuoc cung brand, ranking se thay ro su khac biet
 
 ---
 
-## 4. Recursive CTE — Location Tree
+## 4. Recursive CTE  Location Tree
 
-### 📖 Concept
-API `/api/locations/tree` sử dụng Common Table Expression đệ quy để duyệt cây phân cấp địa lý:
-`Region → Country → State/Province → City → District`
+###  Concept
+API `/api/locations/tree` su dung Common Table Expression e quy e duyet cay phan cap ia ly:
+`Region  Country  State/Province  City  District`
 
-### Test 4.1 — Full tree từ root
-**Mục tiêu**: Lấy toàn bộ cây từ top-level regions
+### Test 4.1  Full tree tu root
+**Muc tieu**: Lay toan bo cay tu top-level regions
 
 ```bash
 curl "http://localhost:3000/api/locations/tree"
 ```
 
-**Expected**: 17 locations với `hierarchy_display` có indent theo depth:
+**Expected**: 17 locations voi `hierarchy_display` co indent theo depth:
 ```
 Southeast Asia
   Vietnam
@@ -350,14 +350,14 @@ Southeast Asia
         Marina Bay
 ```
 
-### Test 4.2 — Sub-tree từ Vietnam
-**Mục tiêu**: Chỉ lấy nhánh Vietnam và các con
+### Test 4.2  Sub-tree tu Vietnam
+**Muc tieu**: Chi lay nhanh Vietnam va cac con
 
 ```bash
-curl "http://localhost:3000/api/locations/tree?root=Vietnam"
+curl "http://localhost:3000/api/locations/tree->root=Vietnam"
 ```
 
-**Expected**: Chỉ trả về Vietnam + children:
+**Expected**: Chi tra ve Vietnam + children:
 ```json
 {
   "success": true,
@@ -374,31 +374,31 @@ curl "http://localhost:3000/api/locations/tree?root=Vietnam"
 }
 ```
 
-### Test 4.3 — Sub-tree từ ID
+### Test 4.3  Sub-tree tu ID
 ```bash
-curl "http://localhost:3000/api/locations/tree?root_id=5"
+curl "http://localhost:3000/api/locations/tree->root_id=5"
 ```
 
 **Expected**: Singapore + Singapore City + Marina Bay
 
-### Test 4.4 — Flat list (so sánh)
+### Test 4.4  Flat list (so sanh)
 ```bash
 curl "http://localhost:3000/api/locations"
 ```
 
-**Expected**: 17 locations, sắp xếp theo `level` rồi `location_name`, KHÔNG có `tree_depth` hay `hierarchy_display`
+**Expected**: 17 locations, sap xep theo `level` roi `location_name`, KHONG co `tree_depth` hay `hierarchy_display`
 
 ---
 
-## 🚀 Quick Test Script (PowerShell)
+##  Quick Test Script (PowerShell)
 
-Chạy tất cả tests nhanh:
+Chay tat ca tests nhanh:
 
 ```powershell
 $base = "http://localhost:3000/api"
 $headers = @{ "Content-Type" = "application/json" }
 
-Write-Host "`n═══ TEST 1: PESSIMISTIC LOCKING ═══" -ForegroundColor Cyan
+Write-Host "`n TEST 1: PESSIMISTIC LOCKING " -ForegroundColor Cyan
 
 # 1.1 Book room 8 (W Bangkok, Wonderful Room)
 Write-Host "`n[1.1] Booking room 8..." -ForegroundColor Yellow
@@ -410,9 +410,9 @@ Write-Host "`n[1.2] Booking SAME room again (expect FAIL)..." -ForegroundColor Y
 try {
   $body2 = '{"hotel_id":2,"guest_id":4,"room_id":8,"room_type_id":4,"rate_plan_id":4,"checkin_date":"2026-04-10","checkout_date":"2026-04-12","adult_count":1,"nightly_rate":8500,"currency_code":"THB"}'
   Invoke-RestMethod -Uri "$base/reservations" -Method Post -Headers $headers -Body $body2 | ConvertTo-Json -Depth 5
-} catch { Write-Host "  → REJECTED (409): $($_.ErrorDetails.Message)" -ForegroundColor Red }
+} catch { Write-Host "   REJECTED (409): $($_.ErrorDetails.Message)" -ForegroundColor Red }
 
-Write-Host "`n═══ TEST 2: PRICE INTEGRITY GUARD ═══" -ForegroundColor Cyan
+Write-Host "`n TEST 2: PRICE INTEGRITY GUARD " -ForegroundColor Cyan
 
 # 2.1 Small change (no trigger)
 Write-Host "`n[2.1] Rate change < 50% (no alert)..." -ForegroundColor Yellow
@@ -432,14 +432,14 @@ Invoke-RestMethod -Uri "$base/admin/rates/alerts" | ConvertTo-Json -Depth 5
 $restore = '{"final_rate":4500000,"price_source":"MANUAL","updated_by":3}'
 Invoke-RestMethod -Uri "$base/admin/rates/1" -Method Put -Headers $headers -Body $restore | Out-Null
 
-Write-Host "`n═══ TEST 3: WINDOW FUNCTIONS ═══" -ForegroundColor Cyan
+Write-Host "`n TEST 3: WINDOW FUNCTIONS " -ForegroundColor Cyan
 Write-Host "`n[3.1] Revenue Analytics Report (per Hotel)..." -ForegroundColor Yellow
 Invoke-RestMethod -Uri "$base/admin/reports/revenue" | ConvertTo-Json -Depth 5
 
 Write-Host "`n[3.3] Revenue Analytics by Brand & Chain..." -ForegroundColor Yellow
 Invoke-RestMethod -Uri "$base/admin/reports/revenue-by-brand" | ConvertTo-Json -Depth 5
 
-Write-Host "`n═══ TEST 4: RECURSIVE CTE ═══" -ForegroundColor Cyan
+Write-Host "`n TEST 4: RECURSIVE CTE " -ForegroundColor Cyan
 
 # 4.1 Full tree
 Write-Host "`n[4.1] Full location tree..." -ForegroundColor Yellow
@@ -447,29 +447,29 @@ Invoke-RestMethod -Uri "$base/locations/tree" | ConvertTo-Json -Depth 5
 
 # 4.2 Vietnam subtree
 Write-Host "`n[4.2] Vietnam subtree..." -ForegroundColor Yellow
-Invoke-RestMethod -Uri "$base/locations/tree?root=Vietnam" | ConvertTo-Json -Depth 5
+Invoke-RestMethod -Uri "$base/locations/tree->root=Vietnam" | ConvertTo-Json -Depth 5
 
 # 4.3 Singapore subtree
 Write-Host "`n[4.3] Singapore subtree (root_id=5)..." -ForegroundColor Yellow
-Invoke-RestMethod -Uri "$base/locations/tree?root_id=5" | ConvertTo-Json -Depth 5
+Invoke-RestMethod -Uri "$base/locations/tree->root_id=5" | ConvertTo-Json -Depth 5
 
-Write-Host "`n════════════════════════════════" -ForegroundColor Green
-Write-Host "  ✅ ALL TESTS COMPLETED" -ForegroundColor Green
-Write-Host "════════════════════════════════`n" -ForegroundColor Green
+Write-Host "`n" -ForegroundColor Green
+Write-Host "   ALL TESTS COMPLETED" -ForegroundColor Green
+Write-Host "`n" -ForegroundColor Green
 ```
 
 ---
 
-## 5. Payment Validation — Overpayment Prevention
+## 5. Payment Validation  Overpayment Prevention
 
-### 📖 Concept
-API `POST /api/payments` kiểm tra tổng tiền đã thanh toán trước khi cho phép tạo payment mới, ngăn chặn:
-- Thanh toán vượt quá `grand_total_amount`
-- Deposit vượt quá `deposit_amount`
-- `FULL_PAYMENT` không đúng số tiền còn lại
+###  Concept
+API `POST /api/payments` kiem tra tong tien a thanh toan truoc khi cho phep tao payment moi, ngan chan:
+- Thanh toan vuot qua `grand_total_amount`
+- Deposit vuot qua `deposit_amount`
+- `FULL_PAYMENT` khong ung so tien con lai
 
-### Test 5.1 ✅ — Deposit thành công
-**Mục tiêu**: Tạo deposit trong giới hạn cho phép
+### Test 5.1   Deposit thanh cong
+**Muc tieu**: Tao deposit trong gioi han cho phep
 
 ```bash
 curl -X POST http://localhost:3000/api/payments \
@@ -482,12 +482,12 @@ curl -X POST http://localhost:3000/api/payments \
   }'
 ```
 
-**Expected**: `201` với `payment_summary.remaining_balance > 0`
+**Expected**: `201` voi `payment_summary.remaining_balance > 0`
 
 ---
 
-### Test 5.2 ❌ — Deposit vượt mức
-**Mục tiêu**: Deposit lần 2 bị reject vì tổng deposit > `deposit_amount`
+### Test 5.2   Deposit vuot muc
+**Muc tieu**: Deposit lan 2 bi reject vi tong deposit > `deposit_amount`
 
 ```bash
 curl -X POST http://localhost:3000/api/payments \
@@ -500,12 +500,12 @@ curl -X POST http://localhost:3000/api/payments \
   }'
 ```
 
-**Expected**: `400` — `"Deposit would exceed required deposit amount"`
+**Expected**: `400`  `"Deposit would exceed required deposit amount"`
 
 ---
 
-### Test 5.3 ❌ — FULL_PAYMENT sai số tiền
-**Mục tiêu**: Trả thiếu khi chọn `FULL_PAYMENT` → bị reject
+### Test 5.3   FULL_PAYMENT sai so tien
+**Muc tieu**: Tra thieu khi chon `FULL_PAYMENT`  bi reject
 
 ```bash
 curl -X POST http://localhost:3000/api/payments \
@@ -518,12 +518,12 @@ curl -X POST http://localhost:3000/api/payments \
   }'
 ```
 
-**Expected**: `400` — `"FULL_PAYMENT must cover the entire remaining balance"`
+**Expected**: `400`  `"FULL_PAYMENT must cover the entire remaining balance"`
 
 ---
 
-### Test 5.4 ✅ — FULL_PAYMENT đúng số tiền còn lại
-**Mục tiêu**: Trả đúng remaining balance → thành công
+### Test 5.4   FULL_PAYMENT ung so tien con lai
+**Muc tieu**: Tra ung remaining balance  thanh cong
 
 ```bash
 curl -X POST http://localhost:3000/api/payments \
@@ -536,26 +536,26 @@ curl -X POST http://localhost:3000/api/payments \
   }'
 ```
 
-**Expected**: `201` với `payment_summary.remaining_balance = 0`
+**Expected**: `201` voi `payment_summary.remaining_balance = 0`
 
 ---
 
-## 6. Services & Incidental Charges — Dịch Vụ Phát Sinh
+## 6. Services & Incidental Charges  Dich Vu Phat Sinh
 
-### 📖 Concept
-Khách có thể đặt dịch vụ phát sinh (spa, ăn uống, transfer, vật dụng cá nhân...) trong thời gian lưu trú. API quản lý toàn bộ lifecycle: browse → order → confirm → deliver → pay.
+###  Concept
+Khach co the at dich vu phat sinh (spa, an uong, transfer, vat dung ca nhan...) trong thoi gian luu tru. API quan ly toan bo lifecycle: browse  order  confirm  deliver  pay.
 
-### Test 6.1 — Xem danh mục dịch vụ
+### Test 6.1  Xem danh muc dich vu
 ```bash
-curl "http://localhost:3000/api/services?hotel_id=1"
+curl "http://localhost:3000/api/services->hotel_id=1"
 ```
 
-**Expected**: Danh sách services của Ritz-Carlton (SPA, TRANSFER, BUTLER, DINING)
+**Expected**: Danh sach services cua Ritz-Carlton (SPA, TRANSFER, BUTLER, DINING)
 
 ---
 
-### Test 6.2 ✅ — Đặt dịch vụ phát sinh
-**Mục tiêu**: Đặt VIP Spa Treatment cho reservation đang CONFIRMED
+### Test 6.2   at dich vu phat sinh
+**Muc tieu**: at VIP Spa Treatment cho reservation ang CONFIRMED
 
 ```bash
 curl -X POST http://localhost:3000/api/services/order \
@@ -569,32 +569,21 @@ curl -X POST http://localhost:3000/api/services/order \
   }'
 ```
 
-**Expected**: `201` với `service_status = "REQUESTED"`, `final_amount = 7000000` (3,500,000 × 2)
+**Expected**: `201` voi `service_status = "REQUESTED"`, `final_amount = 7000000` (3,500,000  2)
 
 ---
 
-### Test 6.3 — Xem dịch vụ đã đặt
+### Test 6.3  Xem dich vu a at
 ```bash
-curl "http://localhost:3000/api/services/orders?reservation_id=1"
+curl "http://localhost:3000/api/services/orders->reservation_id=1"
 ```
 
-**Expected**: Danh sách orders với `summary.active_amount` tính tổng
+**Expected**: Danh sach orders voi `summary.active_amount` tinh tong
 
 ---
 
-### Test 6.4 ✅ — Thanh toán dịch vụ phát sinh
-**Mục tiêu**: Thanh toán incidental cho service order
-
-```bash
-curl -X POST http://localhost:3000/api/services/orders/1/pay \
-  -H "Content-Type: application/json" \
-  -d '{ "payment_method": "CREDIT_CARD" }'
-```
-
-**Expected**: `201` — Payment `INCIDENTAL_HOLD` created, service status → `DELIVERED`
-
-### Test 6.5 ❌ — Thanh toán trùng
-**Mục tiêu**: Thanh toán lại service đã paid → reject
+### Test 6.4   Thanh toan dich vu phat sinh
+**Muc tieu**: Thanh toan incidental cho service order
 
 ```bash
 curl -X POST http://localhost:3000/api/services/orders/1/pay \
@@ -602,34 +591,45 @@ curl -X POST http://localhost:3000/api/services/orders/1/pay \
   -d '{ "payment_method": "CREDIT_CARD" }'
 ```
 
-**Expected**: `400` — `"Service order #1 has already been paid"`
+**Expected**: `201`  Payment `INCIDENTAL_HOLD` created, service status  `DELIVERED`
+
+### Test 6.5   Thanh toan trung
+**Muc tieu**: Thanh toan lai service a paid  reject
+
+```bash
+curl -X POST http://localhost:3000/api/services/orders/1/pay \
+  -H "Content-Type: application/json" \
+  -d '{ "payment_method": "CREDIT_CARD" }'
+```
+
+**Expected**: `400`  `"Service order #1 has already been paid"`
 
 ---
 
-## 📊 Test Summary Checklist
+##  Test Summary Checklist
 
 | # | Test | Concept | Expected |
-|---|------|---------|----------|
-| 1.1 | Book available room | Pessimistic Lock | ✅ SUCCESS, status CONFIRMED |
-| 1.2 | Book same room again | Pessimistic Lock | ❌ 409 REJECTED |
-| 1.3 | Check InventoryLockLog | Pessimistic Lock | 📋 Cả SUCCESS + FAILED logs |
-| 2.1 | Rate change < 50% | Trigger | ✅ No alert triggered |
-| 2.2 | Rate change > 50% | Trigger | 🚨 CRITICAL alert logged |
-| 2.3 | View alerts list | Trigger | 📋 Alert records visible |
-| 3.1 | Revenue report (per hotel) | Window Functions | 📊 DENSE_RANK, cumulative, share% |
-| 3.2 | Multi-booking revenue | Window Functions | 📊 Ranking changes |
-| 3.3 | Revenue by Brand & Chain | Window Functions | 📊 Multi-level PARTITION BY brand_id, chain_id |
-| 4.1 | Full location tree | Recursive CTE | 🌳 17 nodes, hierarchy display |
-| 4.2 | Vietnam subtree | Recursive CTE | 🌳 7 nodes (VN → districts) |
-| 4.3 | Singapore subtree | Recursive CTE | 🌳 3 nodes |
-| 4.4 | Flat list compare | Recursive CTE | 📋 No hierarchy, sorted by level |
-| 5.1 | Deposit thành công | Payment Validation | ✅ 201, remaining > 0 |
-| 5.2 | Deposit vượt mức | Payment Validation | ❌ 400, deposit exceeded |
-| 5.3 | FULL_PAYMENT sai số | Payment Validation | ❌ 400, must equal remaining |
-| 5.4 | FULL_PAYMENT đúng | Payment Validation | ✅ 201, remaining = 0 |
-| 6.1 | Xem danh mục dịch vụ | Services | 📋 Service catalog |
-| 6.2 | Đặt dịch vụ phát sinh | Services | ✅ 201, REQUESTED |
-| 6.3 | Xem orders | Services | 📋 Orders + summary |
-| 6.4 | Thanh toán incidental | Services | ✅ 201, INCIDENTAL_HOLD |
-| 6.5 | Thanh toán trùng | Services | ❌ 400, already paid |
+------------------------------------------------------------
+| 1.1 | Book available room | Pessimistic Lock |  SUCCESS, status CONFIRMED |
+| 1.2 | Book same room again | Pessimistic Lock |  409 REJECTED |
+| 1.3 | Check InventoryLockLog | Pessimistic Lock |  Ca SUCCESS + FAILED logs |
+| 2.1 | Rate change < 50% | Trigger |  No alert triggered |
+| 2.2 | Rate change > 50% | Trigger |  CRITICAL alert logged |
+| 2.3 | View alerts list | Trigger |  Alert records visible |
+| 3.1 | Revenue report (per hotel) | Window Functions |  DENSE_RANK, cumulative, share% |
+| 3.2 | Multi-booking revenue | Window Functions |  Ranking changes |
+| 3.3 | Revenue by Brand & Chain | Window Functions |  Multi-level PARTITION BY brand_id, chain_id |
+| 4.1 | Full location tree | Recursive CTE |  17 nodes, hierarchy display |
+| 4.2 | Vietnam subtree | Recursive CTE |  7 nodes (VN  districts) |
+| 4.3 | Singapore subtree | Recursive CTE |  3 nodes |
+| 4.4 | Flat list compare | Recursive CTE |  No hierarchy, sorted by level |
+| 5.1 | Deposit thanh cong | Payment Validation |  201, remaining > 0 |
+| 5.2 | Deposit vuot muc | Payment Validation |  400, deposit exceeded |
+| 5.3 | FULL_PAYMENT sai so | Payment Validation |  400, must equal remaining |
+| 5.4 | FULL_PAYMENT ung | Payment Validation |  201, remaining = 0 |
+| 6.1 | Xem danh muc dich vu | Services |  Service catalog |
+| 6.2 | at dich vu phat sinh | Services |  201, REQUESTED |
+| 6.3 | Xem orders | Services |  Orders + summary |
+| 6.4 | Thanh toan incidental | Services |  201, INCIDENTAL_HOLD |
+| 6.5 | Thanh toan trung | Services |  400, already paid |
 

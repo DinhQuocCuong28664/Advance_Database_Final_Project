@@ -76,7 +76,7 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
     const now = new Date().toLocaleDateString('en-GB');
 
     doc.setFontSize(16);
-    doc.text('LuxeReserve — Analytics Report', 14, 15);
+    doc.text('LuxeReserve  Analytics Report', 14, 15);
     doc.setFontSize(10);
     doc.text(`Generated: ${now}`, 14, 22);
 
@@ -142,10 +142,10 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
         </div>
         <div className="report-export-btns">
           <button className="ghost-button" type="button" onClick={exportExcel} disabled={loading}>
-            ⬇ Export Excel
+             Export Excel
           </button>
           <button className="primary-button" type="button" onClick={exportPDF} disabled={loading}>
-            ⬇ Export PDF
+             Export PDF
           </button>
         </div>
       </div>
@@ -158,19 +158,19 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
           <div className="report-kpi-grid">
             <article className="report-kpi-card">
               <span>Total Reservations</span>
-              <strong>{reportSummary.overview?.total_reservations ?? '—'}</strong>
+              <strong>{reportSummary.overview?.total_reservations ?? ''}</strong>
             </article>
             <article className="report-kpi-card">
               <span>Active Reservations</span>
-              <strong>{reportSummary.overview?.active_reservations ?? '—'}</strong>
+              <strong>{reportSummary.overview?.active_reservations ?? ''}</strong>
             </article>
             <article className="report-kpi-card">
               <span>Hotels With Bookings</span>
-              <strong>{reportSummary.overview?.hotels_with_bookings ?? '—'}</strong>
+              <strong>{reportSummary.overview?.hotels_with_bookings ?? ''}</strong>
             </article>
             <article className="report-kpi-card">
               <span>Payment Methods Tracked</span>
-              <strong>{reportSummary.payment_stats?.length ?? '—'}</strong>
+              <strong>{reportSummary.payment_stats?.length ?? ''}</strong>
             </article>
           </div>
 
@@ -233,7 +233,7 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
             <div style={{ marginTop: '1.5rem' }}>
               <h3 className="report-table-title">Revenue by Hotel &amp; Room Type <span className="report-tag">Window Functions</span></h3>
               <div className="report-table-scroll">
-                <table className="report-table">
+                <table className="report-table report-table--brand">
                   <thead>
                     <tr>
                       <th>Hotel</th><th>Room Type</th><th>Year</th><th>Q</th>
@@ -260,7 +260,7 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
           )}
 
 
-          {/* Revenue by Brand (Chain → Brand → Hotel hierarchy + Window Functions) */}
+          {/* Revenue by Brand (Chain  Brand  Hotel hierarchy + Window Functions) */}
           {brandRevenueData.length > 0 && (
             <div style={{ marginTop: '1.5rem' }}>
               <h3 className="report-table-title">
@@ -269,10 +269,10 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
                 <span className="report-tag report-tag--blue">Hierarchy</span>
               </h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginBottom: 10 }}>
-                HotelChain → Brand → Hotel · DENSE_RANK, cumulative revenue &amp; share % within brand and chain
+                HotelChain  Brand  Hotel  DENSE_RANK, cumulative revenue &amp; share % within brand and chain
               </p>
               <div className="report-table-scroll">
-                <table className="report-table">
+                <table className="report-table report-table--brand">
                   <thead>
                     <tr>
                       <th>Chain</th>
@@ -285,8 +285,8 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
                       <th>Avg Rate/Night</th>
                       <th title="DENSE_RANK within Brand">Rank in Brand</th>
                       <th title="Cumulative revenue within Brand over time">Cumul. Brand Rev.</th>
-                      <th title="Revenue share % within entire Chain">Chain Share %</th>
-                      <th title="Revenue share % within Brand">Brand Share %</th>
+                      <th className="brand-share-col" title="Revenue share % within entire Chain">Chain Share %</th>
+                      <th className="brand-share-col" title="Revenue share % within Brand">Brand Share %</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -306,13 +306,17 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
                           </span>
                         </td>
                         <td>{formatCurrency(row.cumulative_brand_revenue)}</td>
-                        <td>
-                          <span className="brand-share-bar-wrap" title={`${Number(row.revenue_share_in_chain_pct).toFixed(1)}% of chain`}>
-                            <span className="brand-share-bar" style={{ width: Math.min(Number(row.revenue_share_in_chain_pct), 100) + '%' }} />
+                        <td className="brand-share-col">
+                          <span className="brand-share-cell" title={`${Number(row.revenue_share_in_chain_pct).toFixed(1)}% of chain`}>
+                            <span className="brand-share-track">
+                              <span className="brand-share-bar" style={{ width: Math.min(Number(row.revenue_share_in_chain_pct), 100) + '%' }} />
+                            </span>
                             <span className="brand-share-label">{Number(row.revenue_share_in_chain_pct).toFixed(1)}%</span>
                           </span>
                         </td>
-                        <td>{Number(row.revenue_share_in_brand_pct).toFixed(1)}%</td>
+                        <td className="brand-share-col">
+                          <span className="brand-share-plain">{Number(row.revenue_share_in_brand_pct).toFixed(1)}%</span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

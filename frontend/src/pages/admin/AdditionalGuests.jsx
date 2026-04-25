@@ -3,9 +3,9 @@ import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
 
 const AGE_OPTS = ['ADULT', 'CHILD', 'INFANT'];
-const AGE_ICONS = { ADULT: '🧑', CHILD: '🧒', INFANT: '👶' };
+const AGE_ICONS = { ADULT: '', CHILD: '', INFANT: '' };
 
-// ── Add Guest Form ────────────────────────────────────────────────────
+//  Add Guest Form 
 function AddGuestForm({ reservationId, onAdded, onCancel }) {
   const { setFlash } = useFlash();
   const [saving, setSaving] = useState(false);
@@ -74,7 +74,7 @@ function AddGuestForm({ reservationId, onAdded, onCancel }) {
         <div className="ag-form-field">
           <label>Document Type</label>
           <select className="fd-select" value={form.document_type} onChange={e => set('document_type', e.target.value)}>
-            <option value="">— None —</option>
+            <option value=""> None </option>
             <option value="PASSPORT">Passport</option>
             <option value="NATIONAL_ID">National ID</option>
             <option value="DRIVERS_LICENSE">Driver's License</option>
@@ -93,7 +93,7 @@ function AddGuestForm({ reservationId, onAdded, onCancel }) {
       </div>
       <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
         <button className="primary-button" type="submit" disabled={saving}>
-          {saving ? 'Adding…' : '+ Add Guest'}
+          {saving ? 'Adding...' : '+ Add Guest'}
         </button>
         <button className="ghost-button" type="button" onClick={onCancel}>Cancel</button>
       </div>
@@ -101,11 +101,11 @@ function AddGuestForm({ reservationId, onAdded, onCancel }) {
   );
 }
 
-// ── Guest Row ────────────────────────────────────────────────────────
+//  Guest Row 
 function GuestRow({ guest, onRemove }) {
   const [removing, setRemoving] = useState(false);
   const { setFlash } = useFlash();
-  const icon = AGE_ICONS[guest.age_category] || '🧑';
+  const icon = AGE_ICONS[guest.age_category] || '';
 
   async function remove() {
     if (!confirm(`Remove ${guest.full_name}?`)) return;
@@ -131,22 +131,22 @@ function GuestRow({ guest, onRemove }) {
         </span>
         <span className="ag-meta">
           {guest.age_category}
-          {guest.nationality_country_code && ` · ${guest.nationality_country_code}`}
-          {guest.document_type && ` · ${guest.document_type}`}
+          {guest.nationality_country_code && `  ${guest.nationality_country_code}`}
+          {guest.document_type && `  ${guest.document_type}`}
           {guest.document_no && ` #${guest.document_no}`}
         </span>
         {guest.special_note && <span className="ag-note">"{guest.special_note}"</span>}
       </div>
       {!guest.is_primary_guest && (
         <button className="ag-remove-btn" onClick={remove} disabled={removing} title="Remove guest">
-          {removing ? '…' : '✕'}
+          {removing ? '...' : ''}
         </button>
       )}
     </div>
   );
 }
 
-// ── Main AdditionalGuests Panel ───────────────────────────────────────
+//  Main AdditionalGuests Panel 
 export default function AdditionalGuests({ reservationId }) {
   const [guests,    setGuests]    = useState([]);
   const [loading,   setLoading]   = useState(false);
@@ -185,7 +185,7 @@ export default function AdditionalGuests({ reservationId }) {
     <div className="ag-panel">
       <div className="ag-panel-head">
         <h4 className="ag-panel-title">
-          👥 Guests
+           Guests
           <span className="ag-summary">{adults}A {children > 0 ? children+'C ' : ''}{infants > 0 ? infants+'I' : ''}</span>
         </h4>
         {!showForm && (
@@ -196,7 +196,7 @@ export default function AdditionalGuests({ reservationId }) {
         )}
       </div>
 
-      {loading && <p style={{ color: 'var(--text-soft)', fontSize: '0.82rem', padding: '8px 0' }}>Loading guests…</p>}
+      {loading && <p style={{ color: 'var(--text-soft)', fontSize: '0.82rem', padding: '8px 0' }}>Loading guests...</p>}
 
       <div className="ag-list">
         {guests.map(g => (

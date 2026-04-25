@@ -1,9 +1,9 @@
 /**
- * LuxeReserve — Full Database Reset + Account Setup
+ * LuxeReserve  Full Database Reset + Account Setup
  * =====================================================
- * Chạy script này trên máy mới để đồng bộ tài khoản demo
+ * Run this script on a new machine to sync demo accounts
  * 
- * Cách dùng (từ thư mục gốc project):
+ * Usage (from project root directory):
  *   cd src
  *   node ..\database\reset_and_setup.js
  */
@@ -15,14 +15,14 @@ const { execSync } = require('child_process');
 
 const SQLCMD = `sqlcmd -S "localhost\\SQLEXPRESS" -d LuxeReserve -E`;
 
-// ── Helper ───────────────────────────────────────────────────
+//  Helper 
 function runSql(label, sqlContent) {
   const tmp = path.join(__dirname, '_tmp_reset.sql');
   fs.writeFileSync(tmp, sqlContent, 'utf8');
-  console.log(`⏳ ${label}...`);
+  console.log(` ${label}...`);
   try {
     execSync(`${SQLCMD} -i "${tmp}"`, { stdio: 'inherit' });
-    console.log(`✅ ${label} done\n`);
+    console.log(` ${label} done\n`);
   } finally {
     fs.unlinkSync(tmp);
   }
@@ -30,26 +30,26 @@ function runSql(label, sqlContent) {
 
 async function main() {
   console.log('\n==============================================');
-  console.log(' LuxeReserve — Reset & Setup Demo Accounts');
+  console.log(' LuxeReserve  Reset & Setup Demo Accounts');
   console.log('==============================================\n');
 
-  // ── Step 1: Run 10_reset_accounts.sql ───────────────────────
+  //  Step 1: Run 10_reset_accounts.sql 
   const resetScript = path.join(__dirname, 'sql', '10_reset_accounts.sql');
-  console.log('⏳ Step 1: Resetting all accounts...');
+  console.log(' Step 1: Resetting all accounts...');
   execSync(`${SQLCMD} -i "${resetScript}"`, { stdio: 'inherit' });
-  console.log('✅ Step 1 done\n');
+  console.log(' Step 1 done\n');
 
-  // ── Step 2: Hash passwords ───────────────────────────────────
-  console.log('⏳ Step 2: Generating bcrypt hashes...');
+  //  Step 2: Hash passwords 
+  console.log(' Step 2: Generating bcrypt hashes...');
   const [adminHash, cashierHash] = await Promise.all([
     bcrypt.hash('admin',   10),
     bcrypt.hash('cashier', 10),
   ]);
   console.log('   admin   hash length:', adminHash.length);
   console.log('   cashier hash length:', cashierHash.length);
-  console.log('✅ Step 2 done\n');
+  console.log(' Step 2 done\n');
 
-  // ── Step 3: Confirm admin hash ───────────────────────────────
+  //  Step 3: Confirm admin hash 
   runSql('Step 3: Confirm admin/admin password', `
 USE LuxeReserve;
 UPDATE SystemUser
@@ -71,7 +71,7 @@ SELECT username, LEFT(password_hash, 7) AS hash_prefix,
        LEN(password_hash) AS hash_len FROM SystemUser WHERE user_id = 1;
 `);
 
-  // ── Step 4: Create/reset cashier account ────────────────────
+  //  Step 4: Create/reset cashier account 
   runSql('Step 4: Create cashier/cashier (CASHIER + FRONT_DESK)', `
 USE LuxeReserve;
 
@@ -112,15 +112,15 @@ GROUP BY u.username, u.full_name, u.account_status
 ORDER BY u.username;
 `);
 
-  // ── Done ─────────────────────────────────────────────────────
+  //  Done 
   console.log('==============================================');
-  console.log(' ✅  All accounts ready!');
+  console.log('   All accounts ready!');
   console.log('----------------------------------------------');
-  console.log('  admin   / admin   → /admin   (ADMIN)');
-  console.log('  cashier / cashier → /cashier (CASHIER+FRONT_DESK)');
-  console.log('  dqc     / dqc     → /        (Guest PLATINUM)');
-  console.log('  user    / user    → /        (Guest NEW)');
+  console.log('  admin   / admin    /admin   (ADMIN)');
+  console.log('  cashier / cashier  /cashier (CASHIER+FRONT_DESK)');
+  console.log('  dqc     / dqc      /        (Guest PLATINUM)');
+  console.log('  user    / user     /        (Guest NEW)');
   console.log('==============================================\n');
 }
 
-main().catch(e => { console.error('\n❌', e.message); process.exit(1); });
+main().catch(e => { console.error('\n', e.message); process.exit(1); });

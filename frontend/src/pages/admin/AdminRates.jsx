@@ -943,7 +943,7 @@ export default function AdminRates({ hotels = [] }) {
                     <span className="rate-alert-type">{alert.room_type_name}</span>
                     <span className="rate-alert-date">{fmtDate(alert.rate_date)}</span>
                     <span className="rate-alert-change">
-                      {fmtCurrency(alert.old_rate, alertCurrency)} {'->'} {fmtCurrency(alert.new_rate, alertCurrency)}
+                      {fmtCurrency(alert.old_rate, alertCurrency)} {'?'} {fmtCurrency(alert.new_rate, alertCurrency)}
                       <em> ({Number(alert.change_percent || 0).toFixed(1)}%)</em>
                     </span>
                   </div>

@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — Hotel Routes
+ * LuxeReserve  Hotel Routes
  * HYBRID: SQL Server (operational) + MongoDB (rich content)
  */
 
@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql, getMongoDb } = require('../config/database');
 
-// GET /api/hotels — List all hotels (Hybrid merge)
+// GET /api/hotels  List all hotels (Hybrid merge)
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -17,6 +17,7 @@ router.get('/', async (req, res) => {
     const sqlResult = await pool.request().query(`
       SELECT h.hotel_id, h.hotel_code, h.hotel_name, h.hotel_type,
              h.star_rating, h.status, h.currency_code,
+             h.latitude, h.longitude,
              h.check_in_time, h.check_out_time, h.total_rooms,
              b.brand_name, c.chain_name,
              l.location_name AS city_name
@@ -49,7 +50,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/hotels/:id — Hotel detail (Full hybrid)
+// GET /api/hotels/:id  Hotel detail (Full hybrid)
 router.get('/:id', async (req, res) => {
   try {
     const hotelId = parseInt(req.params.id);
@@ -215,9 +216,9 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// GET /api/hotels/:id/features — List all RoomFeatures for a hotel
-// ═══════════════════════════════════════════════════════════
+// 
+// GET /api/hotels/:id/features  List all RoomFeatures for a hotel
+// 
 router.get('/:id/features', async (req, res) => {
   try {
     const hotelId = parseInt(req.params.id, 10);
@@ -260,9 +261,9 @@ router.get('/:id/features', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// POST /api/hotels/:id/features — Add a RoomFeature
-// ═══════════════════════════════════════════════════════════
+// 
+// POST /api/hotels/:id/features  Add a RoomFeature
+// 
 const VALID_FEATURE_CATEGORIES = ['VIEW', 'BED', 'BATH', 'TECH', 'AMENITY', 'SPACE'];
 
 router.post('/:id/features', async (req, res) => {
@@ -334,9 +335,9 @@ router.post('/:id/features', async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// DELETE /api/hotels/:id/features/:fid — Remove a RoomFeature
-// ═══════════════════════════════════════════════════════════
+// 
+// DELETE /api/hotels/:id/features/:fid  Remove a RoomFeature
+// 
 router.delete('/:id/features/:fid', async (req, res) => {
   try {
     const hotelId  = parseInt(req.params.id, 10);
@@ -376,4 +377,3 @@ router.delete('/:id/features/:fid', async (req, res) => {
 });
 
 module.exports = router;
-

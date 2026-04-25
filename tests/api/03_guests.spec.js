@@ -1,21 +1,21 @@
 /**
- * ══════════════════════════════════════════════════════════════
- * [03] GUESTS API — Playwright Tests
+ * 
+ * [03] GUESTS API  Playwright Tests
  * Endpoints:
  *   GET  /api/guests
  *   GET  /api/guests/:id
  *   POST /api/guests
- * ══════════════════════════════════════════════════════════════
+ * 
  */
 const { test, expect } = require('@playwright/test');
 const { SEED } = require('./helpers');
 
 let createdGuestId = null;
 
-test.describe('👤 Guests API', () => {
+test.describe(' Guests API', () => {
 
-  // ── GET /guests ────────────────────────────────────────────
-  test('GET /guests — returns guest list', async ({ request }) => {
+  //  GET /guests 
+  test('GET /guests  returns guest list', async ({ request }) => {
     const res = await request.get('/api/guests');
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -24,7 +24,7 @@ test.describe('👤 Guests API', () => {
     expect(body.data.length).toBeGreaterThan(0);
   });
 
-  test('GET /guests — each guest has full_name (computed column)', async ({ request }) => {
+  test('GET /guests  each guest has full_name (computed column)', async ({ request }) => {
     const res = await request.get('/api/guests');
     const body = await res.json();
     const guest = body.data[0];
@@ -33,8 +33,8 @@ test.describe('👤 Guests API', () => {
     expect(guest).toHaveProperty('guest_code');
   });
 
-  // ── GET /guests/:id ────────────────────────────────────────
-  test('GET /guests/:id — returns full profile with preferences', async ({ request }) => {
+  //  GET /guests/:id 
+  test('GET /guests/:id  returns full profile with preferences', async ({ request }) => {
     const res = await request.get(`/api/guests/${SEED.guest.id}`);
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -45,20 +45,20 @@ test.describe('👤 Guests API', () => {
     expect(body.data).toHaveProperty('addresses');
   });
 
-  test('GET /guests/:id — guest not found → 404', async ({ request }) => {
+  test('GET /guests/:id  guest not found  404', async ({ request }) => {
     const res = await request.get('/api/guests/99999');
     expect(res.status()).toBe(404);
     const body = await res.json();
     expect(body.success).toBe(false);
   });
 
-  test('GET /guests/:id — invalid ID → 400', async ({ request }) => {
+  test('GET /guests/:id  invalid ID  400', async ({ request }) => {
     const res = await request.get('/api/guests/not-a-number');
     expect(res.status()).toBe(400);
   });
 
-  // ── POST /guests ───────────────────────────────────────────
-  test('POST /guests — create a new guest', async ({ request }) => {
+  //  POST /guests 
+  test('POST /guests  create a new guest', async ({ request }) => {
     const uniqueCode = `G-PLW-${Date.now()}-${Math.floor(Math.random() * 9999)}`;
     const res = await request.post('/api/guests', {
       data: {
@@ -71,26 +71,26 @@ test.describe('👤 Guests API', () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.data).toHaveProperty('guest_id');
-    // full_name is a computed column — should be auto-calculated
+    // full_name is a computed column  should be auto-calculated
     expect(body.data.full_name).toContain('Playwright');
     createdGuestId = body.data.guest_id;
   });
 
-  test('POST /guests — missing first_name → 400', async ({ request }) => {
+  test('POST /guests  missing first_name  400', async ({ request }) => {
     const res = await request.post('/api/guests', {
       data: { guest_code: 'G-FAIL-1', last_name: 'Someone' },
     });
     expect(res.status()).toBe(400);
   });
 
-  test('POST /guests — missing last_name → 400', async ({ request }) => {
+  test('POST /guests  missing last_name  400', async ({ request }) => {
     const res = await request.post('/api/guests', {
       data: { guest_code: 'G-FAIL-2', first_name: 'Someone' },
     });
     expect(res.status()).toBe(400);
   });
 
-  test('POST /guests — missing guest_code → 400', async ({ request }) => {
+  test('POST /guests  missing guest_code  400', async ({ request }) => {
     const res = await request.post('/api/guests', {
       data: { first_name: 'No', last_name: 'Code' },
     });
@@ -98,7 +98,7 @@ test.describe('👤 Guests API', () => {
   });
 
   // Verify created guest is retrievable
-  test('GET /guests/:id — created guest is retrievable', async ({ request }) => {
+  test('GET /guests/:id  created guest is retrievable', async ({ request }) => {
     if (!createdGuestId) return test.skip();
     const res = await request.get(`/api/guests/${createdGuestId}`);
     expect(res.status()).toBe(200);

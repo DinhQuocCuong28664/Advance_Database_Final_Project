@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Booking.css';
 import { apiRequest } from '../lib/api';
 
-const DEPOSIT_RATE = 0.30; // 30% bắt buộc
+const DEPOSIT_RATE = 0.30; // 30% mandatory
 
 function nightsBetween(a, b) {
   const ms = new Date(b) - new Date(a);
@@ -13,6 +13,10 @@ function nightsBetween(a, b) {
 
 function fmt(n) {
   return Number(n || 0).toLocaleString('en-US');
+}
+
+function looksLikeEmail(value) {
+  return /\S+@\S+\.\S+/.test(String(value || '').trim());
 }
 
 export default function BookingPage() {
@@ -37,6 +41,7 @@ export default function BookingPage() {
     last_name:      authSession?.user?.last_name  || '',
     email:          authSession?.user?.login_email || authSession?.user?.email || '',
     phone:          '',
+    booking_email_otp: '',
     special_requests: '',
     payment_method: 'CREDIT_CARD',
   });
@@ -44,9 +49,66 @@ export default function BookingPage() {
   const [busy, setBusy]           = useState(false);
   const [error, setError]         = useState(null);
   const [reservation, setReservation] = useState(null);
+  const [emailStatus, setEmailStatus] = useState({ checking: false, exists: false, checkedEmail: '' });
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
   function setField(key, val) {
     setForm((s) => ({ ...s, [key]: val }));
+  }
+
+  useEffect(() => {
+    if (isGuestUser) return undefined;
+
+    const email = String(form.email || '').trim();
+    if (!looksLikeEmail(email)) {
+      setEmailStatus({ checking: false, exists: false, checkedEmail: '' });
+      setOtpSent(false);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setEmailStatus((current) => ({ ...current, checking: true }));
+      apiRequest('/auth/guest/booking-email-status', {
+        method: 'POST',
+        body: JSON.stringify({ login_email: email }),
+      })
+        .then((payload) => {
+          const exists = Boolean(payload.data?.exists);
+          setEmailStatus({ checking: false, exists, checkedEmail: email });
+          if (!exists) {
+            setOtpSent(false);
+            setForm((current) => (current.booking_email_otp ? { ...current, booking_email_otp: '' } : current));
+          }
+        })
+        .catch(() => {
+          setEmailStatus({ checking: false, exists: false, checkedEmail: email });
+        });
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [form.email, isGuestUser]);
+
+  async function handleSendBookingOtp() {
+    const email = String(form.email || '').trim();
+    if (!looksLikeEmail(email)) {
+      setError('Enter a valid email address first.');
+      return;
+    }
+
+    setOtpBusy(true);
+    setError(null);
+    try {
+      await apiRequest('/auth/guest/booking-email-otp', {
+        method: 'POST',
+        body: JSON.stringify({ login_email: email }),
+      });
+      setOtpSent(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setOtpBusy(false);
+    }
   }
 
   async function handleConfirm(e) {
@@ -64,7 +126,7 @@ export default function BookingPage() {
         phone_number: form.phone || null,
       };
 
-      // ── Step 1: Create reservation ────────────────────────────
+      //  Step 1: Create reservation 
       const resPayload = await apiRequest('/reservations', {
         method: 'POST',
         body: JSON.stringify({
@@ -81,13 +143,14 @@ export default function BookingPage() {
           guarantee_type:       'DEPOSIT',
           purpose_of_stay:      'LEISURE',
           booking_source:       'DIRECT_WEB',
+          booking_email_otp:    emailStatus.exists ? form.booking_email_otp || undefined : undefined,
         }),
       });
 
       const res = resPayload.data || resPayload.reservation || resPayload;
       const serverDepositAmt = res.deposit_amount ?? depositDue;
 
-      // ── TODO: Bật VNPay khi sẵn sàng ─────────────────────────
+      //  TODO: Enable VNPay when ready 
       // const vnpPayload = await apiRequest('/vnpay/create-payment', {
       //   method: 'POST',
       //   body: JSON.stringify({
@@ -102,9 +165,9 @@ export default function BookingPage() {
       //   room_name: roomName, checkin, checkout, nights, subtotal, guests,
       // }));
       // window.location.href = vnpPayload.paymentUrl;
-      // ─────────────────────────────────────────────────────────
+      // 
 
-      // ── Step 2: Mock payment — ghi thẳng DEPOSIT vào DB ──────
+      //  Step 2: Mock payment  write DEPOSIT directly to DB 
       await apiRequest('/payments', {
         method: 'POST',
         body: JSON.stringify({
@@ -126,7 +189,7 @@ export default function BookingPage() {
     }
   }
 
-  // ── DONE ────────────────────────────────────────────────────────
+  //  DONE 
   if (step === 'done' && reservation) {
     const paidDeposit  = reservation.deposit_amount ?? depositDue;
     const grandTotal   = reservation.total ?? reservation.grand_total_amount ?? subtotal;
@@ -134,7 +197,7 @@ export default function BookingPage() {
 
     return (
       <div className="booking-done">
-        <div className="booking-done-icon">🎉</div>
+        <div className="booking-done-icon"></div>
         <p className="page-eyebrow">Booking confirmed</p>
         <h1 className="booking-done-title">You're all set!</h1>
         <p className="booking-done-sub">
@@ -152,7 +215,7 @@ export default function BookingPage() {
           <div><span>Total stay</span><strong>{fmt(grandTotal)} VND</strong></div>
           <div className="booking-done-deposit">
             <span>Deposit paid (30%)</span>
-            <strong className="done-deposit-val">−{fmt(paidDeposit)} VND</strong>
+            <strong className="done-deposit-val">{fmt(paidDeposit)} VND</strong>
           </div>
           <div className="booking-done-balance">
             <span>Balance due at check-out</span>
@@ -172,10 +235,10 @@ export default function BookingPage() {
     );
   }
 
-  // ── FORM ────────────────────────────────────────────────────────
+  //  FORM 
   return (
     <div className="booking-page">
-      {/* ── PROGRESS BAR ── */}
+      {/*  PROGRESS BAR  */}
       <div className="booking-stepper">
         {['Your details', 'Confirm', 'Done'].map((s, i) => {
           const active = step === ['details', 'confirm', 'done'][i];
@@ -190,15 +253,18 @@ export default function BookingPage() {
       </div>
 
       <div className="booking-layout">
-        {/* ── MAIN FORM ── */}
+        {/*  MAIN FORM  */}
         <form className="booking-form" onSubmit={handleConfirm}>
           {step === 'details' && (
             <>
               <h2 className="booking-section-title">Your details</h2>
               {isGuestUser && (
                 <p className="booking-member-note">
-                  🎖 You're booking as a loyalty member. Your details are pre-filled.
+                   You're booking as a loyalty member. Your details are pre-filled.
                 </p>
+              )}
+              {!isGuestUser && emailStatus.checking && (
+                <p className="booking-inline-note">Checking whether this email already exists...</p>
               )}
               <div className="booking-form-grid">
                 <label>
@@ -213,13 +279,35 @@ export default function BookingPage() {
                   Email
                   <input type="email" required value={form.email} onChange={(e) => setField('email', e.target.value)} />
                 </label>
+                {!isGuestUser && emailStatus.exists && emailStatus.checkedEmail === String(form.email || '').trim() && (
+                  <div className="field-span-2 booking-email-otp-block">
+                    <div className="booking-existing-email-note">
+                      <strong>Email already exists in the system.</strong>
+                      <span>Enter the OTP sent to this email to continue the booking with the existing guest profile.</span>
+                    </div>
+                    <div className="booking-otp-row">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="Enter OTP code"
+                        value={form.booking_email_otp}
+                        onChange={(e) => setField('booking_email_otp', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      />
+                      <button type="button" className="ghost-button" onClick={handleSendBookingOtp} disabled={otpBusy}>
+                        {otpBusy ? 'Sending...' : otpSent ? 'Resend OTP' : 'Send OTP'}
+                      </button>
+                    </div>
+                    {otpSent && <small className="booking-otp-help">A verification code was sent to {form.email}.</small>}
+                  </div>
+                )}
                 <label className="field-span-2">
                   Phone (optional)
                   <input type="tel" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
                 </label>
                 <label className="field-span-2">
                   Special requests (optional)
-                  <textarea rows={3} value={form.special_requests} onChange={(e) => setField('special_requests', e.target.value)} placeholder="E.g. high floor, late check-in…" />
+                  <textarea rows={3} value={form.special_requests} onChange={(e) => setField('special_requests', e.target.value)} placeholder="E.g. high floor, late check-in..." />
                 </label>
                 <label className="field-span-2">
                   Payment method
@@ -234,7 +322,7 @@ export default function BookingPage() {
 
               {/* Deposit notice */}
               <div className="booking-deposit-notice">
-                <span className="deposit-notice-icon">ℹ</span>
+                <span className="deposit-notice-icon">i</span>
                 <span>
                   A non-refundable deposit of{' '}
                   <strong>{fmt(depositDue)} VND</strong>{' '}
@@ -244,7 +332,7 @@ export default function BookingPage() {
               </div>
 
               <button className="primary-button booking-next-btn" type="submit">
-                Continue to confirm →
+                Continue to confirm 
               </button>
             </>
           )}
@@ -261,7 +349,7 @@ export default function BookingPage() {
               </div>
 
               <div className="booking-deposit-notice">
-                <span className="deposit-notice-icon">💳</span>
+                <span className="deposit-notice-icon"></span>
                 <span>
                   By confirming, you authorise a deposit charge of{' '}
                   <strong>{fmt(depositDue)} VND</strong>.
@@ -271,16 +359,16 @@ export default function BookingPage() {
 
               {error && <p className="booking-error">{error}</p>}
               <div className="booking-confirm-actions">
-                <button type="button" className="ghost-button" onClick={() => setStep('details')}>← Edit details</button>
+                <button type="button" className="ghost-button" onClick={() => setStep('details')}> Edit details</button>
                 <button className="primary-button" type="submit" disabled={busy}>
-                  {busy ? 'Confirming…' : `Pay deposit ${fmt(depositDue)} VND`}
+                  {busy ? 'Confirming...' : `Pay deposit ${fmt(depositDue)} VND`}
                 </button>
               </div>
             </>
           )}
         </form>
 
-        {/* ── SUMMARY SIDEBAR ── */}
+        {/*  SUMMARY SIDEBAR  */}
         <aside className="booking-summary">
           <h3 className="booking-summary-title">Booking summary</h3>
           <div className="booking-summary-body">
@@ -294,7 +382,7 @@ export default function BookingPage() {
               <span>Check-out</span><strong>{checkout}</strong>
             </div>
             <div className="booking-summary-row">
-              <span>{nights} night{nights > 1 ? 's' : ''} × {fmt(nightlyRate)} VND</span>
+              <span>{nights} night{nights > 1 ? 's' : ''}  {fmt(nightlyRate)} VND</span>
               <strong>{fmt(subtotal)} VND</strong>
             </div>
             <div className="booking-summary-row">

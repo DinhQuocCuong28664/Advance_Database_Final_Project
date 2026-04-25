@@ -2,12 +2,12 @@ import { useState, useCallback } from 'react';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/FlashContext';
 
-// ── Helpers ──────────────────────────────────────────────────────────
+//  Helpers 
 const fmtCurrency = (amount, currency = 'USD') =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount ?? 0);
 
 const fmtDate = (d) =>
-  d ? new Date(d).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  d ? new Date(d).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '';
 
 const TYPE_LABELS = {
   FULL_PAYMENT:    { label: 'Full Payment',   color: '#0e7a53' },
@@ -17,10 +17,10 @@ const TYPE_LABELS = {
   REFUND:          { label: 'Refund',           color: '#dc2626' },
 };
 const METHOD_LABELS = {
-  CASH:          '💵 Cash',
-  CREDIT_CARD:   '💳 Card',
-  BANK_TRANSFER: '🏦 Bank',
-  VNPAY:         '🔵 VNPay',
+  CASH:          ' Cash',
+  CREDIT_CARD:   ' Card',
+  BANK_TRANSFER: ' Bank',
+  VNPAY:         ' VNPay',
 };
 const STATUS_COLORS = {
   CAPTURED:   { bg: '#dcfce7', color: '#14532d' },
@@ -29,7 +29,7 @@ const STATUS_COLORS = {
   FAILED:     { bg: '#f3f4f6', color: '#6b7280' },
 };
 
-// ── Component ─────────────────────────────────────────────────────────
+//  Component 
 export default function AdminPayments({ hotels = [] }) {
   const { setFlash } = useFlash();
 
@@ -92,7 +92,7 @@ export default function AdminPayments({ hotels = [] }) {
         </div>
       </div>
 
-      {/* ── Filters toolbar ── */}
+      {/*  Filters toolbar  */}
       <div className="pay-hist-toolbar">
         <select value={hotelId} onChange={e => setHotelId(e.target.value)} className="fd-select">
           <option value="">All hotels</option>
@@ -106,7 +106,7 @@ export default function AdminPayments({ hotels = [] }) {
           onChange={e => setDateFrom(e.target.value)}
           className="fd-input" title="From date"
         />
-        <span style={{ color: 'var(--text-soft)', alignSelf: 'center' }}>→</span>
+        <span style={{ color: 'var(--text-soft)', alignSelf: 'center' }}></span>
         <input
           type="date" value={dateTo}
           onChange={e => setDateTo(e.target.value)}
@@ -141,11 +141,11 @@ export default function AdminPayments({ hotels = [] }) {
           disabled={loading}
           style={{ whiteSpace: 'nowrap' }}
         >
-          {loading ? 'Loading…' : '🔍 Search'}
+          {loading ? 'Loading...' : ' Search'}
         </button>
       </div>
 
-      {/* ── Summary KPI cards ── */}
+      {/*  Summary KPI cards  */}
       {searched && payments.length > 0 && (
         <div className="pay-hist-kpis">
           <div className="pay-hist-kpi pay-hist-kpi--main">
@@ -170,22 +170,22 @@ export default function AdminPayments({ hotels = [] }) {
         </div>
       )}
 
-      {/* ── Empty / loading states ── */}
-      {loading && <p className="fd-loading" style={{ padding: '40px 0', textAlign: 'center' }}>Loading payments…</p>}
+      {/*  Empty / loading states  */}
+      {loading && <p className="fd-loading" style={{ padding: '40px 0', textAlign: 'center' }}>Loading payments...</p>}
       {!loading && searched && payments.length === 0 && (
         <div className="svc-orders-empty">
-          <span style={{ fontSize: '2rem' }}>💳</span>
+          <span style={{ fontSize: '2rem' }}></span>
           <p>No payments found for the selected filters.</p>
         </div>
       )}
       {!loading && !searched && (
         <div className="svc-orders-empty">
-          <span style={{ fontSize: '2rem' }}>🔍</span>
+          <span style={{ fontSize: '2rem' }}></span>
           <p>Set filters and click <strong>Search</strong> to view payment history.</p>
         </div>
       )}
 
-      {/* ── Payment table ── */}
+      {/*  Payment table  */}
       {!loading && payments.length > 0 && (
         <div className="pay-hist-table-wrap">
           <table className="pay-hist-table">
@@ -218,7 +218,7 @@ export default function AdminPayments({ hotels = [] }) {
                       </div>
                     </td>
                     <td className="pay-hist-hotel">
-                      {p.hotel_name || <span style={{ color: 'var(--text-soft)' }}>—</span>}
+                      {p.hotel_name || <span style={{ color: 'var(--text-soft)' }}></span>}
                     </td>
                     <td>
                       <code className="pay-hist-code">{p.reservation_code}</code>
@@ -242,7 +242,7 @@ export default function AdminPayments({ hotels = [] }) {
                     <td>
                       <span className="pay-hist-ref" title={p.payment_reference}>
                         {p.payment_reference?.length > 22
-                          ? p.payment_reference.slice(0, 22) + '…'
+                          ? p.payment_reference.slice(0, 22) + '...'
                           : p.payment_reference}
                       </span>
                     </td>

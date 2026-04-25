@@ -102,7 +102,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/promotions — Create promotion
+// POST /api/promotions  Create promotion
 router.post('/', async (req, res) => {
   try {
     const {
@@ -155,7 +155,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/promotions/:id — Update promotion
+// PUT /api/promotions/:id  Update promotion
 router.put('/:id', async (req, res) => {
   try {
     const promoId = parseInt(req.params.id, 10);
@@ -201,7 +201,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/promotions/:id — Deactivate (soft delete)
+// DELETE /api/promotions/:id  Deactivate (soft delete)
 router.delete('/:id', async (req, res) => {
   try {
     const promoId = parseInt(req.params.id, 10);

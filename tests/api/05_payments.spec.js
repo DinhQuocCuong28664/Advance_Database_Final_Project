@@ -1,10 +1,10 @@
 /**
- * ══════════════════════════════════════════════════════════════
- * [05] PAYMENTS API — Playwright Tests
+ * 
+ * [05] PAYMENTS API  Playwright Tests
  * Endpoints:
  *   POST /api/payments
  *   GET  /api/payments
- * ══════════════════════════════════════════════════════════════
+ * 
  */
 const { test, expect } = require('@playwright/test');
 const { SEED, DATES, futureDate } = require('./helpers');
@@ -20,7 +20,7 @@ async function findAvailableRoom(request, hotelId, checkin, checkout) {
   return (body.data && body.data.length > 0) ? body.data[0] : null;
 }
 
-test.describe('💳 Payments API', () => {
+test.describe(' Payments API', () => {
 
   // Setup: Create a fresh reservation to pay against
   test.beforeAll(async ({ request }) => {
@@ -48,8 +48,8 @@ test.describe('💳 Payments API', () => {
     }
   });
 
-  // ── GET /payments ──────────────────────────────────────────
-  test('GET /payments — returns all payments', async ({ request }) => {
+  //  GET /payments 
+  test('GET /payments  returns all payments', async ({ request }) => {
     const res = await request.get('/api/payments');
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -57,7 +57,7 @@ test.describe('💳 Payments API', () => {
     expect(Array.isArray(body.data)).toBe(true);
   });
 
-  test('GET /payments?reservation_id= — filter by reservation', async ({ request }) => {
+  test('GET /payments?reservation_id=  filter by reservation', async ({ request }) => {
     if (!testReservation) return test.skip();
     const res = await request.get('/api/payments', {
       params: { reservation_id: testReservation.reservation_id },
@@ -68,37 +68,37 @@ test.describe('💳 Payments API', () => {
     expect(Array.isArray(body.data)).toBe(true);
   });
 
-  // ── POST /payments — Validation ────────────────────────────
-  test('POST /payments — missing reservation_id → 400', async ({ request }) => {
+  //  POST /payments  Validation 
+  test('POST /payments  missing reservation_id  400', async ({ request }) => {
     const res = await request.post('/api/payments', {
       data: { amount: 100000 },
     });
     expect(res.status()).toBe(400);
   });
 
-  test('POST /payments — missing amount → 400', async ({ request }) => {
+  test('POST /payments  missing amount  400', async ({ request }) => {
     const res = await request.post('/api/payments', {
       data: { reservation_id: 1 },
     });
     expect(res.status()).toBe(400);
   });
 
-  test('POST /payments — amount <= 0 → 400', async ({ request }) => {
+  test('POST /payments  amount <= 0  400', async ({ request }) => {
     const res = await request.post('/api/payments', {
       data: { reservation_id: 1, amount: 0 },
     });
     expect(res.status()).toBe(400);
   });
 
-  test('POST /payments — reservation not found → 404', async ({ request }) => {
+  test('POST /payments  reservation not found  404', async ({ request }) => {
     const res = await request.post('/api/payments', {
       data: { reservation_id: 99999, amount: 100000 },
     });
     expect(res.status()).toBe(404);
   });
 
-  // ── POST /payments — DEPOSIT ───────────────────────────────
-  test('POST /payments — pay DEPOSIT (30%)', async ({ request }) => {
+  //  POST /payments  DEPOSIT 
+  test('POST /payments  pay DEPOSIT (30%)', async ({ request }) => {
     if (!testReservation || depositAmount <= 0) return test.skip();
     const res = await request.post('/api/payments', {
       data: {
@@ -118,7 +118,7 @@ test.describe('💳 Payments API', () => {
     expect(body.payment_summary).toHaveProperty('remaining_balance');
   });
 
-  test('POST /payments — DEPOSIT exceeding allowed → 400 or 409', async ({ request }) => {
+  test('POST /payments  DEPOSIT exceeding allowed  400 or 409', async ({ request }) => {
     if (!testReservation || depositAmount <= 0) return test.skip();
     // Try to pay deposit again (would exceed deposit_amount)
     const res = await request.post('/api/payments', {
@@ -133,8 +133,8 @@ test.describe('💳 Payments API', () => {
     expect([400, 409]).toContain(res.status());
   });
 
-  // ── POST /payments — FULL_PAYMENT ──────────────────────────
-  test('POST /payments — pay remaining FULL_PAYMENT', async ({ request }) => {
+  //  POST /payments  FULL_PAYMENT 
+  test('POST /payments  pay remaining FULL_PAYMENT', async ({ request }) => {
     if (!testReservation) return test.skip();
 
     // Get current balance

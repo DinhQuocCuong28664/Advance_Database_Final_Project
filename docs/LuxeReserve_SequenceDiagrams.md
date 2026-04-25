@@ -1,13 +1,13 @@
-# LuxeReserve — Sequence Diagrams (Core Flows)
+# LuxeReserve  Sequence Diagrams (Core Flows)
 
 > **Source**: `GlobalLuxuryHotelReservationEngine_REMAKE.groovy`
-> **Chỉ tập trung 4 flow cốt lõi** — bỏ qua các flow phụ (CRUD cơ bản, profile update, v.v.)
+> **Chi tap trung 4 flow cot loi**  bo qua cac flow phu (CRUD co ban, profile update, v.v.)
 
 ---
 
-## Flow 1: Room Reservation — Pessimistic Locking (Core)
+## Flow 1: Room Reservation  Pessimistic Locking (Core)
 
-> **Đây là flow quan trọng nhất** — thể hiện ACID transaction, pessimistic locking chống double-booking, và tương tác Hybrid SQL + MongoDB.
+> **ay la flow quan trong nhat**  the hien ACID transaction, pessimistic locking chong double-booking, va tuong tac Hybrid SQL + MongoDB.
 
 ```mermaid
 sequenceDiagram
@@ -19,40 +19,40 @@ sequenceDiagram
     participant RA as RoomAvailability
     participant Lock as InventoryLockLog
 
-    Note over Guest, Lock: ═══ PHASE 1: Search & Browse (Read-heavy → MongoDB) ═══
+    Note over Guest, Lock:  PHASE 1: Search & Browse (Read-heavy  MongoDB) 
 
-    Guest->>Web: Tìm phòng (city, dates, guests)
-    Web->>API: GET /hotels?city=HCMC&checkin=...
+    Guest->>Web: Tim phong (city, dates, guests)
+    Web->>API: GET /hotels->city=HCMC&checkin=...
     API->>Mongo: db.Hotel_Catalog.find({<br/>"location.city": "Ho Chi Minh City"})
     Mongo-->>API: Hotel list + embedded amenities,<br/>room_types, images
-    API-->>Web: Danh sách hotel + rich content
-    Web-->>Guest: Hiển thị hotel cards
+    API-->>Web: Danh sach hotel + rich content
+    Web-->>Guest: Hien thi hotel cards
 
-    Guest->>Web: Chọn hotel → xem room types
-    Web->>API: GET /hotels/1/rooms?dates=...
+    Guest->>Web: Chon hotel  xem room types
+    Web->>API: GET /hotels/1/rooms->dates=...
     API->>SQL: SELECT rt.*, rr.final_rate<br/>FROM RoomType rt<br/>JOIN RoomRate rr ON ...<br/>WHERE hotel_id = 1
     SQL-->>API: Operational data (rate, availability)
     API->>Mongo: db.Hotel_Catalog.findOne({hotel_id: 1},<br/>{room_types: 1})
     Mongo-->>API: Rich content (descriptions, features, images)
     API->>API: Merge SQL rates + MongoDB content
-    API-->>Web: Room types + giá + ảnh + features
-    Web-->>Guest: Hiển thị danh sách phòng
+    API-->>Web: Room types + gia + anh + features
+    Web-->>Guest: Hien thi danh sach phong
 
-    Note over Guest, Lock: ═══ PHASE 2: Booking (ACID → SQL Server + Pessimistic Lock) ═══
+    Note over Guest, Lock:  PHASE 2: Booking (ACID  SQL Server + Pessimistic Lock) 
 
-    Guest->>Web: Chọn phòng → "Đặt ngay"
+    Guest->>Web: Chon phong  "at ngay"
     Web->>API: POST /reservations<br/>{room_id, dates, guest_info, payment}
 
     API->>SQL: BEGIN TRANSACTION
 
     rect rgb(255, 235, 235)
-        Note over API, Lock: 🔒 PESSIMISTIC LOCKING — Chống Double-Booking
+        Note over API, Lock:  PESSIMISTIC LOCKING  Chong Double-Booking
 
         API->>RA: SELECT availability_status<br/>FROM RoomAvailability<br/>WITH (UPDLOCK, HOLDLOCK)<br/>WHERE room_id=101 AND stay_date='2026-04-15'
 
-        Note right of RA: ⚠️ Transaction khác<br/>sẽ BỊ BLOCK tại đây<br/>cho đến khi COMMIT/ROLLBACK
+        Note right of RA:  Transaction khac<br/>se BI BLOCK tai ay<br/>cho en khi COMMIT/ROLLBACK
 
-        RA-->>API: status = 'OPEN' ✅
+        RA-->>API: status = 'OPEN' 
     end
 
     API->>SQL: INSERT Reservation (header)
@@ -64,29 +64,29 @@ sequenceDiagram
     API->>RA: UPDATE RoomAvailability<br/>SET status='BOOKED', sellable_flag=0,<br/>version_no = version_no + 1
     API->>Lock: INSERT InventoryLockLog<br/>(status='SUCCESS', session_id=...)
 
-    API->>SQL: INSERT ReservationStatusHistory<br/>(PENDING → CONFIRMED)
+    API->>SQL: INSERT ReservationStatusHistory<br/>(PENDING  CONFIRMED)
 
-    Note over Guest, Lock: ═══ PHASE 3: Payment ═══
+    Note over Guest, Lock:  PHASE 3: Payment 
 
     API->>SQL: INSERT Payment<br/>(type=DEPOSIT, status=INITIATED,<br/>currency_code snapshot)
     API-->>Web: payment_url (redirect to gateway)
-    Web->>Guest: Redirect → Payment Gateway
+    Web->>Guest: Redirect  Payment Gateway
 
-    Guest->>Web: Thanh toán thành công
+    Guest->>Web: Thanh toan thanh cong
     Web->>API: Payment callback (success)
     API->>SQL: UPDATE Payment<br/>SET status='CAPTURED', paid_at=NOW()
     API->>SQL: UPDATE Reservation<br/>SET status='CONFIRMED'
 
-    API->>SQL: COMMIT TRANSACTION ✅
+    API->>SQL: COMMIT TRANSACTION 
     API-->>Web: Reservation confirmed
-    Web-->>Guest: 🎉 Xác nhận đặt phòng<br/>Mã: RES-20260415-001
+    Web-->>Guest:  Xac nhan at phong<br/>Ma: RES-20260415-001
 ```
 
 ---
 
 ## Flow 2: Check-in & Check-out
 
-> Thể hiện lifecycle phòng: Reservation → StayRecord → HousekeepingTask → Available lại.
+> The hien lifecycle phong: Reservation  StayRecord  HousekeepingTask  Available lai.
 
 ```mermaid
 sequenceDiagram
@@ -98,15 +98,15 @@ sequenceDiagram
     participant HK as HousekeepingTask
     participant Audit as AuditLog
 
-    Note over Guest, Audit: ═══ CHECK-IN FLOW ═══
+    Note over Guest, Audit:  CHECK-IN FLOW 
 
-    Guest->>FD: Đến quầy lễ tân, trình booking code
+    Guest->>FD: en quay le tan, trinh booking code
 
     FD->>SQL: SELECT r.*, rr.*, g.full_name<br/>FROM Reservation r<br/>JOIN ReservationRoom rr ON ...<br/>JOIN Guest g ON ...<br/>WHERE reservation_code = 'RES-...'<br/>AND status = 'CONFIRMED'
     SQL-->>FD: Reservation details + guest preferences
 
     FD->>SQL: SELECT preference_value<br/>FROM GuestPreference<br/>WHERE guest_id = @gid
-    SQL-->>FD: Sở thích: KING bed, high floor, ocean view
+    SQL-->>FD: So thich: KING bed, high floor, ocean view
 
     FD->>SQL: BEGIN TRANSACTION
 
@@ -117,22 +117,22 @@ sequenceDiagram
     FD->>Stay: INSERT StayRecord<br/>(reservation_room_id, actual_checkin_at=NOW(),<br/>frontdesk_agent_id, stay_status='IN_HOUSE')
 
     FD->>SQL: UPDATE Reservation<br/>SET status = 'CHECKED_IN'
-    FD->>SQL: INSERT ReservationStatusHistory<br/>(CONFIRMED → CHECKED_IN)
+    FD->>SQL: INSERT ReservationStatusHistory<br/>(CONFIRMED  CHECKED_IN)
 
     FD->>Audit: INSERT AuditLog<br/>(entity='Reservation', action='STATUS_CHANGE')
 
-    FD->>SQL: COMMIT ✅
+    FD->>SQL: COMMIT 
 
-    FD-->>Guest: 🔑 Chào mừng!<br/>Phòng 1501, tầng 15
+    FD-->>Guest:  Chao mung!<br/>Phong 1501, tang 15
 
-    Note over Guest, Audit: ═══ DURING STAY — Add-on Services ═══
+    Note over Guest, Audit:  DURING STAY  Add-on Services 
 
-    Guest->>FD: Đặt dịch vụ Spa
-    FD->>SQL: INSERT ReservationService<br/>(service_id → SPA, quantity=2,<br/>scheduled_at, status='REQUESTED')
+    Guest->>FD: at dich vu Spa
+    FD->>SQL: INSERT ReservationService<br/>(service_id  SPA, quantity=2,<br/>scheduled_at, status='REQUESTED')
     SQL-->>FD: Done
-    FD-->>Guest: Spa đã book lúc 3PM ✅
+    FD-->>Guest: Spa a book luc 3PM 
 
-    Note over Guest, Audit: ═══ CHECK-OUT FLOW ═══
+    Note over Guest, Audit:  CHECK-OUT FLOW 
 
     Guest->>FD: Check-out
 
@@ -149,22 +149,22 @@ sequenceDiagram
 
     FD->>SQL: UPDATE ReservationRoom<br/>SET occupancy_status = 'COMPLETED'
     FD->>SQL: UPDATE Reservation<br/>SET status = 'CHECKED_OUT'
-    FD->>SQL: INSERT ReservationStatusHistory<br/>(CHECKED_IN → CHECKED_OUT)
+    FD->>SQL: INSERT ReservationStatusHistory<br/>(CHECKED_IN  CHECKED_OUT)
 
     FD->>Room: UPDATE Room<br/>SET room_status = 'AVAILABLE',<br/>housekeeping_status = 'DIRTY'
 
     FD->>HK: INSERT HousekeepingTask<br/>(room_id=1501, task_type='CLEANING',<br/>priority='HIGH')
 
-    FD->>SQL: COMMIT ✅
+    FD->>SQL: COMMIT 
 
-    FD-->>Guest: 🧾 Hóa đơn + Thank you!
+    FD-->>Guest:  Hoa on + Thank you!
 ```
 
 ---
 
-## Flow 3: Rate Update — Price Integrity Guard (Trigger)
+## Flow 3: Rate Update  Price Integrity Guard (Trigger)
 
-> Thể hiện cách Trigger tự động bảo vệ tính toàn vẹn giá khi Revenue Manager cập nhật rate.
+> The hien cach Trigger tu ong bao ve tinh toan ven gia khi Revenue Manager cap nhat rate.
 
 ```mermaid
 sequenceDiagram
@@ -176,41 +176,41 @@ sequenceDiagram
     participant RCL as RateChangeLog
     participant Notify as Review Alert
 
-    RM->>App: Cập nhật giá phòng Deluxe<br/>từ 2,000,000 → 5,000,000 VND<br/>(tăng 150%)
+    RM->>App: Cap nhat gia phong Deluxe<br/>tu 2,000,000  5,000,000 VND<br/>(tang 150%)
 
     App->>SQL: UPDATE RoomRate<br/>SET final_rate = 5000000,<br/>price_source = 'MANUAL',<br/>updated_by = @rm_user_id<br/>WHERE room_rate_id = 42
 
-    Note over SQL, TRG: SQL Server tự động fire Trigger
+    Note over SQL, TRG: SQL Server tu ong fire Trigger
 
     SQL->>TRG: AFTER UPDATE fired
 
-    TRG->>TRG: Đọc INSERTED (new) vs DELETED (old)<br/>old = 2,000,000<br/>new = 5,000,000<br/>change = |5M - 2M| / 2M = 150%
+    TRG->>TRG: oc INSERTED (new) vs DELETED (old)<br/>old = 2,000,000<br/>new = 5,000,000<br/>change = |5M - 2M| / 2M = 150%
 
     alt change_percent > 50%
         rect rgb(255, 220, 220)
-            TRG->>TRG: 🚨 VƯỢT NGƯỠNG 50%!
+            TRG->>TRG:  VUOT NGUONG 50%!
 
             TRG->>RCL: INSERT RateChangeLog<br/>(room_rate_id=42,<br/>old_rate=2000000,<br/>new_rate=5000000,<br/>change_percent=150.00,<br/>severity='CRITICAL',<br/>review_status='OPEN')
 
             TRG->>Notify: Flag for review
         end
 
-        RCL-->>TRG: Log saved ✅
+        RCL-->>TRG: Log saved 
         TRG-->>SQL: Trigger completed
     else change_percent <= 50%
-        TRG->>TRG: Trong ngưỡng cho phép → Bỏ qua
+        TRG->>TRG: Trong nguong cho phep  Bo qua
         TRG-->>SQL: No action needed
     end
 
     SQL-->>App: UPDATE successful
-    App-->>RM: ⚠️ Giá đã cập nhật<br/>Cảnh báo: Thay đổi 150% đã được<br/>ghi log và chờ review
+    App-->>RM:  Gia a cap nhat<br/>Canh bao: Thay oi 150% a uoc<br/>ghi log va cho review
 
-    Note over RM, Notify: Supervisor review sau đó
+    Note over RM, Notify: Supervisor review sau o
 
-    RM->>App: Mở RateChangeLog để review
+    RM->>App: Mo RateChangeLog e review
     App->>SQL: SELECT * FROM RateChangeLog<br/>WHERE review_status = 'OPEN'<br/>AND severity_level = 'CRITICAL'
     SQL-->>App: 1 alert: room_rate_id=42, +150%
-    RM->>App: Acknowledge → đóng review
+    RM->>App: Acknowledge  ong review
     App->>SQL: UPDATE RateChangeLog<br/>SET review_status = 'ACKNOWLEDGED'
 ```
 
@@ -218,57 +218,57 @@ sequenceDiagram
 
 ## Flow 4: Double-Booking Race Condition (Concurrency Defense)
 
-> Thể hiện **2 transactions đồng thời** cùng đặt 1 phòng — chỉ 1 thành công nhờ Pessimistic Locking.
+> The hien **2 transactions ong thoi** cung at 1 phong  chi 1 thanh cong nho Pessimistic Locking.
 
 ```mermaid
 sequenceDiagram
-    participant A as 👤 Transaction A<br/>(Guest Alice)
+    participant A as  Transaction A<br/>(Guest Alice)
     participant SQL as SQL Server<br/>RoomAvailability
     participant Lock as InventoryLockLog
-    participant B as 👤 Transaction B<br/>(Guest Bob)
+    participant B as  Transaction B<br/>(Guest Bob)
 
-    Note over A, B: Room 101 → ngày 15/04 → status = OPEN<br/>Alice và Bob đặt ĐỒNG THỜI
+    Note over A, B: Room 101  ngay 15/04  status = OPEN<br/>Alice va Bob at ONG THOI
 
     A->>SQL: BEGIN TRAN A
     B->>SQL: BEGIN TRAN B
 
     A->>SQL: SELECT ... FROM RoomAvailability<br/>WITH (UPDLOCK, HOLDLOCK)<br/>WHERE room_id=101 AND stay_date='04-15'
 
-    Note over A, SQL: ✅ Alice lấy UPDLOCK thành công<br/>Đọc status = 'OPEN'
+    Note over A, SQL:  Alice lay UPDLOCK thanh cong<br/>oc status = 'OPEN'
 
     B->>SQL: SELECT ... FROM RoomAvailability<br/>WITH (UPDLOCK, HOLDLOCK)<br/>WHERE room_id=101 AND stay_date='04-15'
 
-    Note over SQL, B: ⏳ Bob BỊ BLOCK!<br/>UPDLOCK đã bị Alice giữ<br/>Bob phải CHỜ...
+    Note over SQL, B:  Bob BI BLOCK!<br/>UPDLOCK a bi Alice giu<br/>Bob phai CHO...
 
     A->>SQL: UPDATE RoomAvailability<br/>SET status = 'BOOKED',<br/>sellable_flag = 0
     A->>Lock: INSERT InventoryLockLog<br/>(status = 'SUCCESS')
-    A->>SQL: COMMIT TRAN A ✅
+    A->>SQL: COMMIT TRAN A 
 
-    Note over A, SQL: Alice xong → Giải phóng lock
+    Note over A, SQL: Alice xong  Giai phong lock
 
-    Note over SQL, B: 🔓 Lock released!<br/>Bob được tiếp tục
+    Note over SQL, B:  Lock released!<br/>Bob uoc tiep tuc
 
-    SQL-->>B: Bob đọc được:<br/>status = 'BOOKED' ❌
+    SQL-->>B: Bob oc uoc:<br/>status = 'BOOKED' 
 
-    B->>B: status ≠ 'OPEN' → REJECTED!
+    B->>B: status = 'OPEN'  REJECTED!
 
     B->>Lock: INSERT InventoryLockLog<br/>(status = 'FAILED',<br/>note = 'Room not available')
-    B->>SQL: ROLLBACK TRAN B ❌
+    B->>SQL: ROLLBACK TRAN B 
 
-    Note over A, B: ✅ KẾT QUẢ: Alice đặt thành công<br/>❌ Bob bị từ chối → KHÔNG CÓ Double-Booking
+    Note over A, B:  KET QUA: Alice at thanh cong<br/> Bob bi tu choi  KHONG CO Double-Booking
 
     rect rgb(230, 245, 230)
-        Note over A, B: 🛡️ UPDLOCK + HOLDLOCK = Serialized access<br/>trên cùng 1 row → Race Condition eliminated
+        Note over A, B:  UPDLOCK + HOLDLOCK = Serialized access<br/>tren cung 1 row  Race Condition eliminated
     end
 ```
 
 ---
 
-## Tổng hợp: Ma trận Flow ↔ Tables ↔ Kỹ thuật
+## Tong hop: Ma tran Flow  Tables  Ky thuat
 
-| Flow | Tables chính | Kỹ thuật nổi bật |
-|------|-------------|------------------|
+| Flow | Tables chinh | Ky thuat noi bat |
+------------------------------------------------------------
 | **1. Reservation** | RoomAvailability, Reservation, ReservationRoom, ReservationGuest, Payment, InventoryLockLog | Pessimistic Lock (`UPDLOCK + HOLDLOCK`), ACID Transaction, Hybrid SQL+MongoDB merge |
-| **2. Check-in/out** | Reservation, ReservationRoom, StayRecord, Room, HousekeepingTask, Invoice, vw_ReservationTotal | Status lifecycle, VIEW tính toán tài chính, auto-create HK task |
+| **2. Check-in/out** | Reservation, ReservationRoom, StayRecord, Room, HousekeepingTask, Invoice, vw_ReservationTotal | Status lifecycle, VIEW tinh toan tai chinh, auto-create HK task |
 | **3. Rate Guard** | RoomRate, RateChangeLog | AFTER UPDATE Trigger, `INSERTED`/`DELETED` virtual tables, TRY...CATCH |
 | **4. Double-Booking** | RoomAvailability, InventoryLockLog | Pessimistic Locking, Race Condition defense, concurrent transactions |

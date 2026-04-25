@@ -307,7 +307,7 @@ const hotelDocs = [
     luxury_segment: 'ULTRA_LUXURY',
     description: {
       short: 'A flagship Tokyo city branch for high-end urban stays.',
-      long: 'The Ritz-Carlton, Tokyo strengthens the chain presence in one of Asia’s strongest premium city markets.',
+      long: 'The Ritz-Carlton, Tokyo strengthens the chain presence in one of Asias strongest premium city markets.',
       highlights: [
         'Roppongi business and dining positioning',
         'High-floor skyline inventory',

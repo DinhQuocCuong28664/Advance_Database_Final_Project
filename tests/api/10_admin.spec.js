@@ -1,13 +1,13 @@
 /**
- * ══════════════════════════════════════════════════════════════
- * [10] ADMIN API — Playwright Tests
+ * 
+ * [10] ADMIN API  Playwright Tests
  * Endpoints:
  *   PUT /api/admin/rates/:id
  *   GET /api/admin/rates/alerts
  *   GET /api/admin/reports/revenue
  *   GET /api/admin/reports/revenue-by-brand
  *   PUT /api/admin/availability/:id
- * ══════════════════════════════════════════════════════════════
+ * 
  */
 const { test, expect } = require('@playwright/test');
 const { SEED, DATES } = require('./helpers');
@@ -15,7 +15,7 @@ const { SEED, DATES } = require('./helpers');
 let adminToken = null;
 let availabilityRecord = null; // from rooms/availability
 
-test.describe('🏧 Admin API', () => {
+test.describe(' Admin API', () => {
 
   // Auth setup
   test.beforeAll(async ({ request }) => {
@@ -39,8 +39,8 @@ test.describe('🏧 Admin API', () => {
     }
   });
 
-  // ── GET /admin/rates/alerts ────────────────────────────────
-  test('GET /admin/rates/alerts — returns rate alert list', async ({ request }) => {
+  //  GET /admin/rates/alerts 
+  test('GET /admin/rates/alerts  returns rate alert list', async ({ request }) => {
     const res = await request.get('/api/admin/rates/alerts', {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
@@ -50,13 +50,13 @@ test.describe('🏧 Admin API', () => {
     expect(Array.isArray(body.data)).toBe(true);
   });
 
-  test('GET /admin/rates/alerts — no token → 401', async ({ request }) => {
+  test('GET /admin/rates/alerts  no token  401', async ({ request }) => {
     const res = await request.get('/api/admin/rates/alerts');
     expect(res.status()).toBe(401);
   });
 
-  // ── GET /admin/reports/revenue ─────────────────────────────
-  test('GET /admin/reports/revenue — returns revenue analytics with ranking', async ({ request }) => {
+  //  GET /admin/reports/revenue 
+  test('GET /admin/reports/revenue  returns revenue analytics with ranking', async ({ request }) => {
     const res = await request.get('/api/admin/reports/revenue', {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
@@ -73,13 +73,13 @@ test.describe('🏧 Admin API', () => {
     }
   });
 
-  test('GET /admin/reports/revenue — no token → 401', async ({ request }) => {
+  test('GET /admin/reports/revenue  no token  401', async ({ request }) => {
     const res = await request.get('/api/admin/reports/revenue');
     expect(res.status()).toBe(401);
   });
 
-  // ── GET /admin/reports/revenue-by-brand ───────────────────
-  test('GET /admin/reports/revenue-by-brand — multi-level brand hierarchy', async ({ request }) => {
+  //  GET /admin/reports/revenue-by-brand 
+  test('GET /admin/reports/revenue-by-brand  multi-level brand hierarchy', async ({ request }) => {
     const res = await request.get('/api/admin/reports/revenue-by-brand', {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
@@ -94,8 +94,8 @@ test.describe('🏧 Admin API', () => {
     }
   });
 
-  // ── PUT /admin/rates/:id ───────────────────────────────────
-  test('PUT /admin/rates/:id — update room rate', async ({ request }) => {
+  //  PUT /admin/rates/:id 
+  test('PUT /admin/rates/:id  update room rate', async ({ request }) => {
     const res = await request.put('/api/admin/rates/1', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: {
@@ -107,11 +107,11 @@ test.describe('🏧 Admin API', () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    // The updated rate record is returned — check it has final_rate
+    // The updated rate record is returned  check it has final_rate
     expect(body.data).toBeDefined();
   });
 
-  test('PUT /admin/rates/:id — missing final_rate → 400', async ({ request }) => {
+  test('PUT /admin/rates/:id  missing final_rate  400', async ({ request }) => {
     const res = await request.put('/api/admin/rates/1', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: { price_source: 'MANUAL' },
@@ -119,7 +119,7 @@ test.describe('🏧 Admin API', () => {
     expect(res.status()).toBe(400);
   });
 
-  test('PUT /admin/rates/:id — rate not found → 404', async ({ request }) => {
+  test('PUT /admin/rates/:id  rate not found  404', async ({ request }) => {
     const res = await request.put('/api/admin/rates/99999', {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: { final_rate: 1000000, price_source: 'MANUAL' },
@@ -127,29 +127,29 @@ test.describe('🏧 Admin API', () => {
     expect(res.status()).toBe(404);
   });
 
-  test('PUT /admin/rates/:id — no token → 401', async ({ request }) => {
+  test('PUT /admin/rates/:id  no token  401', async ({ request }) => {
     const res = await request.put('/api/admin/rates/1', {
       data: { final_rate: 999999 },
     });
     expect(res.status()).toBe(401);
   });
 
-  // ── PUT /admin/availability/:id (Optimistic Locking) ──────
-  test('PUT /admin/availability/:id — update with correct version', async ({ request }) => {
+  //  PUT /admin/availability/:id (Optimistic Locking) 
+  test('PUT /admin/availability/:id  update with correct version', async ({ request }) => {
     if (!availabilityRecord || !adminToken) return test.skip();
     const res = await request.put(`/api/admin/availability/${availabilityRecord.availability_id}`, {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: {
         availability_status: 'OPEN',
         expected_version: availabilityRecord.version_no,
-        inventory_note: 'Playwright test — no change',
+        inventory_note: 'Playwright test  no change',
       },
     });
     // 200 if version matches, 409 if another test modified it
     expect([200, 409]).toContain(res.status());
   });
 
-  test('PUT /admin/availability/:id — wrong version → 409 conflict', async ({ request }) => {
+  test('PUT /admin/availability/:id  wrong version  409 conflict', async ({ request }) => {
     if (!availabilityRecord || !adminToken) return test.skip();
     const res = await request.put(`/api/admin/availability/${availabilityRecord.availability_id}`, {
       headers: { Authorization: `Bearer ${adminToken}` },
@@ -165,7 +165,7 @@ test.describe('🏧 Admin API', () => {
     expect(body.your_expected_version).toBe(-1);
   });
 
-  test('PUT /admin/availability/:id — missing availability_status → 400', async ({ request }) => {
+  test('PUT /admin/availability/:id  missing availability_status  400', async ({ request }) => {
     if (!availabilityRecord || !adminToken) return test.skip();
     const res = await request.put(`/api/admin/availability/${availabilityRecord.availability_id}`, {
       headers: { Authorization: `Bearer ${adminToken}` },
@@ -174,7 +174,7 @@ test.describe('🏧 Admin API', () => {
     expect(res.status()).toBe(400);
   });
 
-  test('PUT /admin/availability/:id — missing expected_version → 400', async ({ request }) => {
+  test('PUT /admin/availability/:id  missing expected_version  400', async ({ request }) => {
     if (!availabilityRecord || !adminToken) return test.skip();
     const res = await request.put(`/api/admin/availability/${availabilityRecord.availability_id}`, {
       headers: { Authorization: `Bearer ${adminToken}` },

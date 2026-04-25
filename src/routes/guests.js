@@ -1,5 +1,5 @@
 /**
- * LuxeReserve — Guest Routes
+ * LuxeReserve  Guest Routes
  */
 
 const express = require('express');
@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/guests/:id — Full profile
+// GET /api/guests/:id  Full profile
 router.get('/:id', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -69,7 +69,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/guests — Create guest
+// POST /api/guests  Create guest
 router.post('/', async (req, res) => {
   try {
     const { guest_code, title, first_name, middle_name, last_name, gender, email, phone_country_code, phone_number, nationality_country_code } = req.body;
@@ -102,7 +102,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/guests/:id/stays — Stay history with hotel + room detail
+// GET /api/guests/:id/stays  Stay history with hotel + room detail
 router.get('/:id/stays', async (req, res) => {
   try {
     const pool    = getSqlPool();

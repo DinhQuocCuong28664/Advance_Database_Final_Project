@@ -1,13 +1,13 @@
-# LuxeReserve — Entity Relationship Diagram (Mermaid)
+# LuxeReserve  Entity Relationship Diagram (Mermaid)
 
 > **Source**: `GlobalLuxuryHotelReservationEngine_REMAKE.groovy`
-> **30 bảng** | **SQL Server + MongoDB Hybrid**
+> **30 bang** | **SQL Server + MongoDB Hybrid**
 
 ---
 
-## ERD Tổng quan (Full Schema)
+## ERD Tong quan (Full Schema)
 
-> Vì schema có 30 bảng, ERD được chia thành **6 domain diagrams** để dễ đọc, sau đó có 1 diagram tổng hợp ở cuối.
+> Vi schema co 30 bang, ERD uoc chia thanh **6 domain diagrams** e de oc, sau o co 1 diagram tong hop o cuoi.
 
 ---
 
@@ -519,7 +519,7 @@ erDiagram
 
 ---
 
-## ERD Tổng hợp — Quan hệ giữa các Domain (High-Level)
+## ERD Tong hop  Quan he giua cac Domain (High-Level)
 
 ```mermaid
 erDiagram
@@ -594,25 +594,25 @@ erDiagram
 
 ---
 
-## Chú thích ký hiệu Mermaid
+## Chu thich ky hieu Mermaid
 
-| Ký hiệu | Ý nghĩa |
-|----------|---------|
+| Ky hieu | Y nghia |
+------------------------------------------------------------
 | `\|\|--o{` | One-to-Many (1:N) |
 | `\|\|--\|\|` | One-to-One (1:1) |
-| `o{--o{` | Many-to-Many (bảng trung gian) |
+| `o{--o{` | Many-to-Many (bang trung gian) |
 | `PK` | Primary Key |
 | `FK` | Foreign Key |
 | `UK` | Unique Key |
 
 ---
 
-## Ghi chú Hybrid SQL ↔ MongoDB
+## Ghi chu Hybrid SQL  MongoDB
 
-Các bảng SQL sau có **link key** sang MongoDB collections:
+Cac bang SQL sau co **link key** sang MongoDB collections:
 
-| SQL Table | Link Key | MongoDB Collection | Dữ liệu MongoDB |
-|-----------|----------|-------------------|-----------------|
+| SQL Table | Link Key | MongoDB Collection | Du lieu MongoDB |
+------------------------------------------------------------
 | `HotelAmenity` | `amenity_code` | `amenity_master` | name, category, description, images, tags |
 | `RoomType` | `room_type_code` | `room_type_catalog` | description, features, images |
 | `Hotel` | `hotel_id` | `Hotel_Catalog` | rich content, embedded amenities & room_types |
