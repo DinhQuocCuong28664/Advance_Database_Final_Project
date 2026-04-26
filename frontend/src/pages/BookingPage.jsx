@@ -42,6 +42,7 @@ export default function BookingPage() {
     email:          authSession?.user?.login_email || authSession?.user?.email || '',
     phone:          '',
     booking_email_otp: '',
+    loyalty_redemption_code: '',
     special_requests: '',
     payment_method: 'CREDIT_CARD',
   });
@@ -52,6 +53,7 @@ export default function BookingPage() {
   const [emailStatus, setEmailStatus] = useState({ checking: false, exists: false, checkedEmail: '' });
   const [otpBusy, setOtpBusy] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const enteredLoyaltyCode = String(form.loyalty_redemption_code || '').trim().toUpperCase();
 
   function setField(key, val) {
     setForm((s) => ({ ...s, [key]: val }));
@@ -144,6 +146,7 @@ export default function BookingPage() {
           purpose_of_stay:      'LEISURE',
           booking_source:       'DIRECT_WEB',
           booking_email_otp:    emailStatus.exists ? form.booking_email_otp || undefined : undefined,
+          loyalty_redemption_code: enteredLoyaltyCode || undefined,
         }),
       });
 
@@ -192,6 +195,8 @@ export default function BookingPage() {
   //  DONE 
   if (step === 'done' && reservation) {
     const paidDeposit  = reservation.deposit_amount ?? depositDue;
+    const subtotalAmount = reservation.subtotal_amount ?? subtotal;
+    const discountAmount = reservation.discount_amount ?? 0;
     const grandTotal   = reservation.total ?? reservation.grand_total_amount ?? subtotal;
     const remaining    = grandTotal - paidDeposit;
 
@@ -212,7 +217,17 @@ export default function BookingPage() {
           <div><span>Check-in</span><strong>{checkin}</strong></div>
           <div><span>Check-out</span><strong>{checkout}</strong></div>
           <div><span>Nights</span><strong>{nights}</strong></div>
+          <div><span>Stay subtotal</span><strong>{fmt(subtotalAmount)} VND</strong></div>
+          {discountAmount > 0 && (
+            <div><span>Loyalty discount</span><strong>-{fmt(discountAmount)} VND</strong></div>
+          )}
           <div><span>Total stay</span><strong>{fmt(grandTotal)} VND</strong></div>
+          {reservation.loyalty_redemption_code && (
+            <div className="booking-done-balance">
+              <span>Applied voucher</span>
+              <strong>{reservation.loyalty_redemption_code}</strong>
+            </div>
+          )}
           <div className="booking-done-deposit">
             <span>Deposit paid (30%)</span>
             <strong className="done-deposit-val">{fmt(paidDeposit)} VND</strong>
@@ -306,6 +321,18 @@ export default function BookingPage() {
                   <input type="tel" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
                 </label>
                 <label className="field-span-2">
+                  Loyalty voucher code (optional)
+                  <input
+                    type="text"
+                    value={form.loyalty_redemption_code}
+                    onChange={(e) => setField('loyalty_redemption_code', e.target.value.toUpperCase())}
+                    placeholder="Enter a redeemed loyalty voucher code"
+                  />
+                  <small className="booking-field-help">
+                    Redeem member-only rewards in your account first, then apply the issued code here.
+                  </small>
+                </label>
+                <label className="field-span-2">
                   Special requests (optional)
                   <textarea rows={3} value={form.special_requests} onChange={(e) => setField('special_requests', e.target.value)} placeholder="E.g. high floor, late check-in..." />
                 </label>
@@ -313,9 +340,8 @@ export default function BookingPage() {
                   Payment method
                   <select value={form.payment_method} onChange={(e) => setField('payment_method', e.target.value)}>
                     <option value="CREDIT_CARD">Credit card</option>
-                    <option value="DEBIT_CARD">Debit card</option>
                     <option value="BANK_TRANSFER">Bank transfer</option>
-                    <option value="LOYALTY_POINTS">Loyalty points</option>
+                    <option value="WALLET">Digital wallet</option>
                   </select>
                 </label>
               </div>
@@ -344,6 +370,7 @@ export default function BookingPage() {
                 <div><span>Name</span><strong>{form.first_name} {form.last_name}</strong></div>
                 <div><span>Email</span><strong>{form.email}</strong></div>
                 {form.phone && <div><span>Phone</span><strong>{form.phone}</strong></div>}
+                {enteredLoyaltyCode && <div><span>Loyalty voucher</span><strong>{enteredLoyaltyCode}</strong></div>}
                 {form.special_requests && <div><span>Requests</span><strong>{form.special_requests}</strong></div>}
                 <div><span>Payment</span><strong>{form.payment_method.replace('_', ' ')}</strong></div>
               </div>
@@ -353,6 +380,7 @@ export default function BookingPage() {
                 <span>
                   By confirming, you authorise a deposit charge of{' '}
                   <strong>{fmt(depositDue)} VND</strong>.
+                  {enteredLoyaltyCode ? ' If the voucher is valid, the final charge will be recalculated after the discount is applied.' : ''}
                   This deposit is <strong>non-refundable</strong> upon cancellation.
                 </span>
               </div>
@@ -385,6 +413,12 @@ export default function BookingPage() {
               <span>{nights} night{nights > 1 ? 's' : ''}  {fmt(nightlyRate)} VND</span>
               <strong>{fmt(subtotal)} VND</strong>
             </div>
+            {enteredLoyaltyCode && (
+              <div className="booking-summary-row">
+                <span>Loyalty voucher</span>
+                <strong>{enteredLoyaltyCode}</strong>
+              </div>
+            )}
             <div className="booking-summary-row">
               <span>Guests</span><strong>{guests}</strong>
             </div>

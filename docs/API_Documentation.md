@@ -3,7 +3,7 @@
 > **Base URL:** `http://localhost:3000/api`  
 > **Format:** JSON  
 > **Auth:** Bearer token  `Authorization: Bearer <token>`  
-> **Total endpoints:** 55 across 14 route groups
+> **Total endpoints:** 82 across 14 route groups
 
 ---
 

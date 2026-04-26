@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { apiRequest } from '../../lib/api';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 
 const TASK_TYPES = ['CLEANING', 'DEEP_CLEAN', 'TURNDOWN', 'INSPECTION', 'LINEN_CHANGE', 'OTHER'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -59,8 +59,13 @@ export default function AdminHousekeeping({ hotels }) {
   const [assignBusy,   setAssignBusy]   = useState(false);
 
   const [statusBusy, setStatusBusy] = useState(null); // task id being updated
+  const filterRef = useRef({ status: '', priority: '' });
 
-  async function loadTasks(hid, st, pr) {
+  useEffect(() => {
+    filterRef.current = { status: filterStatus, priority: filterPriority };
+  }, [filterStatus, filterPriority]);
+
+  const loadTasks = useCallback(async (hid, st = filterRef.current.status, pr = filterRef.current.priority) => {
     const h = hid || hotelId;
     if (!h) return;
     setLoading(true);
@@ -73,28 +78,31 @@ export default function AdminHousekeeping({ hotels }) {
       setSummary(payload.summary || {});
     } catch (e) { setFlash({ tone: 'error', text: e.message }); }
     finally     { setLoading(false); }
-  }
+  }, [hotelId, setFlash]);
 
-  async function loadRooms(hid) {
+  const loadRooms = useCallback(async (hid) => {
     if (!hid) return;
     try {
       const p = await apiRequest(`/rooms?hotel_id=${hid}&limit=300`);
       setRooms(p.data || []);
     } catch { /* ignore */ }
-  }
+  }, []);
 
-  async function loadStaff() {
+  const loadStaff = useCallback(async () => {
     try {
       const p = await apiRequest('/admin/accounts');
       setStaff((p.data?.system_users || []).filter(u => !['ADMIN'].includes(u.role)));
     } catch { /* ignore */ }
-  }
+  }, []);
 
   useEffect(() => {
-    if (hotelId) { loadTasks(hotelId, filterStatus, filterPriority); loadRooms(hotelId); }
-  }, [hotelId]);
+    if (hotelId) {
+      loadTasks(hotelId);
+      loadRooms(hotelId);
+    }
+  }, [hotelId, loadTasks, loadRooms]);
 
-  useEffect(() => { loadStaff(); }, []);
+  useEffect(() => { loadStaff(); }, [loadStaff]);
 
   async function handleCreate(e) {
     e.preventDefault();

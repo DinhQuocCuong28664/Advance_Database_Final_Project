@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 const { sendBookingConfirmation, sendCancellationNotice, sendCheckinReminder } = require('../services/mail');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireSystemUser } = require('../middleware/auth');
 
 async function generateGuestCode(pool) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -24,6 +24,66 @@ async function generateGuestCode(pool) {
   throw new Error('Unable to generate unique guest code');
 }
 
+function computePromotionDiscount(promotionType, discountValue, subtotalAmount) {
+  const promoType = String(promotionType || '').toUpperCase();
+  const value = Number(discountValue || 0);
+  const subtotal = Number(subtotalAmount || 0);
+
+  if (subtotal <= 0 || value <= 0) {
+    return 0;
+  }
+
+  if (['PERCENT_OFF', 'PERCENTAGE'].includes(promoType)) {
+    return Math.min(subtotal, Math.round((subtotal * value) * 100) / 10000);
+  }
+
+  if (['VALUE_CREDIT', 'FIXED_AMOUNT'].includes(promoType)) {
+    return Math.min(subtotal, value);
+  }
+
+  return 0;
+}
+
+async function loadLoyaltyVoucherForBooking(transaction, guestId, hotelId, loyaltyRedemptionCode) {
+  const result = await new sql.Request(transaction)
+    .input('guestId', sql.BigInt, guestId)
+    .input('hotelId', sql.BigInt, hotelId)
+    .input('voucherCode', sql.VarChar(50), String(loyaltyRedemptionCode || '').trim().toUpperCase())
+    .query(`
+      SELECT TOP 1
+        lr.loyalty_redemption_id,
+        lr.issued_promo_code,
+        lr.points_spent,
+        lr.expires_at,
+        p.promotion_id,
+        p.promotion_code,
+        p.promotion_name,
+        p.promotion_type,
+        p.discount_value,
+        p.currency_code,
+        p.applies_to,
+        p.hotel_id AS promotion_hotel_id,
+        p.brand_id AS promotion_brand_id,
+        requestedHotel.brand_id AS requested_brand_id,
+        CASE
+          WHEN p.hotel_id IS NOT NULL AND p.hotel_id = @hotelId THEN 1
+          WHEN p.brand_id IS NOT NULL AND p.brand_id = requestedHotel.brand_id THEN 1
+          WHEN p.hotel_id IS NULL AND p.brand_id IS NULL THEN 1
+          ELSE 0
+        END AS applies_to_hotel
+      FROM LoyaltyRedemption lr
+      JOIN Promotion p ON lr.promotion_id = p.promotion_id
+      JOIN Hotel requestedHotel ON requestedHotel.hotel_id = @hotelId
+      WHERE lr.guest_id = @guestId
+        AND lr.issued_promo_code = @voucherCode
+        AND lr.status = 'ISSUED'
+        AND lr.expires_at >= GETDATE()
+        AND p.status = 'ACTIVE'
+    `);
+
+  return result.recordset[0] || null;
+}
+
 // POST /api/reservations  Create Reservation (calls sp_ReserveRoom)
 router.post('/', async (req, res) => {
   try {
@@ -33,7 +93,7 @@ router.post('/', async (req, res) => {
       checkin_date, checkout_date, nights,
       adult_count, child_count, nightly_rate,
       currency_code, guarantee_type, purpose_of_stay, booking_email_otp,
-      special_request_text
+      special_request_text, loyalty_redemption_code
     } = req.body;
 
     // Validation
@@ -71,9 +131,7 @@ router.post('/', async (req, res) => {
     const checkin = new Date(checkin_date);
     const checkout = new Date(checkout_date);
     const nightCount = nights || Math.round((checkout - checkin) / (1000 * 60 * 60 * 24));
-    const reservationTotal = (nightly_rate || 0) * nightCount;
-    const requiresDeposit = guarantee_type === 'DEPOSIT';
-    const depositAmount = requiresDeposit ? Math.round(reservationTotal * 0.3 * 100) / 100 : 0;
+    const reservationSubtotal = (nightly_rate || 0) * nightCount;
 
     const pool = getSqlPool();
     const transaction = new sql.Transaction(pool);
@@ -82,6 +140,8 @@ router.post('/', async (req, res) => {
     try {
       let resolvedGuestId = guest_id ? Number(guest_id) : null;
       const reservationCode = `RES-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      let appliedVoucher = null;
+      let discountAmount = 0;
 
       // 
       // STEP 1: Call sp_ReserveRoom for EACH night (Pessimistic Lock)
@@ -214,6 +274,35 @@ router.post('/', async (req, res) => {
         }
       }
 
+      if (loyalty_redemption_code) {
+        appliedVoucher = await loadLoyaltyVoucherForBooking(transaction, resolvedGuestId, hotel_id, loyalty_redemption_code);
+
+        if (!appliedVoucher) {
+          await transaction.rollback();
+          return res.status(404).json({ success: false, error: 'Loyalty voucher not found, expired, or already used' });
+        }
+
+        if (appliedVoucher.applies_to_hotel !== 1) {
+          await transaction.rollback();
+          return res.status(409).json({ success: false, error: 'This loyalty voucher does not apply to the selected hotel' });
+        }
+
+        if (String(appliedVoucher.applies_to || '').toUpperCase() === 'SERVICE_ONLY') {
+          await transaction.rollback();
+          return res.status(409).json({ success: false, error: 'This loyalty voucher can only be used for in-stay services' });
+        }
+
+        discountAmount = computePromotionDiscount(
+          appliedVoucher.promotion_type,
+          appliedVoucher.discount_value,
+          reservationSubtotal,
+        );
+      }
+
+      const reservationTotal = Math.max(0, reservationSubtotal - discountAmount);
+      const requiresDeposit = guarantee_type === 'DEPOSIT';
+      const depositAmount = requiresDeposit ? Math.round(reservationTotal * 0.3 * 100) / 100 : 0;
+
       for (let i = 0; i < nightCount; i++) {
         const stayDate = new Date(checkin);
         stayDate.setDate(stayDate.getDate() + i);
@@ -279,7 +368,8 @@ router.post('/', async (req, res) => {
         .input('adults', sql.Int, adult_count || 2)
         .input('children', sql.Int, child_count || 0)
         .input('currency', sql.Char(3), currency_code || 'VND')
-        .input('subtotal', sql.Decimal(18, 2), reservationTotal)
+        .input('subtotal', sql.Decimal(18, 2), reservationSubtotal)
+        .input('discount', sql.Decimal(18, 2), discountAmount)
         .input('total', sql.Decimal(18, 2), reservationTotal)
         .input('depositRequired', sql.Bit, requiresDeposit ? 1 : 0)
         .input('depositAmount', sql.Decimal(18, 2), depositAmount)
@@ -291,7 +381,7 @@ router.post('/', async (req, res) => {
             reservation_code, hotel_id, guest_id, booking_channel_id, booking_source,
             reservation_status, checkin_date, checkout_date, nights,
             adult_count, child_count, room_count, currency_code,
-            subtotal_amount, grand_total_amount, deposit_required_flag, deposit_amount,
+            subtotal_amount, discount_amount, grand_total_amount, deposit_required_flag, deposit_amount,
             guarantee_type, purpose_of_stay, special_request_text
           )
           OUTPUT INSERTED.reservation_id, INSERTED.reservation_code, INSERTED.reservation_status
@@ -299,7 +389,7 @@ router.post('/', async (req, res) => {
             @code, @hotel_id, @guest_id, @channel_id, @source,
             'CONFIRMED', @checkin, @checkout, @nights,
             @adults, @children, 1, @currency,
-            @subtotal, @total, @depositRequired, @depositAmount, @guarantee, @purpose, @special
+            @subtotal, @discount, @total, @depositRequired, @depositAmount, @guarantee, @purpose, @special
           )
         `);
 
@@ -318,19 +408,20 @@ router.post('/', async (req, res) => {
         .input('end', sql.VarChar(10), checkout_date)
         .input('adults', sql.Int, adult_count || 2)
         .input('rate', sql.Decimal(18, 2), nightly_rate || 0)
-        .input('subtotal', sql.Decimal(18, 2), reservationTotal)
+        .input('subtotal', sql.Decimal(18, 2), reservationSubtotal)
+        .input('discount', sql.Decimal(18, 2), discountAmount)
         .input('final', sql.Decimal(18, 2), reservationTotal)
         .query(`
           INSERT INTO ReservationRoom (
             reservation_id, room_id, room_type_id, rate_plan_id,
             stay_start_date, stay_end_date, adult_count,
-            nightly_rate_snapshot, room_subtotal, final_amount,
+            nightly_rate_snapshot, room_subtotal, discount_amount, final_amount,
             assignment_status, occupancy_status
           )
           VALUES (
             @resv_id, @room_id, @rt_id, @rp_id,
             @start, @end, @adults,
-            @rate, @subtotal, @final,
+            @rate, @subtotal, @discount, @final,
             'ASSIGNED', 'RESERVED'
           )
         `);
@@ -346,6 +437,20 @@ router.post('/', async (req, res) => {
           VALUES (@resv_id, NULL, 'CONFIRMED', 'Reservation created via API  rooms locked successfully')
         `);
 
+      if (appliedVoucher) {
+        await new sql.Request(transaction)
+          .input('redemptionId', sql.BigInt, appliedVoucher.loyalty_redemption_id)
+          .input('reservationId', sql.BigInt, reservation.reservation_id)
+          .query(`
+            UPDATE LoyaltyRedemption
+            SET reservation_id = @reservationId,
+                status = 'REDEEMED',
+                redeemed_at = GETDATE(),
+                updated_at = GETDATE()
+            WHERE loyalty_redemption_id = @redemptionId
+          `);
+      }
+
       await transaction.commit();
 
       const responseData = {
@@ -357,11 +462,15 @@ router.post('/', async (req, res) => {
         checkin_date,
         checkout_date,
         nights: nightCount,
+        subtotal_amount: reservationSubtotal,
+        discount_amount: discountAmount,
         total: reservationTotal,
         grand_total_amount: reservationTotal,
         deposit_required: requiresDeposit,
         deposit_amount: depositAmount,
         guest_id: resolvedGuestId,
+        loyalty_redemption_code: appliedVoucher?.issued_promo_code || null,
+        applied_promotion_code: appliedVoucher?.promotion_code || null,
       };
 
       res.status(201).json({ success: true, data: responseData });
@@ -416,7 +525,7 @@ router.post('/', async (req, res) => {
 // GET /api/reservations  List reservations
 // Query params: guest_id, email, status, limit (default 20)
 // 
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
     const pool = getSqlPool();
     const {
@@ -433,7 +542,16 @@ router.get('/', async (req, res) => {
     let where = [];
     const request = pool.request();
 
-    if (guest_id) {
+    const isGuest = req.auth?.user_type === 'GUEST';
+    const authGuestId = isGuest ? Number(req.auth.sub) : null;
+
+    if (isGuest) {
+      if (guest_id && Number(guest_id) !== authGuestId) {
+        return res.status(403).json({ success: false, error: 'You are not authorised to view another guest\'s reservations' });
+      }
+      where.push('r.guest_id = @guestId');
+      request.input('guestId', sql.BigInt, authGuestId);
+    } else if (guest_id) {
       where.push('r.guest_id = @guestId');
       request.input('guestId', sql.BigInt, parseInt(guest_id));
     }
@@ -496,10 +614,13 @@ router.get('/', async (req, res) => {
 // 
 // GET /api/reservations/by-guest/:guestCode  By guest code
 // 
-router.get('/by-guest/:guestCode', async (req, res) => {
+router.get('/by-guest/:guestCode', requireAuth, async (req, res) => {
   try {
     const pool = getSqlPool();
     const { guestCode } = req.params;
+    if (req.auth?.user_type === 'GUEST' && String(req.auth.guest_code || '').toUpperCase() !== String(guestCode || '').toUpperCase()) {
+      return res.status(403).json({ success: false, error: 'You are not authorised to view another guest\'s reservation list' });
+    }
 
     const result = await pool.request()
       .input('guestCode', sql.VarChar(50), guestCode)
@@ -591,7 +712,7 @@ router.get('/:code', async (req, res) => {
 });
 
 // POST /api/reservations/:id/checkin  Check-in
-router.post('/:id/checkin', async (req, res) => {
+router.post('/:id/checkin', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -658,7 +779,7 @@ router.post('/:id/checkin', async (req, res) => {
 });
 
 // POST /api/reservations/:id/checkout  Check-out
-router.post('/:id/checkout', async (req, res) => {
+router.post('/:id/checkout', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -906,7 +1027,7 @@ router.post('/:id/guest-cancel', requireAuth, async (req, res) => {
 // POST /api/reservations/:id/hotel-cancel
 // Hotel initiates cancellation  FULL REFUND (hotel's fault)
 // 
-router.post('/:id/hotel-cancel', async (req, res) => {
+router.post('/:id/hotel-cancel', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1050,7 +1171,7 @@ router.post('/:id/hotel-cancel', async (req, res) => {
 // POST /api/reservations/:id/transfer
 // Room Transfer  calls sp_TransferRoom (Pessimistic Locking)
 // 
-router.post('/:id/transfer', async (req, res) => {
+router.post('/:id/transfer', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1159,7 +1280,7 @@ router.post('/:id/transfer', async (req, res) => {
 // GET /api/reservations/:id/guests
 // List additional guests for a reservation
 // 
-router.get('/:id/guests', async (req, res) => {
+router.get('/:id/guests', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1186,7 +1307,7 @@ router.get('/:id/guests', async (req, res) => {
 // Add an additional guest to a reservation
 // Body: full_name, age_category, nationality_country_code, document_type, document_no, special_note
 // 
-router.post('/:id/guests', async (req, res) => {
+router.post('/:id/guests', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1239,7 +1360,7 @@ router.post('/:id/guests', async (req, res) => {
 // DELETE /api/reservations/:id/guests/:guestId
 // Remove an additional guest (non-primary only)
 // 
-router.delete('/:id/guests/:guestId', async (req, res) => {
+router.delete('/:id/guests/:guestId', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId   = parseInt(req.params.id);

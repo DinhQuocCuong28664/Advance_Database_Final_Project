@@ -100,10 +100,6 @@ export default function ReservationPage() {
   const [lookupError, setLookupError] = useState(null);
   const [lookupBusy, setLookupBusy] = useState(false);
 
-  // Cancel state
-  const [cancelTarget, setCancelTarget] = useState(null);
-  const [cancelBusy, setCancelBusy] = useState(false);
-
   // Auto-load reservations if logged in
   useEffect(() => {
     if (!authSession || !isGuestUser) return;
@@ -126,7 +122,7 @@ export default function ReservationPage() {
     try {
       const r = await apiRequest(`/reservations/${lookupCode.trim().toUpperCase()}`);
       setLookupResult(r.data || r);
-    } catch (err) {
+    } catch {
       setLookupError('Reservation not found. Check your code and try again.');
     } finally {
       setLookupBusy(false);
@@ -135,7 +131,6 @@ export default function ReservationPage() {
 
   async function handleCancel(reservation) {
     if (!window.confirm(`Cancel reservation ${reservation.reservation_code}? This cannot be undone.`)) return;
-    setCancelBusy(true);
     try {
       await apiRequest(`/reservations/${reservation.reservation_id}/guest-cancel`, {
         method: 'POST',
@@ -149,11 +144,8 @@ export default function ReservationPage() {
             : r
         )
       );
-      setCancelTarget(null);
     } catch (err) {
       alert('Cancellation failed: ' + err.message);
-    } finally {
-      setCancelBusy(false);
     }
   }
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { useFlash } from '../context/FlashContext';
+import { useFlash } from '../context/useFlash';
 import '../styles/Admin.css';
 
 import AdminAccounts from './admin/AdminAccounts';
@@ -47,19 +47,14 @@ export default function AdminPage() {
 
   const [reportSummary, setReportSummary] = useState(null);
   const [revenueData, setRevenueData] = useState([]);
-const [brandRevenueData, setBrandRevenueData] = useState([]);
+  const [brandRevenueData, setBrandRevenueData] = useState([]);
   const [loadingReport, setLoadingReport] = useState(false);
 
-  // Not logged in  login
-  if (!isSystemUser) {
-    return <Navigate to="/login" replace state={{ nextUrl: '/admin' }} />;
-  }
-  // Logged in but not ADMIN  cashier portal
-  if (!isAdminUser) {
-    return <Navigate to="/cashier" replace />;
-  }
-
   useEffect(() => {
+    if (!isSystemUser || !isAdminUser) {
+      return;
+    }
+
     async function load() {
       setLoadingHotels(true);
       setLoadingReport(true);
@@ -89,7 +84,16 @@ const [brandRevenueData, setBrandRevenueData] = useState([]);
     }
 
     load();
-  }, [setFlash]);
+  }, [isAdminUser, isSystemUser, setFlash]);
+
+  // Not logged in  login
+  if (!isSystemUser) {
+    return <Navigate to="/login" replace state={{ nextUrl: '/admin' }} />;
+  }
+  // Logged in but not ADMIN  cashier portal
+  if (!isAdminUser) {
+    return <Navigate to="/cashier" replace />;
+  }
 
   function handleLogout() {
     clearToasts();

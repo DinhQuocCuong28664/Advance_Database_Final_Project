@@ -10,7 +10,7 @@
     "frontend:build": "npm --prefix frontend run build",
     "db:init": "sqlcmd -S localhost\\SQLEXPRESS -i database/sql/01_create_database.sql -C && sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/02_create_tables.sql -C",
     "db:seed": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/06_seed_data.sql -C && node database/mongodb/02_seed_data.js",
-    "db:network": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/09_expand_network_seed.sql -C && node database/mongodb/03_expand_catalog.js",
+    "db:network": "echo Network seed is consolidated into database/sql/06_seed_data.sql && node database/mongodb/03_expand_catalog.js",
     "db:email": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/11_email_verification.sql -C",
     "db:views": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/03_create_views.sql -C",
     "db:triggers": "sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/04_create_triggers.sql -C",

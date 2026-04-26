@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { apiRequest } from '../../lib/api';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 
 //  Status config 
 const STATUS_CONFIG = {
@@ -163,7 +163,7 @@ export default function AdminTimeline({ hotels = [] }) {
     } finally {
       setLoading(false);
     }
-  }, [hotelId, newStatus, dateFrom, dateTo, resvCode]);
+  }, [hotelId, newStatus, dateFrom, dateTo, resvCode, setFlash]);
 
   // Group by date for section headers
   const grouped = history.reduce((acc, row) => {

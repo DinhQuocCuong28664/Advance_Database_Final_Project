@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { apiRequest } from '../../lib/api';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 import '../../styles/AdminInvoice.css';
 
 const STATUS_STYLE = {

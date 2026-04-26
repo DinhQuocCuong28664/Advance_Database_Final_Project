@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import ToastContainer from '../components/layout/ToastContainer';
 import { useAuth } from '../context/AuthContext';
-import { useFlash } from '../context/FlashContext';
+import { useFlash } from '../context/useFlash';
 import AdminFrontDesk from './admin/AdminFrontDesk';
 import '../styles/Admin.css';
 
@@ -17,11 +17,30 @@ export default function CashierPage() {
 
   useEffect(() => {
     if (!isSystemUser) return;
-    setLoadingHotels(true);
-    apiRequest('/hotels')
-      .then(p  => setHotels(p.data || []))
-      .catch(e => setFlash({ tone: 'error', text: e.message }))
-      .finally(() => setLoadingHotels(false));
+    let cancelled = false;
+
+    async function loadHotels() {
+      setLoadingHotels(true);
+      try {
+        const payload = await apiRequest('/hotels');
+        if (!cancelled) {
+          setHotels(payload.data || []);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setFlash({ tone: 'error', text: error.message });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingHotels(false);
+        }
+      }
+    }
+
+    loadHotels();
+    return () => {
+      cancelled = true;
+    };
   }, [isSystemUser, setFlash]);
 
   //  Access guards 

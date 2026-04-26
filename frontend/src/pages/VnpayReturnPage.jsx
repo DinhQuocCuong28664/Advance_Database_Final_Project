@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
 function fmt(n) {
@@ -16,14 +16,14 @@ export default function VnpayReturnPage() {
   const bankCode = searchParams.get('bankCode');
   const transNo  = searchParams.get('transNo');
 
-  const [resv, setResv] = useState(null);
-
-  useEffect(() => {
+  const [resv] = useState(() => {
     try {
       const stored = sessionStorage.getItem('pendingReservation');
-      if (stored) setResv(JSON.parse(stored));
-    } catch (_) {}
-  }, []);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const isSuccess = status === 'success';
 

@@ -1,4 +1,4 @@
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 
 const ICONS = {
   success: '',

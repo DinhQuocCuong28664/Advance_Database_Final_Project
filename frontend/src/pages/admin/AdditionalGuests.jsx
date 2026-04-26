@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '../../lib/api';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 
 const AGE_OPTS = ['ADULT', 'CHILD', 'INFANT'];
 const AGE_ICONS = { ADULT: '', CHILD: '', INFANT: '' };
@@ -164,7 +164,7 @@ export default function AdditionalGuests({ reservationId }) {
     } finally {
       setLoading(false);
     }
-  }, [reservationId]);
+  }, [reservationId, setFlash]);
 
   useEffect(() => { load(); }, [load]);
 

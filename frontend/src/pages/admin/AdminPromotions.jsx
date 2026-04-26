@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiRequest } from '../../lib/api';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 
 const PROMO_TYPES = ['PERCENTAGE', 'FIXED_AMOUNT', 'FREE_NIGHT', 'EARLY_BIRD', 'LAST_MINUTE', 'PACKAGE'];
 const APPLIES_TO  = ['ROOM', 'PACKAGE', 'SERVICE', 'ALL'];
@@ -19,7 +19,7 @@ const EMPTY = {
   discount_value: '', currency_code: 'USD', applies_to: 'ROOM',
   booking_start_date: '', booking_end_date: '',
   stay_start_date: '', stay_end_date: '',
-  member_only_flag: false, min_nights: '', description: '',
+  member_only_flag: false, min_nights: '', redeemable_points_cost: '', voucher_valid_days: '', description: '',
   hotel_id: '',
 };
 
@@ -60,7 +60,33 @@ export default function AdminPromotions({ hotels }) {
     finally     { setLoading(false); }
   }
 
-  useEffect(() => { loadPromos(filterHotel); }, []);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchPromotions() {
+      setLoading(true);
+      try {
+        const qs = filterHotel ? `?hotel_id=${filterHotel}` : '';
+        const payload = await apiRequest(`/promotions${qs}`);
+        if (!cancelled) {
+          setPromos(payload.data || []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setFlash({ tone: 'error', text: e.message });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchPromotions();
+    return () => {
+      cancelled = true;
+    };
+  }, [filterHotel, setFlash]);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -73,6 +99,8 @@ export default function AdminPromotions({ hotels }) {
           hotel_id:        form.hotel_id      ? Number(form.hotel_id)      : null,
           discount_value:  form.discount_value ? Number(form.discount_value) : null,
           min_nights:      form.min_nights     ? Number(form.min_nights)     : null,
+          redeemable_points_cost: form.redeemable_points_cost ? Number(form.redeemable_points_cost) : null,
+          voucher_valid_days: form.voucher_valid_days ? Number(form.voucher_valid_days) : null,
           member_only_flag:form.member_only_flag ? 1 : 0,
           booking_start_date: form.booking_start_date || undefined,
           booking_end_date:   form.booking_end_date   || undefined,
@@ -98,6 +126,8 @@ export default function AdminPromotions({ hotels }) {
       stay_end_date:     p.stay_end_date?.slice(0,10)      || '',
       member_only_flag:  !!p.member_only_flag,
       min_nights:        p.min_nights || '',
+      redeemable_points_cost: p.redeemable_points_cost || '',
+      voucher_valid_days: p.voucher_valid_days || '',
     });
   }
 
@@ -110,6 +140,8 @@ export default function AdminPromotions({ hotels }) {
           ...editForm,
           discount_value: editForm.discount_value ? Number(editForm.discount_value) : null,
           min_nights:     editForm.min_nights      ? Number(editForm.min_nights)     : null,
+          redeemable_points_cost: editForm.redeemable_points_cost ? Number(editForm.redeemable_points_cost) : null,
+          voucher_valid_days: editForm.voucher_valid_days ? Number(editForm.voucher_valid_days) : null,
         }),
       });
       setFlash({ tone: 'success', text: 'Promotion updated.' });
@@ -214,6 +246,18 @@ export default function AdminPromotions({ hotels }) {
                 onChange={e => setForm(f => ({ ...f, min_nights: e.target.value }))} placeholder="e.g. 2" />
             </label>
             <label>
+              Points cost
+              <input type="number" min="0" step="1" value={form.redeemable_points_cost}
+                onChange={e => setForm(f => ({ ...f, redeemable_points_cost: e.target.value }))}
+                placeholder="Optional loyalty redemption cost" />
+            </label>
+            <label>
+              Voucher valid days
+              <input type="number" min="1" step="1" value={form.voucher_valid_days}
+                onChange={e => setForm(f => ({ ...f, voucher_valid_days: e.target.value }))}
+                placeholder="e.g. 30" />
+            </label>
+            <label>
               Booking start *
               <input type="date" required value={form.booking_start_date}
                 onChange={e => setForm(f => ({ ...f, booking_start_date: e.target.value }))} />
@@ -299,6 +343,8 @@ export default function AdminPromotions({ hotels }) {
                         <span> Stay: {fmtDate(p.stay_start_date)}  {fmtDate(p.stay_end_date)}</span>
                       )}
                       {p.min_nights && <span> Min {p.min_nights} nights</span>}
+                      {p.redeemable_points_cost && <span> {Number(p.redeemable_points_cost).toLocaleString()} pts</span>}
+                      {p.voucher_valid_days && <span> Voucher {p.voucher_valid_days} days</span>}
                       {p.scope_hotel_name && <span> {p.scope_hotel_name}</span>}
                     </div>
                     <div className="promo-card-actions">
@@ -350,6 +396,16 @@ export default function AdminPromotions({ hotels }) {
                         Min nights
                         <input type="number" min="1" value={editForm.min_nights}
                           onChange={e => setEditForm(f => ({ ...f, min_nights: e.target.value }))} />
+                      </label>
+                      <label>
+                        Points cost
+                        <input type="number" min="0" value={editForm.redeemable_points_cost}
+                          onChange={e => setEditForm(f => ({ ...f, redeemable_points_cost: e.target.value }))} />
+                      </label>
+                      <label>
+                        Voucher valid days
+                        <input type="number" min="1" value={editForm.voucher_valid_days}
+                          onChange={e => setEditForm(f => ({ ...f, voucher_valid_days: e.target.value }))} />
                       </label>
                       <label className="promo-form-wide" style={{ flexDirection:'row', alignItems:'center', gap:10 }}>
                         <input type="checkbox" checked={editForm.member_only_flag}

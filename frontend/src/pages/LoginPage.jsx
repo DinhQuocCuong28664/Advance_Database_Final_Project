@@ -1,7 +1,7 @@
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useFlash } from '../context/FlashContext';
+import { useFlash } from '../context/useFlash';
 
 export default function LoginPage() {
   const navigate  = useNavigate();

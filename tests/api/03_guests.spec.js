@@ -11,12 +11,25 @@ const { test, expect } = require('@playwright/test');
 const { SEED } = require('./helpers');
 
 let createdGuestId = null;
+let adminToken = null;
 
 test.describe(' Guests API', () => {
+  test.beforeAll(async ({ request }) => {
+    const res = await request.post('/api/auth/admin/login', {
+      data: { username: SEED.admin.username, password: SEED.admin.password },
+    });
+    if (res.status() === 200) {
+      adminToken = (await res.json()).token;
+    }
+  });
+
+  function auth() {
+    return adminToken ? { Authorization: `Bearer ${adminToken}` } : {};
+  }
 
   //  GET /guests 
   test('GET /guests  returns guest list', async ({ request }) => {
-    const res = await request.get('/api/guests');
+    const res = await request.get('/api/guests', { headers: auth() });
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
@@ -25,7 +38,7 @@ test.describe(' Guests API', () => {
   });
 
   test('GET /guests  each guest has full_name (computed column)', async ({ request }) => {
-    const res = await request.get('/api/guests');
+    const res = await request.get('/api/guests', { headers: auth() });
     const body = await res.json();
     const guest = body.data[0];
     expect(guest).toHaveProperty('guest_id');
@@ -35,7 +48,7 @@ test.describe(' Guests API', () => {
 
   //  GET /guests/:id 
   test('GET /guests/:id  returns full profile with preferences', async ({ request }) => {
-    const res = await request.get(`/api/guests/${SEED.guest.id}`);
+    const res = await request.get(`/api/guests/${SEED.guest.id}`, { headers: auth() });
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
@@ -46,14 +59,14 @@ test.describe(' Guests API', () => {
   });
 
   test('GET /guests/:id  guest not found  404', async ({ request }) => {
-    const res = await request.get('/api/guests/99999');
+    const res = await request.get('/api/guests/99999', { headers: auth() });
     expect(res.status()).toBe(404);
     const body = await res.json();
     expect(body.success).toBe(false);
   });
 
   test('GET /guests/:id  invalid ID  400', async ({ request }) => {
-    const res = await request.get('/api/guests/not-a-number');
+    const res = await request.get('/api/guests/not-a-number', { headers: auth() });
     expect(res.status()).toBe(400);
   });
 
@@ -61,6 +74,7 @@ test.describe(' Guests API', () => {
   test('POST /guests  create a new guest', async ({ request }) => {
     const uniqueCode = `G-PLW-${Date.now()}-${Math.floor(Math.random() * 9999)}`;
     const res = await request.post('/api/guests', {
+      headers: auth(),
       data: {
         guest_code: uniqueCode,
         first_name: 'Playwright',
@@ -78,6 +92,7 @@ test.describe(' Guests API', () => {
 
   test('POST /guests  missing first_name  400', async ({ request }) => {
     const res = await request.post('/api/guests', {
+      headers: auth(),
       data: { guest_code: 'G-FAIL-1', last_name: 'Someone' },
     });
     expect(res.status()).toBe(400);
@@ -85,6 +100,7 @@ test.describe(' Guests API', () => {
 
   test('POST /guests  missing last_name  400', async ({ request }) => {
     const res = await request.post('/api/guests', {
+      headers: auth(),
       data: { guest_code: 'G-FAIL-2', first_name: 'Someone' },
     });
     expect(res.status()).toBe(400);
@@ -92,6 +108,7 @@ test.describe(' Guests API', () => {
 
   test('POST /guests  missing guest_code  400', async ({ request }) => {
     const res = await request.post('/api/guests', {
+      headers: auth(),
       data: { first_name: 'No', last_name: 'Code' },
     });
     expect(res.status()).toBe(400);
@@ -100,7 +117,7 @@ test.describe(' Guests API', () => {
   // Verify created guest is retrievable
   test('GET /guests/:id  created guest is retrievable', async ({ request }) => {
     if (!createdGuestId) return test.skip();
-    const res = await request.get(`/api/guests/${createdGuestId}`);
+    const res = await request.get(`/api/guests/${createdGuestId}`, { headers: auth() });
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.data.guest_id).toBe(createdGuestId);

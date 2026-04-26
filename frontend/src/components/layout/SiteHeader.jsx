@@ -1,10 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 
 export default function SiteHeader() {
   const navigate = useNavigate();
-  const { authSession, guestAccounts, isSystemUser, isAdminUser, isCashierUser, logout } = useAuth();
+  const { authSession, guestAccounts, isSystemUser, isAdminUser, logout } = useAuth();
   const { setFlash } = useFlash();
 
   function handleLogout() {

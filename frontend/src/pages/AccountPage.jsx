@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { useFlash } from '../context/FlashContext';
+import { useFlash } from '../context/useFlash';
 import '../styles/Account.css';
 
 //  Category icon map 
@@ -45,6 +45,17 @@ function formatMoney(value, currency = 'VND') {
 function formatDateTime(val) {
   if (!val) return '';
   return new Date(val).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' });
+}
+function formatDateOnly(val) {
+  if (!val) return '';
+  return new Date(val).toLocaleDateString('en-GB', { dateStyle: 'medium' });
+}
+function formatRewardValue(reward) {
+  const promoType = String(reward?.promotion_type || '').toUpperCase();
+  if (['PERCENT_OFF', 'PERCENTAGE'].includes(promoType)) {
+    return `${Number(reward.discount_value || 0)}% off`;
+  }
+  return formatMoney(reward?.discount_value || 0, reward?.currency_code || 'USD');
 }
 
 const ACCOUNT_MENU = [
@@ -401,6 +412,183 @@ function GuestServices({ guestId }) {
   );
 }
 
+function LoyaltyRewardsPanel({ guestId, onProfileRefresh }) {
+  const { setFlash } = useFlash();
+  const [loading, setLoading] = useState(true);
+  const [rewards, setRewards] = useState([]);
+  const [redemptions, setRedemptions] = useState([]);
+  const [redeemingId, setRedeemingId] = useState(null);
+
+  async function loadLoyaltyData() {
+    setLoading(true);
+    try {
+      const [rewardPayload, redemptionPayload] = await Promise.all([
+        apiRequest(`/guests/${guestId}/loyalty-rewards`),
+        apiRequest(`/guests/${guestId}/loyalty-redemptions`),
+      ]);
+      setRewards(rewardPayload.data || []);
+      setRedemptions(redemptionPayload.data || []);
+    } catch (err) {
+      setFlash({ tone: 'error', text: err.message });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchLoyaltyData() {
+      if (!guestId) return;
+      setLoading(true);
+      try {
+        const [rewardPayload, redemptionPayload] = await Promise.all([
+          apiRequest(`/guests/${guestId}/loyalty-rewards`),
+          apiRequest(`/guests/${guestId}/loyalty-redemptions`),
+        ]);
+        if (!cancelled) {
+          setRewards(rewardPayload.data || []);
+          setRedemptions(redemptionPayload.data || []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setFlash({ tone: 'error', text: err.message });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchLoyaltyData();
+    return () => {
+      cancelled = true;
+    };
+  }, [guestId, setFlash]);
+
+  async function handleRedeem(reward) {
+    setRedeemingId(reward.promotion_id);
+    try {
+      const payload = await apiRequest(`/guests/${guestId}/loyalty-rewards/${reward.promotion_id}/redeem`, {
+        method: 'POST',
+      });
+      setFlash({
+        tone: 'success',
+        text: `Reward redeemed. Voucher code: ${payload.data?.issued_promo_code}`,
+      });
+      await loadLoyaltyData();
+      onProfileRefresh?.();
+    } catch (err) {
+      setFlash({ tone: 'error', text: err.message });
+    } finally {
+      setRedeemingId(null);
+    }
+  }
+
+  if (loading) {
+    return <p className="guest-svc-empty">Loading loyalty rewards...</p>;
+  }
+
+  return (
+    <div className="acct-loyalty-shell">
+      <section className="acct-loyalty-section">
+        <div className="guest-card-head" style={{ marginBottom: 16 }}>
+          <div>
+            <p className="page-eyebrow">Rewards exchange</p>
+            <h3>Redeem points for private promotions</h3>
+          </div>
+        </div>
+        {rewards.length === 0 ? (
+          <div className="svc-orders-empty">
+            <span></span>
+            <p>No loyalty rewards are configured yet.</p>
+            <small>Ask the hotel team to publish member-only reward promotions with a points cost.</small>
+          </div>
+        ) : (
+          <div className="acct-loyalty-reward-grid">
+            {rewards.map((reward) => {
+              const disabled = !reward.can_redeem || reward.active_voucher_count > 0;
+              return (
+                <article key={`${reward.loyalty_account_id}-${reward.promotion_id}`} className="acct-reward-card">
+                  <div className="acct-reward-top">
+                    <div>
+                      <p className="acct-reward-points">{Number(reward.redeemable_points_cost || 0).toLocaleString('en-US')} pts</p>
+                      <h4>{reward.promotion_name}</h4>
+                    </div>
+                    <span className="acct-reward-badge">{formatRewardValue(reward)}</span>
+                  </div>
+                  <div className="acct-reward-meta">
+                    <span>{reward.chain_name}</span>
+                    {reward.scope_hotel_name ? <span>{reward.scope_hotel_name}</span> : null}
+                    {reward.voucher_valid_days ? <span>Valid {reward.voucher_valid_days} days after redeem</span> : null}
+                    {reward.min_nights ? <span>Min {reward.min_nights} nights</span> : null}
+                  </div>
+                  <div className="acct-reward-footer">
+                    <div className="acct-reward-balance">
+                      <span>Current balance</span>
+                      <strong>{Number(reward.points_balance || 0).toLocaleString('en-US')}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className={disabled ? 'ghost-button' : 'primary-button'}
+                      disabled={disabled || redeemingId === reward.promotion_id}
+                      onClick={() => handleRedeem(reward)}
+                    >
+                      {redeemingId === reward.promotion_id
+                        ? 'Redeeming...'
+                        : reward.active_voucher_count > 0
+                          ? 'Voucher already issued'
+                          : reward.can_redeem
+                            ? 'Redeem reward'
+                            : 'Not enough points'}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="acct-loyalty-section">
+        <div className="guest-card-head" style={{ marginBottom: 16 }}>
+          <div>
+            <p className="page-eyebrow">Issued vouchers</p>
+            <h3>Your redemption history</h3>
+          </div>
+        </div>
+        {redemptions.length === 0 ? (
+          <div className="svc-orders-empty">
+            <span></span>
+            <p>No vouchers issued yet.</p>
+            <small>Redeemed vouchers will appear here and can be applied during booking.</small>
+          </div>
+        ) : (
+          <div className="acct-redemption-list">
+            {redemptions.map((item) => (
+              <article key={item.loyalty_redemption_id} className="acct-redemption-row">
+                <div className="acct-redemption-main">
+                  <strong>{item.promotion_name}</strong>
+                  <span>Voucher code: <code>{item.issued_promo_code}</code></span>
+                  <span>{formatRewardValue(item)} - {Number(item.points_spent || 0).toLocaleString('en-US')} pts</span>
+                  <span>Issued {formatDateOnly(item.issued_at)} - Expires {formatDateOnly(item.expires_at)}</span>
+                  {item.reservation_code ? <span>Used on reservation {item.reservation_code}</span> : null}
+                </div>
+                <div className="acct-redemption-right">
+                  <span className={`acct-redemption-status acct-redemption-status--${String(item.status || '').toLowerCase()}`}>
+                    {item.status}
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function PasswordSettingsCard() {
   const { changePassword, authBusy } = useAuth();
   const { setFlash } = useFlash();
@@ -487,12 +675,36 @@ export default function AccountPage() {
 
   const guestId = authSession?.user?.guest_id;
 
+  async function loadGuestProfile() {
+    if (!guestId) return;
+    try {
+      const payload = await apiRequest(`/guests/${guestId}`);
+      setGuestProfile(payload.data);
+    } catch {
+      // Keep the page usable even if the profile refresh fails.
+    }
+  }
+
   // Load full profile once
   useEffect(() => {
-    if (!guestId) return;
-    apiRequest(`/guests/${guestId}`)
-      .then(p => setGuestProfile(p.data))
-      .catch(() => {});
+    let cancelled = false;
+
+    async function fetchGuestProfile() {
+      if (!guestId) return;
+      try {
+        const payload = await apiRequest(`/guests/${guestId}`);
+        if (!cancelled) {
+          setGuestProfile(payload.data);
+        }
+      } catch {
+        // Keep the page usable even if the initial profile load fails.
+      }
+    }
+
+    fetchGuestProfile();
+    return () => {
+      cancelled = true;
+    };
   }, [guestId]);
 
   // Load stays lazily when Overview tab is opened
@@ -718,6 +930,9 @@ export default function AccountPage() {
                   </div>
                 );
               })}
+              {loyaltyAccounts.length > 0 && (
+                <LoyaltyRewardsPanel guestId={guestId} onProfileRefresh={loadGuestProfile} />
+              )}
             </section>
           )}
 

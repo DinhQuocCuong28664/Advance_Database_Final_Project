@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
-const { attachAuthContext } = require('../middleware/auth');
+const { attachAuthContext, requireAdminUser } = require('../middleware/auth');
 
 router.use(attachAuthContext);
 
@@ -26,6 +26,8 @@ router.get('/', async (req, res) => {
           p.discount_value,
           p.currency_code,
           p.applies_to,
+          p.redeemable_points_cost,
+          p.voucher_valid_days,
           p.booking_start_date,
           p.booking_end_date,
           p.stay_start_date,
@@ -103,13 +105,13 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/promotions  Create promotion
-router.post('/', async (req, res) => {
+router.post('/', requireAdminUser, async (req, res) => {
   try {
     const {
       hotel_id, brand_id, promotion_code, promotion_name, promotion_type,
       discount_value, currency_code, applies_to,
       booking_start_date, booking_end_date, stay_start_date, stay_end_date,
-      member_only_flag, min_nights, description,
+      member_only_flag, min_nights, redeemable_points_cost, voucher_valid_days, description,
     } = req.body;
 
     if (!promotion_code || !promotion_name || !promotion_type || !booking_start_date || !booking_end_date) {
@@ -132,20 +134,22 @@ router.post('/', async (req, res) => {
       .input('stEnd',      sql.Date,         stay_end_date   ? new Date(stay_end_date)   : null)
       .input('memberOnly', sql.Bit,          member_only_flag ? 1 : 0)
       .input('minNights',  sql.SmallInt,     min_nights || null)
+      .input('pointsCost', sql.Decimal(18,2), redeemable_points_cost != null ? redeemable_points_cost : null)
+      .input('voucherDays', sql.Int, voucher_valid_days || null)
       .input('desc',       sql.NVarChar(sql.MAX), description || null)
       .query(`
         INSERT INTO Promotion (
           hotel_id, brand_id, promotion_code, promotion_name, promotion_type,
           discount_value, currency_code, applies_to,
           booking_start_date, booking_end_date, stay_start_date, stay_end_date,
-          member_only_flag, min_nights, description, status
+          member_only_flag, min_nights, redeemable_points_cost, voucher_valid_days, status
         )
         OUTPUT INSERTED.*
         VALUES (
           @hotelId, @brandId, @code, @name, @type,
           @discount, @currency, @appliesTo,
           @bkStart, @bkEnd, @stStart, @stEnd,
-          @memberOnly, @minNights, @desc, 'ACTIVE'
+          @memberOnly, @minNights, @pointsCost, @voucherDays, 'ACTIVE'
         )
       `);
 
@@ -156,14 +160,15 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/promotions/:id  Update promotion
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdminUser, async (req, res) => {
   try {
     const promoId = parseInt(req.params.id, 10);
     if (isNaN(promoId)) return res.status(400).json({ success: false, error: 'Invalid ID' });
 
     const {
       promotion_name, discount_value, booking_start_date, booking_end_date,
-      stay_start_date, stay_end_date, member_only_flag, min_nights, status,
+      stay_start_date, stay_end_date, member_only_flag, min_nights,
+      redeemable_points_cost, voucher_valid_days, status,
     } = req.body;
 
     const pool = getSqlPool();
@@ -177,6 +182,8 @@ router.put('/:id', async (req, res) => {
       .input('stEnd',      sql.Date,          stay_end_date      ? new Date(stay_end_date)      : null)
       .input('memberOnly', sql.Bit,           member_only_flag != null ? (member_only_flag ? 1 : 0) : null)
       .input('minNights',  sql.SmallInt,      min_nights || null)
+      .input('pointsCost', sql.Decimal(18,2), redeemable_points_cost != null ? redeemable_points_cost : null)
+      .input('voucherDays', sql.Int, voucher_valid_days || null)
       .input('status',     sql.VarChar(15),   status || null)
       .query(`
         UPDATE Promotion SET
@@ -188,6 +195,8 @@ router.put('/:id', async (req, res) => {
           stay_end_date      = ISNULL(@stEnd,    stay_end_date),
           member_only_flag   = ISNULL(@memberOnly, member_only_flag),
           min_nights         = ISNULL(@minNights, min_nights),
+          redeemable_points_cost = ISNULL(@pointsCost, redeemable_points_cost),
+          voucher_valid_days = ISNULL(@voucherDays, voucher_valid_days),
           status             = ISNULL(@status,   status),
           updated_at         = GETDATE()
         OUTPUT INSERTED.*
@@ -202,7 +211,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/promotions/:id  Deactivate (soft delete)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdminUser, async (req, res) => {
   try {
     const promoId = parseInt(req.params.id, 10);
     if (isNaN(promoId)) return res.status(400).json({ success: false, error: 'Invalid ID' });

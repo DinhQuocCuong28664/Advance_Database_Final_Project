@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql, getMongoDb } = require('../config/database');
+const { requireAdminUser } = require('../middleware/auth');
 
 // GET /api/hotels  List all hotels (Hybrid merge)
 router.get('/', async (req, res) => {
@@ -219,7 +220,7 @@ router.get('/:id', async (req, res) => {
 // 
 // GET /api/hotels/:id/features  List all RoomFeatures for a hotel
 // 
-router.get('/:id/features', async (req, res) => {
+router.get('/:id/features', requireAdminUser, async (req, res) => {
   try {
     const hotelId = parseInt(req.params.id, 10);
     if (isNaN(hotelId)) {
@@ -266,7 +267,7 @@ router.get('/:id/features', async (req, res) => {
 // 
 const VALID_FEATURE_CATEGORIES = ['VIEW', 'BED', 'BATH', 'TECH', 'AMENITY', 'SPACE'];
 
-router.post('/:id/features', async (req, res) => {
+router.post('/:id/features', requireAdminUser, async (req, res) => {
   try {
     const hotelId = parseInt(req.params.id, 10);
     if (isNaN(hotelId)) {
@@ -338,7 +339,7 @@ router.post('/:id/features', async (req, res) => {
 // 
 // DELETE /api/hotels/:id/features/:fid  Remove a RoomFeature
 // 
-router.delete('/:id/features/:fid', async (req, res) => {
+router.delete('/:id/features/:fid', requireAdminUser, async (req, res) => {
   try {
     const hotelId  = parseInt(req.params.id, 10);
     const featureId = parseInt(req.params.fid, 10);

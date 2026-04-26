@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '../../lib/api';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 
 //  Helpers 
 const fmtCurrency = (v) =>
@@ -58,7 +58,7 @@ function TreeNode({ node, depth = 0 }) {
 }
 
 //  Booking Channel Table 
-function ChannelTable({ channels, totalRevenue }) {
+function ChannelTable({ channels }) {
   return (
     <div className="chan-table-wrap">
       <table className="pay-hist-table">
@@ -128,11 +128,7 @@ export default function AdminLocationChannels() {
   const [locationTree, setLocationTree] = useState([]);
   const [loading,    setLoading]    = useState(false);
 
-  useEffect(() => {
-    load();
-  }, [activeView]);
-
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       if (activeView === 'channels') {
@@ -148,7 +144,11 @@ export default function AdminLocationChannels() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [activeView, setFlash]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // Channel KPI summary
   const totalResv  = channels.reduce((s, c) => s + (c.total_reservations || 0), 0);
@@ -208,7 +208,7 @@ export default function AdminLocationChannels() {
 
           {channels.length === 0
             ? <p style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-soft)' }}>No channel data found.</p>
-            : <ChannelTable channels={channels} totalRevenue={totalRev} />}
+            : <ChannelTable channels={channels} />}
         </>
       )}
 

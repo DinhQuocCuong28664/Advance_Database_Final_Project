@@ -611,6 +611,8 @@ CREATE TABLE Promotion (
     stay_end_date      DATE         NOT NULL,
     member_only_flag   BIT          NOT NULL DEFAULT 0,
     min_nights         INT          NULL,
+    redeemable_points_cost DECIMAL(18,2) NULL,
+    voucher_valid_days INT          NULL,
     status          VARCHAR(10)     NOT NULL DEFAULT 'ACTIVE',
     created_at      DATETIME        NOT NULL DEFAULT GETDATE(),
     updated_at      DATETIME        NOT NULL DEFAULT GETDATE(),
@@ -618,7 +620,9 @@ CREATE TABLE Promotion (
     CONSTRAINT FK_Promo_Hotel   FOREIGN KEY (hotel_id) REFERENCES Hotel(hotel_id),
     CONSTRAINT FK_Promo_Brand   FOREIGN KEY (brand_id) REFERENCES Brand(brand_id),
     CONSTRAINT UQ_Promo_Code    UNIQUE (promotion_code),
-    CONSTRAINT CK_Promo_Status  CHECK (status IN ('ACTIVE','INACTIVE'))
+    CONSTRAINT CK_Promo_Status  CHECK (status IN ('ACTIVE','INACTIVE')),
+    CONSTRAINT CK_Promo_PointsCost CHECK (redeemable_points_cost IS NULL OR redeemable_points_cost >= 0),
+    CONSTRAINT CK_Promo_VoucherDays CHECK (voucher_valid_days IS NULL OR voucher_valid_days >= 1)
 );
 GO
 
@@ -773,6 +777,38 @@ CREATE INDEX IX_ResvHist_ResvTime ON ReservationStatusHistory(reservation_id, ch
 GO
 
 PRINT '  OK ReservationStatusHistory';
+GO
+
+CREATE TABLE LoyaltyRedemption (
+    loyalty_redemption_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    guest_id             BIGINT          NOT NULL,
+    loyalty_account_id   BIGINT          NOT NULL,
+    promotion_id         BIGINT          NOT NULL,
+    reservation_id       BIGINT          NULL,
+    issued_promo_code    VARCHAR(50)     NOT NULL,
+    points_spent         DECIMAL(18,2)   NOT NULL,
+    status               VARCHAR(15)     NOT NULL DEFAULT 'ISSUED',
+    issued_at            DATETIME        NOT NULL DEFAULT GETDATE(),
+    expires_at           DATETIME        NOT NULL,
+    redeemed_at          DATETIME        NULL,
+    cancelled_at         DATETIME        NULL,
+    note                 NVARCHAR(255)   NULL,
+    created_at           DATETIME        NOT NULL DEFAULT GETDATE(),
+    updated_at           DATETIME        NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_LoyaltyRedemption_Guest FOREIGN KEY (guest_id) REFERENCES Guest(guest_id),
+    CONSTRAINT FK_LoyaltyRedemption_Account FOREIGN KEY (loyalty_account_id) REFERENCES LoyaltyAccount(loyalty_account_id),
+    CONSTRAINT FK_LoyaltyRedemption_Promo FOREIGN KEY (promotion_id) REFERENCES Promotion(promotion_id),
+    CONSTRAINT FK_LoyaltyRedemption_Reservation FOREIGN KEY (reservation_id) REFERENCES Reservation(reservation_id),
+    CONSTRAINT UQ_LoyaltyRedemption_Code UNIQUE (issued_promo_code),
+    CONSTRAINT CK_LoyaltyRedemption_Status CHECK (status IN ('ISSUED','REDEEMED','EXPIRED','CANCELLED')),
+    CONSTRAINT CK_LoyaltyRedemption_Points CHECK (points_spent >= 0)
+);
+CREATE INDEX IX_LoyaltyRedemption_GuestStatus ON LoyaltyRedemption(guest_id, status, expires_at);
+CREATE INDEX IX_LoyaltyRedemption_PromoStatus ON LoyaltyRedemption(promotion_id, status);
+GO
+
+PRINT '  OK LoyaltyRedemption';
 GO
 
 -- ============================================================

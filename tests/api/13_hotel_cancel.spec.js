@@ -11,9 +11,21 @@ const { SEED, futureDate } = require('./helpers');
 test.describe(' Hotel-Cancel API', () => {
 
   let cancelResv = null;
+  let adminToken = null;
+
+  function auth() {
+    return adminToken ? { Authorization: `Bearer ${adminToken}` } : {};
+  }
 
   //  Setup: create a fresh reservation to cancel 
   test.beforeAll(async ({ request }) => {
+    const loginRes = await request.post('/api/auth/admin/login', {
+      data: { username: SEED.admin.username, password: SEED.admin.password },
+    });
+    if (loginRes.status() === 200) {
+      adminToken = (await loginRes.json()).token;
+    }
+
     // Find an available room for far-future dates
     const cin  = futureDate(110);
     const cout = futureDate(112);
@@ -47,6 +59,7 @@ test.describe(' Hotel-Cancel API', () => {
   test('POST /hotel-cancel  missing reason  400', async ({ request }) => {
     const id = cancelResv?.reservation_id ?? 1;
     const res = await request.post(`/api/reservations/${id}/hotel-cancel`, {
+      headers: auth(),
       data: { agent_id: SEED.staff.id }, // no reason
     });
     expect(res.status()).toBe(400);
@@ -57,6 +70,7 @@ test.describe(' Hotel-Cancel API', () => {
 
   test('POST /hotel-cancel  invalid ID  400', async ({ request }) => {
     const res = await request.post('/api/reservations/not-a-number/hotel-cancel', {
+      headers: auth(),
       data: { reason: 'test', agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(400);
@@ -64,6 +78,7 @@ test.describe(' Hotel-Cancel API', () => {
 
   test('POST /hotel-cancel  nonexistent reservation  404', async ({ request }) => {
     const res = await request.post('/api/reservations/999999/hotel-cancel', {
+      headers: auth(),
       data: { reason: 'test', agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(404);
@@ -76,6 +91,7 @@ test.describe(' Hotel-Cancel API', () => {
     if (!cancelResv) return test.skip();
 
     const res = await request.post(`/api/reservations/${cancelResv.reservation_id}/hotel-cancel`, {
+      headers: auth(),
       data: { reason: 'Overbooking  Playwright test', agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(200);
@@ -116,6 +132,7 @@ test.describe(' Hotel-Cancel API', () => {
     if (!cancelResv) return test.skip();
     // Reservation was cancelled in the previous test
     const res = await request.post(`/api/reservations/${cancelResv.reservation_id}/hotel-cancel`, {
+      headers: auth(),
       data: { reason: 'Duplicate attempt', agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(409);
@@ -133,6 +150,7 @@ test.describe(' Hotel-Cancel API', () => {
         // We just test the 409 contract; actual DB states are managed by other lifecycle tests
         // Using nonexistent ID to trigger 404, verifying the guard path exists
         const res = await request.post('/api/reservations/999999/hotel-cancel', {
+          headers: auth(),
           data: { reason: `test from ${status}`, agent_id: SEED.staff.id },
         });
         // 404 = reservation not found, which is the next valid error after field validation
@@ -158,7 +176,7 @@ test.describe(' Hotel-Cancel API', () => {
     const createRes = await request.post('/api/reservations', {
       data: {
         hotel_id: SEED.hotel.id,
-        guest_id: SEED.guest2.id,
+        guest_id: SEED.guest.id,
         room_id: room.room_id,
         checkin_date: cin,
         checkout_date: cout,
@@ -185,6 +203,7 @@ test.describe(' Hotel-Cancel API', () => {
 
     // Now hotel-cancel  should auto-create REFUND payment
     const cancelRes = await request.post(`/api/reservations/${newResv.reservation_id}/hotel-cancel`, {
+      headers: auth(),
       data: { reason: 'Test refund path', agent_id: SEED.staff.id },
     });
     expect(cancelRes.status()).toBe(200);

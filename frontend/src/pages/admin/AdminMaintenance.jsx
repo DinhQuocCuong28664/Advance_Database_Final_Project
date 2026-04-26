@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { apiRequest } from '../../lib/api';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 
 //  Constants 
 const ISSUE_CATEGORIES = [
@@ -68,9 +68,14 @@ export default function AdminMaintenance({ hotels }) {
   const [updateTarget, setUpdateTarget] = useState(null); // ticket being updated
   const [updateFields, setUpdateFields] = useState({ status: '', resolution_note: '' });
   const [updateBusy,   setUpdateBusy]   = useState(false);
+  const filterRef = useRef({ status: '', severity: '' });
 
   // Load tickets
-  async function loadTickets(hid, st, sv) {
+  useEffect(() => {
+    filterRef.current = { status: filterStatus, severity: filterSev };
+  }, [filterStatus, filterSev]);
+
+  const loadTickets = useCallback(async (hid, st = filterRef.current.status, sv = filterRef.current.severity) => {
     const h = hid || hotelId;
     if (!h) return;
     setLoading(true);
@@ -85,20 +90,23 @@ export default function AdminMaintenance({ hotels }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [hotelId, setFlash]);
 
   // Load rooms for the selected hotel
-  async function loadRooms(hid) {
+  const loadRooms = useCallback(async (hid) => {
     if (!hid) return;
     try {
       const payload = await apiRequest(`/rooms?hotel_id=${hid}&limit=200`);
       setRooms(payload.data || []);
     } catch { /* ignore */ }
-  }
+  }, []);
 
   useEffect(() => {
-    if (hotelId) { loadTickets(hotelId, filterStatus, filterSev); loadRooms(hotelId); }
-  }, [hotelId]);
+    if (hotelId) {
+      loadTickets(hotelId);
+      loadRooms(hotelId);
+    }
+  }, [hotelId, loadTickets, loadRooms]);
 
   // Create ticket
   async function handleSubmit(e) {

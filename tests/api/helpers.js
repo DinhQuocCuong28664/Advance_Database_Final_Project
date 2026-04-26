@@ -10,7 +10,7 @@ const SEED = {
   hotel: { id: 1 },           // LuxeReserve Saigon
   hotel2: { id: 2 },          // W Bangkok
   guest: { id: 1 },           // Quoc Anh Nguyen
-  guest2: { id: 2 },          // Sakura Tanaka
+  guest2: { id: 1 },          // Reuse the single consolidated demo guest
   room: { id: 1 },            // A room in hotel 1
   room2: { id: 7 },           // A room in hotel 2 (W Bangkok)
   roomType: { id: 1 },

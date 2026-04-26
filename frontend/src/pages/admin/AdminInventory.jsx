@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { apiRequest } from '../../lib/api';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 
 const INVENTORY_STATUSES = ['OPEN', 'HELD', 'BLOCKED', 'BOOKED'];
 

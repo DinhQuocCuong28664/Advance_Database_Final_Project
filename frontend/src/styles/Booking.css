@@ -48,6 +48,12 @@
 .booking-form-grid input, .booking-form-grid select, .booking-form-grid textarea {
   border-radius: 14px; padding: 10px 14px;
 }
+.booking-field-help {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
 .booking-inline-note {
   margin: 0;
   color: var(--text-soft);
@@ -156,3 +162,34 @@
 /* Deposit row in sidebar */
 .booking-deposit-row span { color: #c8a96e !important; font-weight: 600; }
 .deposit-highlight { color: #c8a96e !important; font-size: 1rem !important; }
+
+@media (max-width: 920px) {
+  .booking-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-summary {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .booking-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-otp-row,
+  .booking-confirm-actions {
+    flex-direction: column;
+  }
+
+  .booking-next-btn,
+  .booking-confirm-actions button,
+  .booking-otp-row button {
+    width: 100%;
+  }
+
+  .booking-done-summary {
+    grid-template-columns: 1fr;
+  }
+}

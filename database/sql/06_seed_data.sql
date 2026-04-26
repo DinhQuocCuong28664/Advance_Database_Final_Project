@@ -332,16 +332,16 @@ INSERT INTO Promotion (
   hotel_id, brand_id, promotion_code, promotion_name, promotion_type,
   discount_value, currency_code, applies_to,
   booking_start_date, booking_end_date, stay_start_date, stay_end_date,
-  member_only_flag, min_nights, status
+  member_only_flag, min_nights, redeemable_points_cost, voucher_valid_days, status
 ) VALUES
 (1, NULL, 'RC-SGN-SUITE-2026', N'Ritz-Carlton Suite Escape', 'PERCENT_OFF', 15, 'VND', 'ROOM_ONLY',
- '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 2, 'ACTIVE'),
+ '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 2, NULL, NULL, 'ACTIVE'),
 (NULL, 1, 'MARRIOTT-ELITE-APR', N'Marriott Elite Member Privilege', 'PERCENT_OFF', 18, NULL, 'ROOM_ONLY',
- '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 1, 2, 'ACTIVE'),
+ '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 1, 2, 1200, 45, 'ACTIVE'),
 (2, NULL, 'W-BKK-SPA-CREDIT', N'W Bangkok Spa Credit', 'VALUE_CREDIT', 3500, 'THB', 'SERVICE_ONLY',
- '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 1, 'ACTIVE'),
+ '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 1, NULL, NULL, 'ACTIVE'),
 (NULL, 3, 'IC-SG-CLUB-MEMBER', N'Club InterContinental Member Privilege', 'VALUE_CREDIT', 120, 'SGD', 'ROOM_AND_SERVICE',
- '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 1, 1, 'ACTIVE');
+ '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 1, 1, 900, 30, 'ACTIVE');
 GO
 
 -- ============================================================
@@ -660,27 +660,27 @@ INSERT INTO Promotion (
   hotel_id, brand_id, promotion_code, promotion_name, promotion_type,
   discount_value, currency_code, applies_to,
   booking_start_date, booking_end_date, stay_start_date, stay_end_date,
-  member_only_flag, min_nights, status
+  member_only_flag, min_nights, redeemable_points_cost, voucher_valid_days, status
 )
 SELECT *
 FROM (VALUES
   (4, NULL, 'RITZ-HAN-LONGWEEKEND', N'Hanoi Long Weekend Escape', 'PERCENT_OFF', 12, 'VND', 'ROOM_ONLY',
-   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 2, 'ACTIVE'),
+   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 2, NULL, NULL, 'ACTIVE'),
   (5, NULL, 'IC-DAD-SUNPENINSULA', N'Danang Peninsula Retreat', 'VALUE_CREDIT', 2500000, 'VND', 'ROOM_AND_SERVICE',
-   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 2, 'ACTIVE'),
+   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 2, NULL, NULL, 'ACTIVE'),
   (6, NULL, 'IC-PQC-FAMILYESCAPE', N'Phu Quoc Family Escape', 'PERCENT_OFF', 10, 'VND', 'ROOM_ONLY',
-   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 3, 'ACTIVE'),
+   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 3, NULL, NULL, 'ACTIVE'),
   (7, NULL, 'W-BALI-TRENDING', N'Bali Trending Stay', 'PERCENT_OFF', 15, 'IDR', 'ROOM_ONLY',
-   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 2, 'ACTIVE'),
+   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 2, NULL, NULL, 'ACTIVE'),
   (8, NULL, 'RITZ-TYO-SKYLINE', N'Tokyo Skyline Signature', 'VALUE_CREDIT', 18000, 'JPY', 'SERVICE_ONLY',
-   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 1, 1, 'ACTIVE'),
+   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 1, 1, NULL, NULL, 'ACTIVE'),
   (9, NULL, 'IC-SEL-BUSINESSPLUS', N'Seoul Business Plus', 'VALUE_CREDIT', 120000, 'KRW', 'ROOM_AND_SERVICE',
-   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 1, 'ACTIVE')
+   '2026-04-01', '2026-12-31', '2026-04-01', '2026-12-31', 0, 1, NULL, NULL, 'ACTIVE')
 ) AS v(
   hotel_id, brand_id, promotion_code, promotion_name, promotion_type,
   discount_value, currency_code, applies_to,
   booking_start_date, booking_end_date, stay_start_date, stay_end_date,
-  member_only_flag, min_nights, status
+  member_only_flag, min_nights, redeemable_points_cost, voucher_valid_days, status
 )
 WHERE NOT EXISTS (
   SELECT 1 FROM Promotion p WHERE p.promotion_code = v.promotion_code

@@ -60,9 +60,37 @@ function requireSystemUser(req, res, next) {
   });
 }
 
+function hasSystemRole(auth, roleCode) {
+  return auth?.user_type === 'SYSTEM_USER'
+    && Array.isArray(auth.roles)
+    && auth.roles.includes(roleCode);
+}
+
+function requireSystemRole(roleCodes) {
+  const allowedRoles = Array.isArray(roleCodes) ? roleCodes : [roleCodes];
+
+  return (req, res, next) => {
+    requireSystemUser(req, res, () => {
+      if (allowedRoles.some((roleCode) => hasSystemRole(req.auth, roleCode))) {
+        return next();
+      }
+
+      return res.status(403).json({
+        success: false,
+        error: `One of the following roles is required: ${allowedRoles.join(', ')}`,
+      });
+    });
+  };
+}
+
+const requireAdminUser = requireSystemRole('ADMIN');
+
 module.exports = {
   attachAuthContext,
   requireAuth,
   requireSystemUser,
+  requireSystemRole,
+  requireAdminUser,
+  hasSystemRole,
   issueAuthToken,
 };

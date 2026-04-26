@@ -6,6 +6,20 @@
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
+const { requireAuth, requireSystemUser } = require('../middleware/auth');
+
+function ensureReservationAccess(req, res, guestId) {
+  if (req.auth?.user_type === 'SYSTEM_USER') {
+    return true;
+  }
+
+  if (req.auth?.user_type === 'GUEST' && Number(req.auth.sub) === Number(guestId)) {
+    return true;
+  }
+
+  res.status(403).json({ success: false, error: 'You are not authorised to access this reservation service data' });
+  return false;
+}
 
 // 
 // GET /api/services?hotel_id=1
@@ -43,7 +57,7 @@ router.get('/', async (req, res) => {
 // POST /api/services/order
 // Order a service (incidental charge) for a reservation
 // 
-router.post('/order', async (req, res) => {
+router.post('/order', requireAuth, async (req, res) => {
   try {
     const { reservation_id, service_id, quantity, special_instruction, scheduled_at } = req.body;
 
@@ -60,7 +74,7 @@ router.post('/order', async (req, res) => {
     const resvCheck = await pool.request()
       .input('resvId', sql.BigInt, reservation_id)
       .query(`
-        SELECT r.reservation_id, r.reservation_status, r.hotel_id,
+        SELECT r.reservation_id, r.reservation_status, r.hotel_id, r.guest_id,
                rr.reservation_room_id
         FROM Reservation r
         LEFT JOIN ReservationRoom rr ON r.reservation_id = rr.reservation_id
@@ -72,6 +86,9 @@ router.post('/order', async (req, res) => {
     }
 
     const reservation = resvCheck.recordset[0];
+    if (!ensureReservationAccess(req, res, reservation.guest_id)) {
+      return;
+    }
 
     if (!['CONFIRMED', 'CHECKED_IN'].includes(reservation.reservation_status)) {
       return res.status(400).json({
@@ -145,7 +162,7 @@ router.post('/order', async (req, res) => {
 //   or /api/services/orders?hotel_id=1&status=REQUESTED
 // List service orders (guest view or staff hotel-wide view)
 // 
-router.get('/orders', async (req, res) => {
+router.get('/orders', requireAuth, async (req, res) => {
   try {
     const pool = getSqlPool();
     const { reservation_id, hotel_id, status } = req.query;
@@ -156,6 +173,17 @@ router.get('/orders', async (req, res) => {
 
     //  Guest view: single reservation 
     if (reservation_id) {
+      const accessCheck = await pool.request()
+        .input('resvId', sql.BigInt, parseInt(reservation_id))
+        .query('SELECT reservation_id, guest_id FROM Reservation WHERE reservation_id = @resvId');
+
+      if (accessCheck.recordset.length === 0) {
+        return res.status(404).json({ success: false, error: 'Reservation not found' });
+      }
+      if (!ensureReservationAccess(req, res, accessCheck.recordset[0].guest_id)) {
+        return;
+      }
+
       const result = await pool.request()
         .input('resvId', sql.BigInt, parseInt(reservation_id))
         .query(`
@@ -184,6 +212,9 @@ router.get('/orders', async (req, res) => {
     }
 
     //  Staff view: all orders for a hotel (optional status filter) 
+    if (req.auth?.user_type !== 'SYSTEM_USER') {
+      return res.status(403).json({ success: false, error: 'System user access required for hotel-wide service orders' });
+    }
     const request = pool.request().input('hotelId', sql.BigInt, parseInt(hotel_id));
     let statusClause = '';
     if (status) {
@@ -237,7 +268,7 @@ router.get('/orders', async (req, res) => {
 // PUT /api/services/orders/:id/status
 // Update service order status (CONFIRMED, DELIVERED, CANCELLED)
 // 
-router.put('/orders/:id/status', async (req, res) => {
+router.put('/orders/:id/status', requireSystemUser, async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
     const { status } = req.body;
@@ -280,7 +311,7 @@ router.put('/orders/:id/status', async (req, res) => {
 // POST /api/services/orders/:id/pay
 // Pay for a specific incidental service order
 // 
-router.post('/orders/:id/pay', async (req, res) => {
+router.post('/orders/:id/pay', requireSystemUser, async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
     const { payment_method } = req.body;

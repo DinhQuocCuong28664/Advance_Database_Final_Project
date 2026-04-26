@@ -11,6 +11,7 @@ const { SEED, DATES, futureDate } = require('./helpers');
 
 let testReservation = null;
 let depositAmount = 0;
+let adminToken = null;
 
 async function findAvailableRoom(request, hotelId, checkin, checkout) {
   const res = await request.get('/api/rooms/availability', {
@@ -21,6 +22,18 @@ async function findAvailableRoom(request, hotelId, checkin, checkout) {
 }
 
 test.describe(' Payments API', () => {
+  test.beforeAll(async ({ request }) => {
+    const loginRes = await request.post('/api/auth/admin/login', {
+      data: { username: SEED.admin.username, password: SEED.admin.password },
+    });
+    if (loginRes.status() === 200) {
+      adminToken = (await loginRes.json()).token;
+    }
+  });
+
+  function auth() {
+    return adminToken ? { Authorization: `Bearer ${adminToken}` } : {};
+  }
 
   // Setup: Create a fresh reservation to pay against
   test.beforeAll(async ({ request }) => {
@@ -50,7 +63,7 @@ test.describe(' Payments API', () => {
 
   //  GET /payments 
   test('GET /payments  returns all payments', async ({ request }) => {
-    const res = await request.get('/api/payments');
+    const res = await request.get('/api/payments', { headers: auth() });
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
@@ -60,6 +73,7 @@ test.describe(' Payments API', () => {
   test('GET /payments?reservation_id=  filter by reservation', async ({ request }) => {
     if (!testReservation) return test.skip();
     const res = await request.get('/api/payments', {
+      headers: auth(),
       params: { reservation_id: testReservation.reservation_id },
     });
     expect(res.status()).toBe(200);
@@ -101,6 +115,7 @@ test.describe(' Payments API', () => {
   test('POST /payments  pay DEPOSIT (30%)', async ({ request }) => {
     if (!testReservation || depositAmount <= 0) return test.skip();
     const res = await request.post('/api/payments', {
+      headers: auth(),
       data: {
         reservation_id: testReservation.reservation_id,
         payment_type: 'DEPOSIT',
@@ -122,6 +137,7 @@ test.describe(' Payments API', () => {
     if (!testReservation || depositAmount <= 0) return test.skip();
     // Try to pay deposit again (would exceed deposit_amount)
     const res = await request.post('/api/payments', {
+      headers: auth(),
       data: {
         reservation_id: testReservation.reservation_id,
         payment_type: 'DEPOSIT',
@@ -144,6 +160,7 @@ test.describe(' Payments API', () => {
     if (remaining <= 0) return test.skip();
 
     const res = await request.post('/api/payments', {
+      headers: auth(),
       data: {
         reservation_id: testReservation.reservation_id,
         payment_type: 'FULL_PAYMENT',

@@ -19,6 +19,7 @@ let reservation = null;       // created in first test, used by all
 let cancelReservation = null; // for guest-cancel test
 let hotelCancelReservation = null; // for hotel-cancel test
 let guestToken = null;        // JWT for guest-cancel (requires auth)
+let adminToken = null;
 
 // 
 // Helper: find an available room for the given hotel + dates
@@ -33,6 +34,18 @@ async function findAvailableRoom(request, hotelId, checkin, checkout) {
 }
 
 test.describe(' Reservations API  Full Lifecycle', () => {
+  test.beforeAll(async ({ request }) => {
+    const res = await request.post('/api/auth/admin/login', {
+      data: { username: SEED.admin.username, password: SEED.admin.password },
+    });
+    if (res.status() === 200) {
+      adminToken = (await res.json()).token;
+    }
+  });
+
+  function adminAuth() {
+    return adminToken ? { Authorization: `Bearer ${adminToken}` } : {};
+  }
 
   //  POST /reservations  Validation 
   test('POST /reservations  missing required fields  400', async ({ request }) => {
@@ -125,6 +138,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
   test('POST /reservations/:id/checkin  check in', async ({ request }) => {
     if (!reservation) return test.skip();
     const res = await request.post(`/api/reservations/${reservation.reservation_id}/checkin`, {
+      headers: adminAuth(),
       data: { agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(200);
@@ -141,6 +155,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
   test('POST /checkin  already checked in  409', async ({ request }) => {
     if (!reservation) return test.skip();
     const res = await request.post(`/api/reservations/${reservation.reservation_id}/checkin`, {
+      headers: adminAuth(),
       data: { agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(409);
@@ -150,6 +165,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
   test('POST /reservations/:id/checkout  full checkout lifecycle', async ({ request }) => {
     if (!reservation) return test.skip();
     const res = await request.post(`/api/reservations/${reservation.reservation_id}/checkout`, {
+      headers: adminAuth(),
       data: { agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(200);
@@ -198,6 +214,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
     if (!reservation) return test.skip();
     // Already CHECKED_OUT, attempt again
     const res = await request.post(`/api/reservations/${reservation.reservation_id}/checkout`, {
+      headers: adminAuth(),
       data: { agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(409);
@@ -208,6 +225,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
 
   test('POST /checkout  invalid reservation ID  400', async ({ request }) => {
     const res = await request.post('/api/reservations/not-a-number/checkout', {
+      headers: adminAuth(),
       data: { agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(400);
@@ -215,6 +233,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
 
   test('POST /checkout  nonexistent ID  409', async ({ request }) => {
     const res = await request.post('/api/reservations/999999/checkout', {
+      headers: adminAuth(),
       data: { agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(409);
@@ -306,6 +325,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
   test('POST /reservations/:id/hotel-cancel  full cancellation lifecycle', async ({ request }) => {
     if (!hotelCancelReservation) return test.skip();
     const res = await request.post(`/api/reservations/${hotelCancelReservation.reservation_id}/hotel-cancel`, {
+      headers: adminAuth(),
       data: { reason: 'Room issue - Playwright test', agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(200);
@@ -339,6 +359,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
   test('POST /hotel-cancel  missing reason  400', async ({ request }) => {
     if (!hotelCancelReservation) return test.skip();
     const res = await request.post(`/api/reservations/${hotelCancelReservation.reservation_id}/hotel-cancel`, {
+      headers: adminAuth(),
       data: { agent_id: 1 }, // missing reason
     });
     expect(res.status()).toBe(400);
@@ -351,6 +372,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
     if (!hotelCancelReservation) return test.skip();
     // Already cancelled above, try again
     const res = await request.post(`/api/reservations/${hotelCancelReservation.reservation_id}/hotel-cancel`, {
+      headers: adminAuth(),
       data: { reason: 'Duplicate cancel attempt', agent_id: SEED.staff.id },
     });
     expect(res.status()).toBe(409);
@@ -361,6 +383,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
 
   test('POST /hotel-cancel  invalid ID  400', async ({ request }) => {
     const res = await request.post('/api/reservations/not-a-number/hotel-cancel', {
+      headers: adminAuth(),
       data: { reason: 'test', agent_id: 1 },
     });
     expect(res.status()).toBe(400);
@@ -368,6 +391,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
 
   test('POST /hotel-cancel  nonexistent reservation  404', async ({ request }) => {
     const res = await request.post('/api/reservations/999999/hotel-cancel', {
+      headers: adminAuth(),
       data: { reason: 'test', agent_id: 1 },
     });
     expect(res.status()).toBe(404);
@@ -376,6 +400,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
   //  POST /reservations/:id/transfer 
   test('POST /reservations/:id/transfer  invalid reservation  404', async ({ request }) => {
     const res = await request.post('/api/reservations/99999/transfer', {
+      headers: adminAuth(),
       data: { new_room_id: 2, reason: 'Test', agent_id: 1 },
     });
     expect(res.status()).toBe(404);
@@ -383,6 +408,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
 
   test('POST /transfer  missing new_room_id  400', async ({ request }) => {
     const res = await request.post('/api/reservations/1/transfer', {
+      headers: adminAuth(),
       data: { reason: 'Test', agent_id: 1 },
     });
     expect(res.status()).toBe(400);
@@ -390,6 +416,7 @@ test.describe(' Reservations API  Full Lifecycle', () => {
 
   test('POST /transfer  missing reason  400', async ({ request }) => {
     const res = await request.post('/api/reservations/1/transfer', {
+      headers: adminAuth(),
       data: { new_room_id: 2, agent_id: 1 },
     });
     expect(res.status()).toBe(400);

@@ -287,6 +287,188 @@
   display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;
 }
 
+.acct-loyalty-shell {
+  display: grid;
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.acct-loyalty-section {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 22px;
+  border: 1px solid rgba(20, 61, 66, 0.1);
+  background: rgba(255, 252, 248, 0.88);
+}
+
+.acct-loyalty-reward-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.acct-reward-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(20, 61, 66, 0.1);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.acct-reward-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.acct-reward-top h4 {
+  margin: 4px 0 0;
+  color: var(--text-strong);
+}
+
+.acct-reward-points {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.acct-reward-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(20, 61, 66, 0.08);
+  color: var(--panel-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.acct-reward-meta {
+  display: grid;
+  gap: 6px;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.acct-reward-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(20, 61, 66, 0.08);
+}
+
+.acct-reward-balance {
+  display: grid;
+  gap: 4px;
+}
+
+.acct-reward-balance span {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.acct-reward-balance strong {
+  color: var(--text-strong);
+  font-size: 1.05rem;
+}
+
+.acct-redemption-list {
+  display: grid;
+  gap: 12px;
+}
+
+.acct-redemption-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(20, 61, 66, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.acct-redemption-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.acct-redemption-main strong {
+  color: var(--text-strong);
+}
+
+.acct-redemption-main span {
+  color: var(--text-soft);
+  overflow-wrap: anywhere;
+}
+
+.acct-redemption-main code {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--panel-strong);
+}
+
+.acct-redemption-right {
+  flex-shrink: 0;
+}
+
+.acct-redemption-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 98px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.acct-redemption-status--issued {
+  background: rgba(45, 93, 166, 0.12);
+  color: #1a3d80;
+}
+
+.acct-redemption-status--redeemed {
+  background: rgba(72, 160, 120, 0.14);
+  color: #1a5c3a;
+}
+
+.acct-redemption-status--expired {
+  background: rgba(160, 120, 72, 0.14);
+  color: #7a5500;
+}
+
+.acct-redemption-status--cancelled {
+  background: rgba(200, 80, 60, 0.14);
+  color: #8b2012;
+}
+
+@media (max-width: 720px) {
+  .acct-reward-footer,
+  .acct-redemption-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .acct-redemption-right {
+    align-self: flex-start;
+  }
+}
+
 .guest-feature-card { display: grid; gap: 10px; padding: 18px; border-radius: 20px; }
 .guest-feature-top { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
 .guest-feature-top h3 { margin: 0; }

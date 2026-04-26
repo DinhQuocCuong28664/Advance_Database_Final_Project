@@ -15,6 +15,8 @@ const { SEED, futureDate } = require('./helpers');
 let testReservationId = null;
 let testServiceId = null;
 let createdOrderId = null;
+let guestToken = null;
+let adminToken = null;
 
 async function findAvailableRoom(request, hotelId, checkin, checkout) {
   const res = await request.get('/api/rooms/availability', {
@@ -25,9 +27,31 @@ async function findAvailableRoom(request, hotelId, checkin, checkout) {
 }
 
 test.describe(' Services API', () => {
+  function guestAuth() {
+    return guestToken ? { Authorization: `Bearer ${guestToken}` } : {};
+  }
+
+  function adminAuth() {
+    return adminToken ? { Authorization: `Bearer ${adminToken}` } : {};
+  }
 
   // Setup: Create reservation + get service
   test.beforeAll(async ({ request }) => {
+    const [guestLogin, adminLogin] = await Promise.all([
+      request.post('/api/auth/guest/login', {
+        data: { login: SEED.guestLogin.email, password: SEED.guestLogin.password },
+      }),
+      request.post('/api/auth/admin/login', {
+        data: { username: SEED.admin.username, password: SEED.admin.password },
+      }),
+    ]);
+    if (guestLogin.status() === 200) {
+      guestToken = (await guestLogin.json()).token;
+    }
+    if (adminLogin.status() === 200) {
+      adminToken = (await adminLogin.json()).token;
+    }
+
     const cin  = futureDate(110);
     const cout = futureDate(112);
     const room = await findAvailableRoom(request, SEED.hotel.id, cin, cout);
@@ -82,6 +106,7 @@ test.describe(' Services API', () => {
   //  POST /services/order  Validation 
   test('POST /services/order  missing reservation_id  400', async ({ request }) => {
     const res = await request.post('/api/services/order', {
+      headers: guestAuth(),
       data: { service_id: 1 },
     });
     expect(res.status()).toBe(400);
@@ -89,6 +114,7 @@ test.describe(' Services API', () => {
 
   test('POST /services/order  missing service_id  400', async ({ request }) => {
     const res = await request.post('/api/services/order', {
+      headers: guestAuth(),
       data: { reservation_id: 1 },
     });
     expect(res.status()).toBe(400);
@@ -96,6 +122,7 @@ test.describe(' Services API', () => {
 
   test('POST /services/order  reservation not found  404', async ({ request }) => {
     const res = await request.post('/api/services/order', {
+      headers: guestAuth(),
       data: { reservation_id: 99999, service_id: 1 },
     });
     expect(res.status()).toBe(404);
@@ -105,6 +132,7 @@ test.describe(' Services API', () => {
   test('POST /services/order  create service order', async ({ request }) => {
     if (!testReservationId || !testServiceId) return test.skip();
     const res = await request.post('/api/services/order', {
+      headers: guestAuth(),
       data: {
         reservation_id: testReservationId,
         service_id: testServiceId,
@@ -125,6 +153,7 @@ test.describe(' Services API', () => {
   test('GET /services/orders?reservation_id=  returns orders with summary', async ({ request }) => {
     if (!testReservationId) return test.skip();
     const res = await request.get('/api/services/orders', {
+      headers: guestAuth(),
       params: { reservation_id: testReservationId },
     });
     expect(res.status()).toBe(200);
@@ -136,7 +165,7 @@ test.describe(' Services API', () => {
   });
 
   test('GET /services/orders  missing reservation_id  400', async ({ request }) => {
-    const res = await request.get('/api/services/orders');
+    const res = await request.get('/api/services/orders', { headers: guestAuth() });
     expect(res.status()).toBe(400);
   });
 
@@ -144,6 +173,7 @@ test.describe(' Services API', () => {
   test('PUT /services/orders/:id/status  update to CONFIRMED', async ({ request }) => {
     if (!createdOrderId) return test.skip();
     const res = await request.put(`/api/services/orders/${createdOrderId}/status`, {
+      headers: adminAuth(),
       data: { status: 'CONFIRMED' },
     });
     expect(res.status()).toBe(200);
@@ -155,6 +185,7 @@ test.describe(' Services API', () => {
   test('PUT /services/orders/:id/status  invalid status  400', async ({ request }) => {
     if (!createdOrderId) return test.skip();
     const res = await request.put(`/api/services/orders/${createdOrderId}/status`, {
+      headers: adminAuth(),
       data: { status: 'INVALID_STATUS' },
     });
     expect(res.status()).toBe(400);
@@ -162,6 +193,7 @@ test.describe(' Services API', () => {
 
   test('PUT /services/orders/:id/status  not found  404', async ({ request }) => {
     const res = await request.put('/api/services/orders/99999/status', {
+      headers: adminAuth(),
       data: { status: 'CONFIRMED' },
     });
     expect(res.status()).toBe(404);
@@ -172,9 +204,11 @@ test.describe(' Services API', () => {
     if (!createdOrderId) return test.skip();
     // First mark as DELIVERED
     await request.put(`/api/services/orders/${createdOrderId}/status`, {
+      headers: adminAuth(),
       data: { status: 'DELIVERED' },
     });
     const res = await request.post(`/api/services/orders/${createdOrderId}/pay`, {
+      headers: adminAuth(),
       data: { payment_method: 'CREDIT_CARD' },
     });
     expect(res.status()).toBe(201);
@@ -186,6 +220,7 @@ test.describe(' Services API', () => {
   test('POST /services/orders/:id/pay  already paid  400', async ({ request }) => {
     if (!createdOrderId) return test.skip();
     const res = await request.post(`/api/services/orders/${createdOrderId}/pay`, {
+      headers: adminAuth(),
       data: { payment_method: 'CREDIT_CARD' },
     });
     expect(res.status()).toBe(400);
@@ -193,6 +228,7 @@ test.describe(' Services API', () => {
 
   test('POST /services/orders/:id/pay  not found  404', async ({ request }) => {
     const res = await request.post('/api/services/orders/99999/pay', {
+      headers: adminAuth(),
       data: { payment_method: 'CASH' },
     });
     expect(res.status()).toBe(404);

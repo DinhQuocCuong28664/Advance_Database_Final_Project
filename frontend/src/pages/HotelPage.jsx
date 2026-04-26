@@ -4,23 +4,28 @@ import { apiRequest } from '../lib/api';
 import '../styles/Hotel.css';
 import { resolveHotelImage, imgError } from '../utils/hotelImages';
 
-
 function today() { return new Date().toISOString().slice(0, 10); }
-function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); }
-function nightsBetween(a, b) {
-  const ms = new Date(b) - new Date(a);
+function addDays(dateValue, days) {
+  const nextDate = new Date(dateValue);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate.toISOString().slice(0, 10);
+}
+function nightsBetween(checkinDate, checkoutDate) {
+  const ms = new Date(checkoutDate) - new Date(checkinDate);
   return Math.max(1, Math.round(ms / 86400000));
 }
 
 function StarRating({ stars }) {
   return (
     <span className="star-rating">
-      {Array.from({ length: 5 }, (_, i) => <span key={i} style={{ opacity: i < stars ? 1 : 0.25 }}>★</span>)}
+      {Array.from({ length: 5 }, (_, index) => (
+        <span key={index} style={{ opacity: index < stars ? 1 : 0.25 }}>★</span>
+      ))}
     </span>
   );
 }
 
-function RoomCard({ room, checkin, checkout, hotelId, onSelect }) {
+function RoomCard({ room, checkin, checkout, onSelect }) {
   const nights = nightsBetween(checkin, checkout);
   const nightlyRate = Number(room.min_nightly_rate || room.nightly_rate || 0);
   const total = nightlyRate * nights;
@@ -44,24 +49,27 @@ function RoomCard({ room, checkin, checkout, hotelId, onSelect }) {
           <h3 className="room-card-name">{room.room_type_name || room.room_type}</h3>
           <div className="room-card-meta">
             <span>🛏️ {room.bed_type || 'Standard'}</span>
-            <span>👥 Max {room.max_adults} adults
-            </span>
+            <span>👥 Max {room.max_adults} adults</span>
             {room.floor_number && <span>Floor {room.floor_number}</span>}
             {room.view_type && <span>🪟 {room.view_type}</span>}
             {room.category && <span className="room-cat-pill">{room.category}</span>}
           </div>
           <p className="room-card-status-text">
-            Status: <strong style={{ color: room.availability_status === 'OPEN' ? '#2d6a4f' : '#9e3825' }}>
+            Status:{' '}
+            <strong style={{ color: room.availability_status === 'OPEN' ? '#2d6a4f' : '#9e3825' }}>
               {room.availability_status || 'OPEN'}
             </strong>
           </p>
-          {/* SQL Room Features */}
           {room.sql_features?.length > 0 && (
             <div className="room-feature-pills">
-              {room.sql_features.slice(0, 6).map(f => (
-                <span key={f.code} className={`room-feature-pill ${f.is_premium ? 'room-feature-pill--premium' : ''}`}
-                  title={f.value || f.name}>
-                  {f.is_premium && '⭐ '}{f.name}
+              {room.sql_features.slice(0, 6).map((feature) => (
+                <span
+                  key={feature.code}
+                  className={`room-feature-pill ${feature.is_premium ? 'room-feature-pill--premium' : ''}`}
+                  title={feature.value || feature.name}
+                >
+                  {feature.is_premium && '⭐ '}
+                  {feature.name}
                 </span>
               ))}
               {room.sql_features.length > 6 && (
@@ -79,7 +87,9 @@ function RoomCard({ room, checkin, checkout, hotelId, onSelect }) {
                 <strong>{nightlyRate.toLocaleString('en-US')} VND</strong>
                 <span>/night</span>
               </div>
-              <div className="room-total">{total.toLocaleString('en-US')} VND total - {nights} night{nights > 1 ? 's' : ''}</div>
+              <div className="room-total">
+                {total.toLocaleString('en-US')} VND total - {nights} night{nights > 1 ? 's' : ''}
+              </div>
             </>
           ) : (
             <span className="search-price-na">Rate on request</span>
@@ -118,23 +128,38 @@ export default function HotelPage() {
 
   useEffect(() => {
     if (!id) return;
-    setLoading(true);
-    setError(null);
+    let cancelled = false;
 
-    Promise.all([
-      apiRequest(`/hotels/${id}`),
-      apiRequest(`/rooms/availability?hotel_id=${id}&checkin=${checkin}&checkout=${checkout}`),
-      apiRequest('/promotions').catch(() => ({ data: [], promotions: [] })),
-    ])
-      .then(([hotelRes, roomsRes, promosRes]) => {
-        // All endpoints return { success, count, data: [...] }
+    async function loadHotelData() {
+      setLoading(true);
+      setError(null);
+      try {
+        const [hotelRes, roomsRes, promosRes] = await Promise.all([
+          apiRequest(`/hotels/${id}`),
+          apiRequest(`/rooms/availability?hotel_id=${id}&checkin=${checkin}&checkout=${checkout}`),
+          apiRequest('/promotions').catch(() => ({ data: [], promotions: [] })),
+        ]);
+        if (cancelled) return;
+
         setHotel(hotelRes.data || hotelRes.hotel || hotelRes);
         setRooms(roomsRes.data || roomsRes.rooms || roomsRes.availability || []);
-        const pList = promosRes.data || promosRes.promotions || [];
-        setPromos(pList.slice(0, 2));
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+        const promoList = promosRes.data || promosRes.promotions || [];
+        setPromos(promoList.slice(0, 2));
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadHotelData();
+    return () => {
+      cancelled = true;
+    };
   }, [id, checkin, checkout]);
 
   function handleSelectRoom(room) {
@@ -160,7 +185,6 @@ export default function HotelPage() {
 
   return (
     <div className="hotel-page">
-      {/*  gallery  */}
       <div className="hotel-gallery">
         <img
           src={resolveHotelImage(hotel)}
@@ -168,12 +192,10 @@ export default function HotelPage() {
           className="hotel-gallery-main"
           onError={imgError}
         />
-
       </div>
 
       <div className="hotel-content">
         <div className="hotel-main">
-          {/*  header  */}
           <div className="hotel-header">
             <div>
               <p className="hotel-brand">{hotel.brand_name || hotel.chain_name || 'LuxeReserve'}</p>
@@ -182,8 +204,8 @@ export default function HotelPage() {
                 📍{' '}
                 {[
                   hotel.address_line_1 || hotel.address,
-                  hotel.city_name,      // SQL: district name e.g. "District 1"
-                  hotel.country_name,   // SQL: city name e.g. "Ho Chi Minh City"
+                  hotel.city_name,
+                  hotel.country_name,
                 ].filter(Boolean).join(', ') || ''}
               </p>
               <StarRating stars={hotel.star_rating || 0} />
@@ -191,7 +213,6 @@ export default function HotelPage() {
             <div className="hotel-type-pill">{hotel.hotel_type || 'Luxury Hotel'}</div>
           </div>
 
-          {/*  stay summary  */}
           <div className="hotel-stay-summary">
             <div className="hotel-stay-item">
               <span>Check-in</span>
@@ -208,41 +229,41 @@ export default function HotelPage() {
             </div>
           </div>
 
-          {/*  amenities  */}
           {hotel.amenities && hotel.amenities.length > 0 && (
             <div className="hotel-amenities">
               <h2 className="hotel-section-title">Amenities</h2>
               <div className="amenity-list">
-                {hotel.amenities.map((a, i) => (
-                  <span key={i} className={`amenity-pill${a.is_chargeable ? ' amenity-paid' : ''}`}
-                    title={a.description || ''}>
-                    {a.is_complimentary && <span className="amenity-free-dot" />}
-                    {a.name || a.amenity_code}
-                    {a.is_chargeable && <small>  paid</small>}
+                {hotel.amenities.map((amenity, index) => (
+                  <span
+                    key={index}
+                    className={`amenity-pill${amenity.is_chargeable ? ' amenity-paid' : ''}`}
+                    title={amenity.description || ''}
+                  >
+                    {amenity.is_complimentary && <span className="amenity-free-dot" />}
+                    {amenity.name || amenity.amenity_code}
+                    {amenity.is_chargeable && <small> paid</small>}
                   </span>
                 ))}
               </div>
             </div>
           )}
 
-          {/*  policies  */}
           {hotel.policies && hotel.policies.length > 0 && (
             <div className="hotel-policies">
               <h2 className="hotel-section-title">Hotel Policies</h2>
               <div className="policy-list">
-                {hotel.policies.map((p, i) => (
-                  <div key={i} className="policy-card">
+                {hotel.policies.map((policy, index) => (
+                  <div key={index} className="policy-card">
                     <div className="policy-card-head">
-                      <span className="policy-type-tag">{p.type}</span>
+                      <span className="policy-type-tag">{policy.type}</span>
                     </div>
-                    <p className="policy-text">{p.text}</p>
+                    <p className="policy-text">{policy.text}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/*  rooms  */}
           <div className="hotel-rooms">
             <h2 className="hotel-section-title">Available rooms</h2>
             {rooms.length === 0 ? (
@@ -252,13 +273,12 @@ export default function HotelPage() {
               </div>
             ) : (
               <div className="room-list">
-                {rooms.map((r) => (
+                {rooms.map((room) => (
                   <RoomCard
-                    key={r.room_id || r.availability_id || r.room_number}
-                    room={r}
+                    key={room.room_id || room.availability_id || room.room_number}
+                    room={room}
                     checkin={checkin}
                     checkout={checkout}
-                    hotelId={id}
                     onSelect={handleSelectRoom}
                   />
                 ))}
@@ -267,19 +287,18 @@ export default function HotelPage() {
           </div>
         </div>
 
-        {/*  promotions sidebar  */}
         {promos.length > 0 && (
           <aside className="hotel-promos">
             <h3 className="hotel-section-title">Current offers</h3>
-            {promos.map((p, i) => (
-              <div key={p.promotion_id ?? i} className="hotel-promo-card">
+            {promos.map((promo, index) => (
+              <div key={promo.promotion_id ?? index} className="hotel-promo-card">
                 <p className="promo-card-badge">
-                  {p.discount_value
-                    ? `${Number(p.discount_value).toLocaleString()} ${p.currency_code || 'VND'} off`
+                  {promo.discount_value
+                    ? `${Number(promo.discount_value).toLocaleString()} ${promo.currency_code || 'VND'} off`
                     : 'Special offer'}
                 </p>
-                <strong>{p.promotion_name || p.promo_name}</strong>
-                {p.description && <p style={{ color: 'var(--text-soft)', marginTop: '4px' }}>{p.description}</p>}
+                <strong>{promo.promotion_name || promo.promo_name}</strong>
+                {promo.description && <p style={{ color: 'var(--text-soft)', marginTop: '4px' }}>{promo.description}</p>}
               </div>
             ))}
           </aside>

@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-
-const FlashContext = createContext();
+import { useState, useCallback } from 'react';
+import { FlashContext } from './useFlash';
 
 export function FlashProvider({ children }) {
   const [toasts, setToasts] = useState([]);
@@ -27,8 +26,4 @@ export function FlashProvider({ children }) {
       {children}
     </FlashContext.Provider>
   );
-}
-
-export function useFlash() {
-  return useContext(FlashContext);
 }

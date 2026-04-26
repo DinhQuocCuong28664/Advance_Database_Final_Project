@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { apiRequest } from '../../lib/api';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 
 //  Helpers 
 const fmtCurrency = (amount, currency = 'USD') =>
@@ -43,7 +43,6 @@ export default function AdminPayments({ hotels = [] }) {
 
   // Data
   const [payments, setPayments] = useState([]);
-  const [summary,  setSummary]  = useState(null);
   const [loading,  setLoading]  = useState(false);
   const [searched, setSearched] = useState(false);
 
@@ -61,14 +60,13 @@ export default function AdminPayments({ hotels = [] }) {
 
       const p = await apiRequest(`/payments?${qs.toString()}`);
       setPayments(p.data || []);
-      setSummary(p.summary || null);
       setSearched(true);
     } catch (err) {
       setFlash({ tone: 'error', text: err.message });
     } finally {
       setLoading(false);
     }
-  }, [hotelId, dateFrom, dateTo, typeFilter, methFilter, statFilter]);
+  }, [hotelId, dateFrom, dateTo, typeFilter, methFilter, statFilter, setFlash]);
 
   // Summary stats derived from data
   const totalCaptured = payments

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiRequest } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { useFlash } from '../../context/FlashContext';
+import { useFlash } from '../../context/useFlash';
 import '../../styles/AdminRates.css';
 
 const RATE_PLAN_TYPES = ['BAR', 'NON_REFUNDABLE', 'MEMBER', 'PACKAGE', 'CORPORATE', 'PROMO'];

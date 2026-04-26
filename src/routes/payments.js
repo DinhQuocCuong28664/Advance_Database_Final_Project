@@ -5,6 +5,20 @@
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
+const { attachAuthContext, requireSystemUser } = require('../middleware/auth');
+
+router.use(attachAuthContext);
+
+function normalizePaymentMethod(paymentMethod) {
+  const method = String(paymentMethod || 'CREDIT_CARD').trim().toUpperCase();
+  if (method === 'LOYALTY_POINTS') {
+    return 'POINTS';
+  }
+  if (method === 'DEBIT_CARD') {
+    return 'CREDIT_CARD';
+  }
+  return method;
+}
 
 // POST /api/payments  Create payment
 router.post('/', async (req, res) => {
@@ -21,11 +35,12 @@ router.post('/', async (req, res) => {
 
     const pool = getSqlPool();
     const resolvedType = payment_type || 'FULL_PAYMENT';
+    const resolvedMethod = normalizePaymentMethod(payment_method);
 
     // [FIX] LOGIC-5: Validate reservation exists before creating payment
     const resvCheck = await pool.request()
       .input('resvId', sql.BigInt, reservation_id)
-      .query(`SELECT reservation_id, reservation_status, grand_total_amount, deposit_amount
+      .query(`SELECT reservation_id, guest_id, reservation_status, grand_total_amount, deposit_amount
               FROM Reservation WHERE reservation_id = @resvId`);
     if (resvCheck.recordset.length === 0) {
       return res.status(404).json({ success: false, error: 'Reservation not found' });
@@ -58,6 +73,27 @@ router.post('/', async (req, res) => {
     const grandTotal = parseFloat(reservation.grand_total_amount);
     const depositRequired = parseFloat(reservation.deposit_amount);
     const newAmount = parseFloat(amount);
+
+    if (req.auth?.user_type === 'SYSTEM_USER') {
+      // allowed
+    } else if (req.auth?.user_type === 'GUEST') {
+      if (Number(req.auth.sub) !== Number(reservation.guest_id)) {
+        return res.status(403).json({ success: false, error: 'You are not authorised to create payments for this reservation' });
+      }
+    } else {
+      if (resolvedType !== 'DEPOSIT') {
+        return res.status(401).json({ success: false, error: 'Authentication required for non-deposit payments' });
+      }
+      if (!(depositRequired > 0)) {
+        return res.status(409).json({ success: false, error: 'This reservation does not require a deposit payment' });
+      }
+      if (newAmount !== depositRequired) {
+        return res.status(400).json({
+          success: false,
+          error: `Anonymous payments must match the exact deposit amount. Required: ${depositRequired}, attempted: ${newAmount}`,
+        });
+      }
+    }
 
     // [FIX] LOGIC-8: Prevent total payments from exceeding grand total
     if (totalPaid + newAmount > grandTotal) {
@@ -92,7 +128,7 @@ router.post('/', async (req, res) => {
       .input('resv_id', sql.BigInt, reservation_id)
       .input('ref', sql.VarChar(80), payRef)
       .input('type', sql.VarChar(20), resolvedType)
-      .input('method', sql.VarChar(20), payment_method || 'CREDIT_CARD')
+      .input('method', sql.VarChar(20), resolvedMethod)
       .input('amount', sql.Decimal(18, 2), amount)
       .input('currency', sql.Char(3), currency_code || 'VND')
       .query(`
@@ -118,7 +154,7 @@ router.post('/', async (req, res) => {
 // GET /api/payments
 // Supports: reservation_id, hotel_id, date_from, date_to,
 //           payment_type, payment_method, payment_status, limit
-router.get('/', async (req, res) => {
+router.get('/', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const {

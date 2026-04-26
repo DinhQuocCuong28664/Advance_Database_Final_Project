@@ -482,13 +482,23 @@ router.post('/guest/register', async (req, res) => {
         `);
 
       await transaction.commit();
-      await sendVerificationForGuestAuth(pool, createdAuth.recordset[0].guest_auth_id);
+
+      let verificationMessage = 'Account created. Check your email for the verification code.';
+      let devOtpCode = null;
+
+      if (isMailConfigured()) {
+        await sendVerificationForGuestAuth(pool, createdAuth.recordset[0].guest_auth_id);
+      } else {
+        devOtpCode = await createVerificationOtp(pool, createdAuth.recordset[0].guest_auth_id, 'ACTIVATE');
+        verificationMessage = `Account created. Use verification code ${devOtpCode} for local testing.`;
+      }
 
       res.status(201).json({
         success: true,
         verification_required: true,
         login_email,
-        message: 'Account created. Check your email for the verification code.',
+        message: verificationMessage,
+        otp_code: devOtpCode,
       });
     } catch (innerErr) {
       try { await transaction.rollback(); } catch (_) { /* ignore */ }

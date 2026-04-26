@@ -27,7 +27,7 @@ LuxeReserve is a full-stack luxury hotel reservation platform built with a **Pol
 
 ### 1. SQL Server (Operational Data)
 Handles core business logic, ACID transactions, and inventory.
-- **Scope**: 30 Normalized tables
+- **Scope**: 37 normalized tables
 - **Features**: Pessimistic Locking (`UPDLOCK, HOLDLOCK`), Views, Triggers, Stored Procedures
 - **Domains**: Reservations, Room Rates, Inventory, Payment, Roles & Users
 
@@ -57,7 +57,7 @@ Full guest-facing and admin UI.
 | 2 | **Optimistic Locking** (`version_no`) | Admin inventory `PUT /api/admin/availability/:id`  rejects stale updates (409) |
 | 3 | **Price Integrity Guard Trigger** | `trg_RoomRate_PriceIntegrityGuard`  logs rate changes > 50% as CRITICAL alerts |
 | 4 | **Window Functions + Revenue Analytics** | `GET /api/admin/reports/revenue`  `DENSE_RANK()`, cumulative `SUM() OVER()` |
-| 5 | **Recursive CTE** | `GET /api/locations/tree`  dynamic tree of any depth (Region  Country  City) |
+| 5 | **Recursive CTE** | `GET /api/locations/tree`  dynamic tree of any depth (`REGION -> COUNTRY -> STATE_PROVINCE -> CITY -> DISTRICT`) |
 | 6 | **Computed Persisted Column** | `Guest.full_name`  auto-concatenated, indexable |
 | 7 | **Polyglot Merge** | Hotels API merges SQL rows + MongoDB catalog at runtime |
 | 8 | **Views** | `vw_ReservationTotal`  computes grand total with taxes and deposits |

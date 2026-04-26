@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useFlash } from '../context/FlashContext';
+import { useFlash } from '../context/useFlash';
 
 export default function ForgotPasswordPage() {
   const { forgotGuestPassword, authBusy, authSession, isSystemUser } = useAuth();
