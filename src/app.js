@@ -166,6 +166,73 @@ async function start() {
     app.listen(PORT, () => {
       console.log(`\n[OK] LuxeReserve API running at http://localhost:${PORT}/api\n`);
     });
+
+    // Background job: cancel abandoned VNPay reservations every 5 minutes
+    // Catches the case where user closes the browser tab without completing payment
+    // (VNPay return URL never called, so we rely on this sweep)
+    const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+    const ABANDON_WINDOW_MIN  = 30;             // cancel after 30 min unpaid
+
+    setInterval(async () => {
+      try {
+        const { getSqlPool, sql } = require('./config/database');
+        const pool = getSqlPool();
+
+        const stuckRows = await pool.request()
+          .input('windowMinutes', sql.Int, ABANDON_WINDOW_MIN)
+          .query(`
+            SELECT r.reservation_id, r.reservation_code
+            FROM Reservation r
+            WHERE r.reservation_status = 'CONFIRMED'
+              AND r.created_at < DATEADD(MINUTE, -@windowMinutes, GETDATE())
+              AND NOT EXISTS (
+                SELECT 1 FROM Payment p
+                WHERE p.reservation_id = r.reservation_id
+                  AND p.payment_status = 'CAPTURED'
+              )
+          `);
+
+        if (stuckRows.recordset.length === 0) return;
+
+        for (const row of stuckRows.recordset) {
+          // Cancel reservation
+          await pool.request()
+            .input('id', sql.BigInt, row.reservation_id)
+            .query(`UPDATE Reservation SET reservation_status = 'CANCELLED', updated_at = GETDATE() WHERE reservation_id = @id`);
+
+          // Release room availability
+          await pool.request()
+            .input('id', sql.BigInt, row.reservation_id)
+            .query(`
+              UPDATE ra
+              SET ra.availability_status = 'OPEN',
+                  ra.sellable_flag       = 1,
+                  ra.inventory_note      = 'Released: payment abandoned',
+                  ra.updated_at          = GETDATE()
+              FROM RoomAvailability ra
+              JOIN ReservationRoom rr ON ra.room_id = rr.room_id
+                AND ra.hotel_id = (SELECT hotel_id FROM Reservation WHERE reservation_id = @id)
+                AND ra.stay_date >= (SELECT checkin_date  FROM Reservation WHERE reservation_id = @id)
+                AND ra.stay_date <  (SELECT checkout_date FROM Reservation WHERE reservation_id = @id)
+              WHERE rr.reservation_id = @id
+                AND ra.availability_status = 'BOOKED'
+            `);
+
+          // Cancel room assignment
+          await pool.request()
+            .input('id', sql.BigInt, row.reservation_id)
+            .query(`UPDATE ReservationRoom SET occupancy_status = 'CANCELLED', updated_at = GETDATE() WHERE reservation_id = @id`);
+
+          console.log(`[Cleanup] Cancelled abandoned reservation ${row.reservation_code}`);
+        }
+
+        console.log(`[Cleanup] Released ${stuckRows.recordset.length} abandoned reservation(s)`);
+      } catch (cleanupErr) {
+        console.error('[Cleanup] Error during abandoned reservation sweep:', cleanupErr.message);
+      }
+    }, CLEANUP_INTERVAL_MS);
+
+    console.log(`[OK] Abandoned reservation cleanup scheduled every ${CLEANUP_INTERVAL_MS / 60000} min`);
   } catch (err) {
     console.error('[ERROR] Startup failed:', err.message);
     process.exit(1);

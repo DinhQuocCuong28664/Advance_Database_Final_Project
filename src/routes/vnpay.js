@@ -80,18 +80,23 @@ router.get('/return', async (req, res) => {
       );
     }
 
-    // Update payment record if success (responseCode '00' = success)
     if (result.responseCode === '00') {
+      // Payment success - record it
       await _recordVnpayPayment(result, 'RETURN');
+    } else {
+      // Payment failed or cancelled by user - release the reservation immediately
+      if (result.txnRef) {
+        await _cancelAbandonedReservation(result.txnRef, `VNPay return code ${result.responseCode}`);
+      }
     }
 
     const params = new URLSearchParams({
-      status:      result.responseCode === '00' ? 'success' : 'failed',
-      code:        result.responseCode,
-      txnRef:      result.txnRef   || '',
-      amount:      result.amount   || '',
-      bankCode:    result.bankCode || '',
-      transNo:     result.transactionNo || '',
+      status:   result.responseCode === '00' ? 'success' : 'failed',
+      code:     result.responseCode,
+      txnRef:   result.txnRef         || '',
+      amount:   result.amount         || '',
+      bankCode: result.bankCode       || '',
+      transNo:  result.transactionNo  || '',
     });
 
     res.redirect(`${frontendUrl}/booking/vnpay-return?${params.toString()}`);
@@ -172,7 +177,103 @@ router.get('/ipn', async (req, res) => {
   }
 });
 
-//  Helper: upsert payment record 
+// Helper: cancel a reservation by reservation_code and release room availability
+async function _cancelAbandonedReservation(txnRef, reason) {
+  try {
+    const pool = getSqlPool();
+
+    // Only cancel if still CONFIRMED and has no successful payment
+    const resvRow = await pool.request()
+      .input('code', sql.VarChar(50), txnRef)
+      .query(`
+        SELECT r.reservation_id, r.reservation_status
+        FROM Reservation r
+        WHERE r.reservation_code = @code
+          AND r.reservation_status = 'CONFIRMED'
+          AND NOT EXISTS (
+            SELECT 1 FROM Payment p
+            WHERE p.reservation_id = r.reservation_id
+              AND p.payment_status = 'CAPTURED'
+          )
+      `);
+
+    if (!resvRow.recordset.length) return; // already cancelled or paid
+
+    const resvId = resvRow.recordset[0].reservation_id;
+
+    // Cancel reservation
+    await pool.request()
+      .input('id', sql.BigInt, resvId)
+      .query(`UPDATE Reservation SET reservation_status = 'CANCELLED', updated_at = GETDATE() WHERE reservation_id = @id`);
+
+    // Release room availability back to OPEN
+    await pool.request()
+      .input('id', sql.BigInt, resvId)
+      .query(`
+        UPDATE ra
+        SET ra.availability_status = 'OPEN',
+            ra.sellable_flag       = 1,
+            ra.inventory_note      = 'Released: payment abandoned',
+            ra.updated_at          = GETDATE()
+        FROM RoomAvailability ra
+        JOIN ReservationRoom rr ON ra.room_id = rr.room_id
+          AND ra.hotel_id = (SELECT hotel_id FROM Reservation WHERE reservation_id = @id)
+          AND ra.stay_date >= (SELECT checkin_date  FROM Reservation WHERE reservation_id = @id)
+          AND ra.stay_date <  (SELECT checkout_date FROM Reservation WHERE reservation_id = @id)
+        WHERE rr.reservation_id = @id
+          AND ra.availability_status = 'BOOKED'
+      `);
+
+    // Cancel room assignment
+    await pool.request()
+      .input('id', sql.BigInt, resvId)
+      .query(`UPDATE ReservationRoom SET occupancy_status = 'CANCELLED', updated_at = GETDATE() WHERE reservation_id = @id`);
+
+    console.log(`[VNPay] Cancelled abandoned reservation ${txnRef} (id=${resvId}). Reason: ${reason}`);
+  } catch (err) {
+    console.error(`[VNPay] Failed to cancel abandoned reservation ${txnRef}:`, err.message);
+  }
+}
+
+// POST /api/vnpay/cleanup-abandoned
+// Cancel CONFIRMED reservations with no captured payment older than :minutes (default 30)
+// Called by the background scheduler every 5 minutes
+router.post('/cleanup-abandoned', async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const windowMinutes = Number(req.body?.window_minutes) || 30;
+
+    const stuckRows = await pool.request()
+      .input('windowMinutes', sql.Int, windowMinutes)
+      .query(`
+        SELECT r.reservation_id, r.reservation_code
+        FROM Reservation r
+        WHERE r.reservation_status = 'CONFIRMED'
+          AND r.created_at < DATEADD(MINUTE, -@windowMinutes, GETDATE())
+          AND NOT EXISTS (
+            SELECT 1 FROM Payment p
+            WHERE p.reservation_id = r.reservation_id
+              AND p.payment_status = 'CAPTURED'
+          )
+      `);
+
+    const cancelled = [];
+    for (const row of stuckRows.recordset) {
+      await _cancelAbandonedReservation(row.reservation_code, `Cleanup: no payment after ${windowMinutes} min`);
+      cancelled.push(row.reservation_code);
+    }
+
+    res.json({
+      success: true,
+      cancelled_count: cancelled.length,
+      cancelled_codes: cancelled,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Helper: upsert payment record
 async function _recordVnpayPayment(result, source) {
   try {
     const pool = getSqlPool();
