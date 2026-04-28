@@ -153,34 +153,23 @@ export default function BookingPage() {
       const res = resPayload.data || resPayload.reservation || resPayload;
       const serverDepositAmt = res.deposit_amount ?? depositDue;
 
-      //  TODO: Enable VNPay when ready 
-      // const vnpPayload = await apiRequest('/vnpay/create-payment', {
-      //   method: 'POST',
-      //   body: JSON.stringify({
-      //     reservation_id: res.reservation_id,
-      //     amount:         serverDepositAmt,
-      //     order_info:     `Dat coc dat phong ${res.reservation_code}`,
-      //     locale:         'vn',
-      //   }),
-      // });
-      // sessionStorage.setItem('pendingReservation', JSON.stringify({
-      //   ...res, deposit_amount: serverDepositAmt,
-      //   room_name: roomName, checkin, checkout, nights, subtotal, guests,
-      // }));
-      // window.location.href = vnpPayload.paymentUrl;
-      // 
-
-      //  Step 2: Mock payment  write DEPOSIT directly to DB 
-      await apiRequest('/payments', {
+      //  Call VNPay Gateway 
+      const vnpPayload = await apiRequest('/vnpay/create-payment', {
         method: 'POST',
         body: JSON.stringify({
           reservation_id: res.reservation_id,
           amount:         serverDepositAmt,
-          payment_method: form.payment_method,
-          currency_code:  'VND',
-          payment_type:   'DEPOSIT',
+          order_info:     `Dat coc dat phong ${res.reservation_code}`,
+          locale:         'vn',
         }),
-      }).catch(() => null); // non-blocking
+      });
+      sessionStorage.setItem('pendingReservation', JSON.stringify({
+        ...res, deposit_amount: serverDepositAmt,
+        room_name: roomName, checkin, checkout, nights, subtotal, guests,
+      }));
+      
+      // Redirect user to VNPay Sandbox
+      window.location.href = vnpPayload.paymentUrl;
 
       setReservation({ ...res, deposit_amount: serverDepositAmt });
       setStep('done');

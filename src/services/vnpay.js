@@ -33,10 +33,15 @@ function sign(data) {
 
 //  Build sorted query string for signing 
 function sortedQueryString(params) {
-  const keys = Object.keys(params).sort();
-  const parts = keys
+  const keys = Object.keys(params)
     .filter((k) => params[k] !== '' && params[k] !== null && params[k] !== undefined)
-    .map((k) => `${k}=${params[k]}`);
+    .sort();
+  
+  const parts = keys.map((k) => {
+    // VNPay expects encodeURIComponent format
+    return `${encodeURIComponent(k)}=${encodeURIComponent(params[k]).replace(/%20/g, '+')}`;
+  });
+  
   return parts.join('&');
 }
 

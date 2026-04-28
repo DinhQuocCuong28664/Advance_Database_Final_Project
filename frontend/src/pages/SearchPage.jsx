@@ -123,7 +123,9 @@ function normalizeText(value) {
 function buildSearchHaystack(hotel) {
   return normalizeText([
     hotel.hotel_name,
+    hotel.district_name,
     hotel.city_name,
+    hotel.country_name,
     hotel.brand_name,
     hotel.chain_name,
     hotel.location_detail?.city,
@@ -165,9 +167,9 @@ function HotelCard({ hotel, checkin, checkout, guests, onPreviewDirections, dire
   const navigate = useNavigate();
   const minRate = hotel.min_nightly_rate;
   const locationText = [
-    hotel.location_detail?.district || hotel.city_name,
-    hotel.location_detail?.city,
-    hotel.location_detail?.country,
+    hotel.location_detail?.district || hotel.district_name,
+    hotel.location_detail?.city || hotel.city_name,
+    hotel.location_detail?.country || hotel.country_name,
   ].filter(Boolean).join(', ');
   const canOpenDirections = hasHotelCoordinates(hotel);
 

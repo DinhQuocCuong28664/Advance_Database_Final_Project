@@ -21,11 +21,15 @@ router.get('/', async (req, res) => {
              h.latitude, h.longitude,
              h.check_in_time, h.check_out_time, h.total_rooms,
              b.brand_name, c.chain_name,
-             l.location_name AS city_name
+             l.location_name AS district_name,
+             p.location_name AS city_name,
+             c2.location_name AS country_name
       FROM Hotel h
       JOIN Brand b ON h.brand_id = b.brand_id
       JOIN HotelChain c ON b.chain_id = c.chain_id
       JOIN Location l ON h.location_id = l.location_id
+      LEFT JOIN Location p ON l.parent_location_id = p.location_id
+      LEFT JOIN Location c2 ON p.parent_location_id = c2.location_id
       WHERE h.status = 'ACTIVE'
     `);
 
