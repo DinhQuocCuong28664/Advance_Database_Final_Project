@@ -42,10 +42,13 @@ router.post('/create-payment', async (req, res) => {
     const txnRef = resvRow.recordset[0].reservation_code;
 
     // Get client IP (handle proxy headers)
-    const clientIp = ip
+    let clientIp = ip
       || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
       || req.socket.remoteAddress
       || '127.0.0.1';
+    if (clientIp === '::1' || clientIp.includes(':')) {
+      clientIp = '127.0.0.1'; // VNPay prefers IPv4 format
+    }
 
     const paymentUrl = createPaymentUrl({
       amount:     Math.round(Number(amount)),
