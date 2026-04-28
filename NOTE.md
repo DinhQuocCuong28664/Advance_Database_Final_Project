@@ -582,3 +582,15 @@ the advanced database features described in Abstract.md and related docs:
 - database/sql/03_create_views.sql (line 220-265): Added `vw_BookingChannelStats`
   - Aggregates reservation counts and revenue by booking_source per hotel
   - Uses Window Function: SUM(COUNT()) OVER (PARTITION BY hotel_id) for channel share %
+
+## 2026-04-29 - Cross-layer validation: add missing GET /rooms endpoint
+
+FE-BE-DB cross-check found that Housekeeping and Maintenance pages call
+GET /rooms?hotel_id=... for room dropdowns, but the backend only exposed
+GET /rooms/availability (which requires checkin+checkout date params).
+
+- src/routes/rooms.js (line 88-121): Added GET / endpoint for simple room list
+  - Returns: room_id, room_number, floor_number, room_status, housekeeping_status,
+    maintenance_status, room_type_name, category, bed_type, max_adults, etc.
+  - Required param: hotel_id; optional: limit (default 100, max 500)
+  - Used by: AdminHousekeeping.jsx, AdminMaintenance.jsx

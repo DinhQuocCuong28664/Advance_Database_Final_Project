@@ -85,4 +85,37 @@ router.get('/availability', async (req, res) => {
   }
 });
 
+// GET /api/rooms?hotel_id=1&limit=300
+// Simple room list for dropdowns (housekeeping, maintenance, etc.)
+// Returns basic room info without date-based availability calculation
+router.get('/', async (req, res) => {
+  try {
+    const { hotel_id, limit } = req.query;
+    if (!hotel_id) {
+      return res.status(400).json({ success: false, error: 'hotel_id query parameter is required' });
+    }
+
+    const pool = getSqlPool();
+    const safeLimit = Math.min(parseInt(limit) || 100, 500);
+
+    const result = await pool.request()
+      .input('hotelId', sql.BigInt, parseInt(hotel_id))
+      .query(`
+        SELECT TOP (${safeLimit})
+          r.room_id, r.room_number, r.floor_number,
+          r.room_status, r.housekeeping_status, r.maintenance_status,
+          rt.room_type_id, rt.room_type_name, rt.category, rt.bed_type,
+          rt.max_adults, rt.room_size_sqm, rt.view_type
+        FROM Room r
+        JOIN RoomType rt ON r.room_type_id = rt.room_type_id
+        WHERE r.hotel_id = @hotelId
+        ORDER BY r.floor_number, r.room_number
+      `);
+
+    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
