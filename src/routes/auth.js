@@ -164,8 +164,10 @@ async function loadGuestUser(pool, guestId) {
   const guestResult = await pool.request()
     .input('id', sql.BigInt, guestId)
     .query(`
-      SELECT g.guest_id, g.guest_code, g.full_name, g.email, g.vip_flag,
-             g.marketing_opt_in_flag, ga.email_verified_at, ga.account_status
+      SELECT g.guest_id, g.guest_code, g.first_name, g.last_name, g.full_name,
+             g.email, g.phone_country_code, g.phone_number,
+             g.vip_flag, g.marketing_opt_in_flag,
+             ga.login_email, ga.email_verified_at, ga.account_status
       FROM Guest g
       LEFT JOIN GuestAuth ga ON g.guest_id = ga.guest_id
       WHERE g.guest_id = @id
