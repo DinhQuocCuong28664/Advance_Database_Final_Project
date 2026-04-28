@@ -69,7 +69,6 @@ function createPaymentUrl({ amount, txnRef, orderInfo, locale = 'vn', ipAddr = '
     vnp_OrderType:   'other',
     vnp_Locale:      locale,
     vnp_ReturnUrl:   VNPAY_RETURN_URL,
-    vnp_IpnUrl:      VNPAY_IPN_URL,
     vnp_IpAddr:      ipAddr,
     vnp_CreateDate:  vnpDate(now),
     vnp_ExpireDate:  vnpDate(expire),
