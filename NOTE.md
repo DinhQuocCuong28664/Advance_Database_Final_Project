@@ -568,3 +568,17 @@ Rule 2 (no emoji/special Unicode in code files).
 - src/routes/services.js (lines 2, 200, 240): Fixed JSDoc header and inline comment section banners
 - src/routes/vnpay.js (lines 140, 172): Fixed inline comment and helper comment banner
 
+## 2026-04-29 - Add SQL views for advanced database feature documentation
+
+Added three new SQL VIEWs to `database/sql/03_create_views.sql` to match
+the advanced database features described in Abstract.md and related docs:
+
+- database/sql/03_create_views.sql (line 81-148): Added `vw_LocationTree`
+  - Recursive CTE that flattens the Location adjacency-list hierarchy
+  - Returns: depth, full_path (e.g. "Asia > Vietnam > Ho Chi Minh City"), hotel_count per node
+- database/sql/03_create_views.sql (line 150-218): Added `vw_RevenueByHotel`
+  - Uses Window Functions: DENSE_RANK() OVER, SUM() OVER with ROWS BETWEEN (running total)
+  - Returns: monthly_revenue, cumulative_revenue, hotel_rank_in_brand, brand_revenue_share_pct
+- database/sql/03_create_views.sql (line 220-265): Added `vw_BookingChannelStats`
+  - Aggregates reservation counts and revenue by booking_source per hotel
+  - Uses Window Function: SUM(COUNT()) OVER (PARTITION BY hotel_id) for channel share %
