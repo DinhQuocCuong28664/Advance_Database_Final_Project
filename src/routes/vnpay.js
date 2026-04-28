@@ -41,16 +41,13 @@ router.post('/create-payment', async (req, res) => {
 
     const txnRef = resvRow.recordset[0].reservation_code;
 
-    // Get client IP (handle proxy headers) - normalize to IPv4 for VNPay
+    // Get client IP (handle proxy headers)
     let clientIp = ip
       || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
       || req.socket.remoteAddress
       || '127.0.0.1';
-    // VNPay only accepts IPv4 — map IPv6 loopback/format to IPv4
-    if (clientIp === '::1' || clientIp.startsWith('::ffff:')) {
-      clientIp = clientIp === '::1' ? '127.0.0.1' : clientIp.replace('::ffff:', '');
-    } else if (clientIp.includes(':')) {
-      clientIp = '127.0.0.1'; // fallback for other IPv6 formats
+    if (clientIp === '::1' || clientIp.includes(':')) {
+      clientIp = '127.0.0.1'; // VNPay prefers IPv4 format
     }
 
     const paymentUrl = createPaymentUrl({
@@ -143,7 +140,7 @@ router.get('/ipn', async (req, res) => {
     if (Math.abs(result.amount - serverAmount) > 1) {
       // Small rounding tolerance of 1 VND
       console.warn(`[VNPay IPN] Amount mismatch: got ${result.amount}, expected ~${serverAmount}`);
-      // Don't reject - just log and accept (VNPay requirement)
+      // Don't reject  just log and accept (VNPay requirement)
     }
 
     if (result.responseCode === '00') {
@@ -175,7 +172,7 @@ router.get('/ipn', async (req, res) => {
   }
 });
 
-// Helper: upsert payment record
+//  Helper: upsert payment record 
 async function _recordVnpayPayment(result, source) {
   try {
     const pool = getSqlPool();
