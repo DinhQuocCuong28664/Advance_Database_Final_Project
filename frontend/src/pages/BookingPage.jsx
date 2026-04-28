@@ -158,24 +158,33 @@ export default function BookingPage() {
       const res = resPayload.data || resPayload.reservation || resPayload;
       const serverDepositAmt = res.deposit_amount ?? depositDue;
 
-      //  TODO: Enable VNPay when ready 
-      // const vnpPayload = await apiRequest('/vnpay/create-payment', {
-      //   method: 'POST',
-      //   body: JSON.stringify({
-      //     reservation_id: res.reservation_id,
-      //     amount:         serverDepositAmt,
-      //     order_info:     `Dat coc dat phong ${res.reservation_code}`,
-      //     locale:         'vn',
-      //   }),
-      // });
-      // sessionStorage.setItem('pendingReservation', JSON.stringify({
-      //   ...res, deposit_amount: serverDepositAmt,
-      //   room_name: roomName, checkin, checkout, nights, subtotal, guests,
-      // }));
-      // window.location.href = vnpPayload.paymentUrl;
-      // 
+      // Step 2a: VNPay — redirect to payment gateway
+      if (form.payment_method === 'VNPAY') {
+        const vnpPayload = await apiRequest('/vnpay/create-payment', {
+          method: 'POST',
+          body: JSON.stringify({
+            reservation_id: res.reservation_id,
+            amount:         serverDepositAmt,
+            order_info:     `Room deposit ${res.reservation_code}`,
+            locale:         'vn',
+          }),
+        });
+        // Save reservation info so VnpayReturnPage can show confirmation
+        sessionStorage.setItem('pendingReservation', JSON.stringify({
+          ...res,
+          deposit_amount: serverDepositAmt,
+          room_name:      roomName,
+          checkin,
+          checkout,
+          nights,
+          subtotal,
+          guests,
+        }));
+        window.location.href = vnpPayload.paymentUrl;
+        return; // browser will redirect — do not call setStep
+      }
 
-      //  Step 2: Mock payment  write DEPOSIT directly to DB 
+      // Step 2b: Direct payment (CREDIT_CARD / BANK_TRANSFER / WALLET)
       await apiRequest('/payments', {
         method: 'POST',
         body: JSON.stringify({
@@ -348,6 +357,7 @@ export default function BookingPage() {
                     <option value="CREDIT_CARD">Credit card</option>
                     <option value="BANK_TRANSFER">Bank transfer</option>
                     <option value="WALLET">Digital wallet</option>
+                    <option value="VNPAY">VNPay (online banking / QR)</option>
                   </select>
                 </label>
               </div>
