@@ -4,9 +4,9 @@ import { useFlash } from '../../context/useFlash';
 
 //  Constants 
 const STATUS_CONFIG = {
-  ACTIVE:   { label: 'Active',   icon: '', bg: '#dcfce7', color: '#166534', btn: 'Activate' },
-  LOCKED:   { label: 'Locked',   icon: '', bg: '#fef3c7', color: '#92400e', btn: 'Lock' },
-  DISABLED: { label: 'Disabled', icon: '', bg: '#fee2e2', color: '#991b1b', btn: 'Disable' },
+  ACTIVE:   { label: 'Active',   icon: '✅', bg: '#dcfce7', color: '#166534', btn: 'Activate' },
+  LOCKED:   { label: 'Locked',   icon: '🔒', bg: '#fef3c7', color: '#92400e', btn: 'Lock' },
+  DISABLED: { label: 'Disabled', icon: '⛔', bg: '#fee2e2', color: '#991b1b', btn: 'Disable' },
 };
 
 const TIER_CONFIG = {
@@ -93,6 +93,7 @@ function SystemUserRow({ user, onStatusChange, currentUserId }) {
         </div>
         <div className="acct-row-meta">
           <span>@{user.username}</span>
+          {user.role_code && <span> {user.role_code}</span>}
           {user.department && <span> {user.department}</span>}
           {user.email && <span> {user.email}</span>}
         </div>

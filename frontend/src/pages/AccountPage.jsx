@@ -32,6 +32,41 @@ const ISSUE_CATEGORIES = [
 
 const EMPTY_ISSUE = { issue_category: 'PLUMBING', issue_description: '' };
 
+Object.assign(CATEGORY_ICONS, {
+  SPA: '💆',
+  AIRPORT_TRANSFER: '✈️',
+  DINING: '🍽️',
+  BUTLER: '🛎️',
+  YACHT: '🛥️',
+  TOUR: '🧭',
+  BABYSITTING: '👶',
+  EVENT: '🎉',
+  WELLNESS: '🧘',
+  OTHER: '✨',
+});
+
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'PLUMBING'), { icon: '🚿' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'ELECTRICAL'), { icon: '💡' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'HVAC'), { icon: '❄️' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'APPLIANCE'), { icon: '📺' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'FURNITURE'), { icon: '🪑' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'CLEANING'), { icon: '🧹' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'OTHER'), { icon: '⚠️' });
+
+function normalizeIssueTicket(ticket) {
+  const category = ISSUE_CATEGORIES.find((item) => item.key === ticket.issue_category);
+  return {
+    id: ticket.maintenance_ticket_id,
+    category: category?.label || String(ticket.issue_category || '').replace(/_/g, ' '),
+    icon: category?.icon || '⚠️',
+    desc: ticket.issue_description,
+    status: ticket.status,
+    at: ticket.reported_at
+      ? new Date(ticket.reported_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : '',
+  };
+}
+
 const STATUS_COLORS = {
   REQUESTED: { bg: 'rgba(240,160,30,0.13)',  color: '#7a5500' },
   CONFIRMED: { bg: 'rgba(72,160,120,0.13)',  color: '#1a5c3a' },
@@ -58,9 +93,13 @@ function formatRewardValue(reward) {
   return formatMoney(reward?.discount_value || 0, reward?.currency_code || 'USD');
 }
 
+function normalizeReviewText(value) {
+  return String(value || '').trim();
+}
+
 const ACCOUNT_MENU = [
   'Overview',
-  'Bookings',
+  'Bookings & Reviews',
   'In-house Services',
   'Loyalty',
   'Profile',
@@ -113,9 +152,12 @@ function GuestServices({ guestId }) {
         if (!checkedIn) { setLoading(false); return; }
         setActiveReservation(checkedIn);
 
-        const [svcPayload, ordersPayload] = await Promise.all([
+        const [svcPayload, ordersPayload, issuesPayload] = await Promise.all([
           apiRequest(`/services?hotel_id=${checkedIn.hotel_id}`),
           apiRequest(`/services/orders?reservation_id=${checkedIn.reservation_id}`),
+          checkedIn.room_id
+            ? apiRequest(`/maintenance?hotel_id=${checkedIn.hotel_id}&room_id=${checkedIn.room_id}`)
+            : Promise.resolve({ data: [] }),
         ]);
         const svcData = svcPayload.data || [];
         setServices(svcData);
@@ -125,6 +167,7 @@ function GuestServices({ guestId }) {
         }
         setOrders(ordersPayload.data || []);
         setOrderSummary(ordersPayload.summary || null);
+        setReportedIssues((issuesPayload.data || []).map(normalizeIssueTicket));
       } catch (e) {
         setFlash({ tone: 'error', text: e.message });
       } finally {
@@ -171,7 +214,7 @@ function GuestServices({ guestId }) {
     }
     setIssueBusy(true);
     try {
-      await apiRequest('/maintenance', {
+      const payload = await apiRequest('/maintenance', {
         method: 'POST',
         body: JSON.stringify({
           hotel_id:          activeReservation.hotel_id,
@@ -181,13 +224,12 @@ function GuestServices({ guestId }) {
           severity_level:    'MEDIUM',
         }),
       });
-      const cat = ISSUE_CATEGORIES.find(c => c.key === issueForm.issue_category);
-      setReportedIssues(prev => [{
-        category: cat?.label || issueForm.issue_category,
-        icon:     cat?.icon  || '',
-        desc:     issueForm.issue_description,
-        at:       new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-      }, ...prev]);
+      setReportedIssues(prev => [normalizeIssueTicket(payload.data || {
+        issue_category: issueForm.issue_category,
+        issue_description: issueForm.issue_description,
+        status: 'OPEN',
+        reported_at: new Date().toISOString(),
+      }), ...prev]);
       setFlash({ tone: 'success', text: 'Issue reported  our team will attend to it shortly.' });
       setIssueForm(EMPTY_ISSUE);
       setShowIssueForm(false);
@@ -203,7 +245,7 @@ function GuestServices({ guestId }) {
   if (!activeReservation) {
     return (
       <div className="guest-svc-empty-box">
-        <span></span>
+        <span>🏨</span>
         <p>You are not currently checked in.</p>
         <small>In-house services are only available during an active stay.</small>
       </div>
@@ -393,13 +435,14 @@ function GuestServices({ guestId }) {
 
         {reportedIssues.length > 0 && (
           <div className="guest-issue-history">
-            <p className="guest-issue-history-title">Submitted this session</p>
+            <p className="guest-issue-history-title">Submitted room issues</p>
             {reportedIssues.map((issue, i) => (
-              <div key={i} className="guest-issue-history-row">
+              <div key={issue.id || i} className="guest-issue-history-row">
                 <span>{issue.icon}</span>
                 <div>
                   <strong>{issue.category}</strong>
                   <p>{issue.desc}</p>
+                  {issue.status && <small>{issue.status}</small>}
                 </div>
                 <span className="guest-issue-time">{issue.at}</span>
               </div>
@@ -501,7 +544,7 @@ function LoyaltyRewardsPanel({ guestId, onProfileRefresh }) {
         </div>
         {rewards.length === 0 ? (
           <div className="svc-orders-empty">
-            <span></span>
+            <span>🎁</span>
             <p>No loyalty rewards are configured yet.</p>
             <small>Ask the hotel team to publish member-only reward promotions with a points cost.</small>
           </div>
@@ -560,7 +603,7 @@ function LoyaltyRewardsPanel({ guestId, onProfileRefresh }) {
         </div>
         {redemptions.length === 0 ? (
           <div className="svc-orders-empty">
-            <span></span>
+            <span>🎫</span>
             <p>No vouchers issued yet.</p>
             <small>Redeemed vouchers will appear here and can be applied during booking.</small>
           </div>
@@ -585,6 +628,209 @@ function LoyaltyRewardsPanel({ guestId, onProfileRefresh }) {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function BookingReviewsPanel({ guestId }) {
+  const { setFlash } = useFlash();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [reservations, setReservations] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [openReservationId, setOpenReservationId] = useState(null);
+  const [submittingId, setSubmittingId] = useState(null);
+  const [draft, setDraft] = useState({
+    rating_score: 5,
+    review_title: '',
+    review_text: '',
+  });
+
+  async function loadBookingData() {
+    setLoading(true);
+    try {
+      const [reservationPayload, reviewPayload] = await Promise.all([
+        apiRequest(`/reservations?guest_id=${guestId}&limit=30`),
+        apiRequest(`/guests/${guestId}/reviews`),
+      ]);
+      setReservations(reservationPayload.data || []);
+      setReviews(reviewPayload.data || []);
+    } catch (err) {
+      setFlash({ tone: 'error', text: err.message });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!guestId) return;
+    loadBookingData();
+  }, [guestId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const reviewsByReservation = reviews.reduce((acc, review) => {
+    acc[review.reservation_id] = review;
+    return acc;
+  }, {});
+
+  function openReviewForm(reservation) {
+    setOpenReservationId(reservation.reservation_id);
+    setDraft({
+      rating_score: 5,
+      review_title: reservation.hotel_name ? `Stay at ${reservation.hotel_name}` : '',
+      review_text: '',
+    });
+  }
+
+  async function submitReview(event, reservation) {
+    event.preventDefault();
+    const reviewText = normalizeReviewText(draft.review_text);
+    if (!reviewText) {
+      setFlash({ tone: 'error', text: 'Please write a short review before publishing.' });
+      return;
+    }
+
+    setSubmittingId(reservation.reservation_id);
+    try {
+      await apiRequest(`/hotels/${reservation.hotel_id}/reviews`, {
+        method: 'POST',
+        body: JSON.stringify({
+          reservation_id: reservation.reservation_id,
+          rating_score: Number(draft.rating_score),
+          review_title: normalizeReviewText(draft.review_title),
+          review_text: reviewText,
+        }),
+      });
+      setFlash({ tone: 'success', text: 'Review submitted and published on the hotel page.' });
+      setOpenReservationId(null);
+      setDraft({ rating_score: 5, review_title: '', review_text: '' });
+      await loadBookingData();
+    } catch (err) {
+      setFlash({ tone: 'error', text: err.message });
+    } finally {
+      setSubmittingId(null);
+    }
+  }
+
+  if (loading) {
+    return <p className="guest-svc-empty">Loading your reservations...</p>;
+  }
+
+  if (reservations.length === 0) {
+    return (
+      <div className="svc-orders-empty" style={{ padding: '36px 0' }}>
+        <span>📭</span>
+        <p>No reservations found for this account yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="acct-booking-list">
+      {reservations.map((reservation) => {
+        const existingReview = reviewsByReservation[reservation.reservation_id];
+        const canReview = reservation.reservation_status === 'CHECKED_OUT' && !existingReview;
+        const isOpen = openReservationId === reservation.reservation_id;
+
+        return (
+          <article key={reservation.reservation_id} className="acct-booking-card">
+            <div className="acct-booking-top">
+              <div>
+                <p className="acct-booking-code">{reservation.reservation_code}</p>
+                <h3>{reservation.hotel_name}</h3>
+                <p className="acct-booking-meta">
+                  {reservation.room_type_name || 'Room'}{reservation.room_number ? ` - Room ${reservation.room_number}` : ''}
+                </p>
+              </div>
+              <span className={`acct-booking-status acct-booking-status--${String(reservation.reservation_status || '').toLowerCase()}`}>
+                {reservation.reservation_status}
+              </span>
+            </div>
+
+            <div className="acct-booking-dates">
+              <div><span>Check-in</span><strong>{formatDateOnly(reservation.checkin_date)}</strong></div>
+              <div><span>Check-out</span><strong>{formatDateOnly(reservation.checkout_date)}</strong></div>
+              <div><span>Total</span><strong>{formatMoney(reservation.grand_total_amount, reservation.currency_code || 'USD')}</strong></div>
+            </div>
+
+            {existingReview ? (
+              <div className="acct-review-posted">
+                <div>
+                  <strong>{existingReview.review_title || 'Your published review'}</strong>
+                  <p>{existingReview.review_text}</p>
+                </div>
+                <span>{existingReview.rating_score}/5</span>
+              </div>
+            ) : null}
+
+            <div className="acct-booking-actions">
+              <button className="ghost-button" type="button" onClick={() => navigate('/reservation')}>
+                Reservation lookup
+              </button>
+              {canReview ? (
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => openReviewForm(reservation)}
+                >
+                  Write review
+                </button>
+              ) : (
+                <span className="acct-review-state">
+                  {existingReview
+                    ? 'Review published'
+                    : reservation.reservation_status === 'CHECKED_OUT'
+                      ? 'Review already handled'
+                      : 'Feedback opens after check-out'}
+                </span>
+              )}
+            </div>
+
+            {isOpen ? (
+              <form className="acct-review-form" onSubmit={(event) => submitReview(event, reservation)}>
+                <div className="acct-review-form-grid">
+                  <label>
+                    Rating
+                    <select
+                      value={draft.rating_score}
+                      onChange={(event) => setDraft((current) => ({ ...current, rating_score: event.target.value }))}
+                    >
+                      {[5, 4, 3, 2, 1].map((score) => (
+                        <option key={score} value={score}>{score}/5</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Title
+                    <input
+                      type="text"
+                      value={draft.review_title}
+                      onChange={(event) => setDraft((current) => ({ ...current, review_title: event.target.value }))}
+                      placeholder="Short headline for your stay"
+                    />
+                  </label>
+                  <label className="acct-review-form-wide">
+                    Review
+                    <textarea
+                      rows="4"
+                      value={draft.review_text}
+                      onChange={(event) => setDraft((current) => ({ ...current, review_text: event.target.value }))}
+                      placeholder="Share what other guests should know about this property."
+                    />
+                  </label>
+                </div>
+                <div className="acct-review-actions">
+                  <button type="button" className="ghost-button" onClick={() => setOpenReservationId(null)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="primary-button" disabled={submittingId === reservation.reservation_id}>
+                    {submittingId === reservation.reservation_id ? 'Publishing...' : 'Publish review'}
+                  </button>
+                </div>
+              </form>
+            ) : null}
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -802,7 +1048,7 @@ export default function AccountPage() {
                     {stays.slice(0, 5).map(s => (
                       <div key={s.stay_id} className="acct-stay-row">
                         <div className="acct-stay-icon">
-                          {s.stay_status === 'IN_HOUSE' ? '' : ''}
+                          {s.stay_status === 'IN_HOUSE' ? '🏨' : '🧳'}
                         </div>
                         <div className="acct-stay-info">
                           <strong>{s.hotel_name}</strong>
@@ -899,7 +1145,7 @@ export default function AccountPage() {
               </div>
               {loyaltyAccounts.length === 0 && (
                 <div className="svc-orders-empty" style={{ padding: '40px 0' }}>
-                  <span></span>
+                  <span>💎</span>
                   <p>No loyalty account linked yet.</p>
                   <small>Your points and tier benefits will appear here once enrolled.</small>
                 </div>
@@ -984,21 +1230,19 @@ export default function AccountPage() {
             </section>
           )}
 
-          {/*  TAB: Bookings  */}
-          {activeTab === 'Bookings' && (
+          {/*  TAB: Bookings & Reviews  */}
+          {activeTab === 'Bookings & Reviews' && (
             <section className="page-card">
               <div className="guest-card-head" style={{ marginBottom: 20 }}>
                 <div>
-                  <p className="page-eyebrow">Bookings</p>
-                  <h2>Your reservations</h2>
+                  <p className="page-eyebrow">Bookings & Reviews</p>
+                  <h2>Your reservations and hotel feedback</h2>
                   <p className="page-text" style={{ marginTop: 6 }}>
-                    Use the reservation lookup page to view and manage your bookings.
+                    After check-out, use Write review to publish feedback on the hotel page.
                   </p>
                 </div>
               </div>
-              <button className="primary-button" onClick={() => navigate('/reservation')}>
-                Go to reservation lookup
-              </button>
+              <BookingReviewsPanel guestId={guestId} />
             </section>
           )}
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -12,11 +12,11 @@ import AdminInventory from './admin/AdminInventory';
 import AdminInvoice from './admin/AdminInvoice';
 import AdminMaintenance from './admin/AdminMaintenance';
 import AdminPromotions from './admin/AdminPromotions';
-import AdminPayments  from './admin/AdminPayments';
-import AdminRates     from './admin/AdminRates';
-import AdminTimeline  from './admin/AdminTimeline';
+import AdminPayments from './admin/AdminPayments';
+import AdminRates from './admin/AdminRates';
+import AdminTimeline from './admin/AdminTimeline';
 import AdminLocationChannels from './admin/AdminLocationChannels';
-import AdminReports   from './admin/AdminReports';
+import AdminReports from './admin/AdminReports';
 import ToastContainer from '../components/layout/ToastContainer';
 
 const ADMIN_TABS = [
@@ -26,7 +26,7 @@ const ADMIN_TABS = [
   { key: 'maintenance', label: '🔧 Maintenance', note: 'Issue tracking, repairs, and room status' },
   { key: 'invoice', label: '📋 Invoices', note: 'Generate and issue guest invoices' },
   { key: 'rates', label: '💰 Rates', note: 'Manage nightly room rates with Price Guard protection' },
-  { key: 'promotions', label: '🎁 Promotions', note: 'Create and manage hotel promotions & offers' },
+  { key: 'promotions', label: '🎁 Promotions', note: 'Create and manage hotel promotions and offers' },
   { key: 'channels', label: '🌐 Channels', note: 'Booking channel stats and location hierarchy tree' },
   { key: 'payments', label: '💳 Payments', note: 'Payment history, filters and transaction review' },
   { key: 'accounts', label: '👤 Accounts', note: 'System and guest login management' },
@@ -34,16 +34,26 @@ const ADMIN_TABS = [
   { key: 'reports', label: '📊 Reports', note: 'KPIs, exports, and revenue analytics' },
 ];
 
+const MANAGER_TABS = [
+  { key: 'rates', label: '💰 Rates', note: 'Manage nightly room rates with Price Guard protection' },
+  { key: 'reports', label: '📊 Reports', note: 'KPIs, exports, and revenue analytics' },
+];
+
 export default function AdminPage() {
   const navigate = useNavigate();
-  const { isSystemUser, isAdminUser, authSession, logout } = useAuth();
+  const { isSystemUser, isAdminUser, isManagerUser, authSession, logout } = useAuth();
   const { setFlash, clearToasts } = useFlash();
+
+  const availableTabs = useMemo(
+    () => (isAdminUser ? ADMIN_TABS : MANAGER_TABS),
+    [isAdminUser]
+  );
 
   const [hotels, setHotels] = useState([]);
   const [rateAlerts, setRateAlerts] = useState([]);
   const [accountSnapshot, setAccountSnapshot] = useState({ system_users: [], guest_accounts: [] });
   const [loadingHotels, setLoadingHotels] = useState(true);
-  const [activeTab, setActiveTab] = useState('frontdesk');
+  const [activeTab, setActiveTab] = useState(() => (isAdminUser ? 'frontdesk' : 'rates'));
 
   const [reportSummary, setReportSummary] = useState(null);
   const [revenueData, setRevenueData] = useState([]);
@@ -51,7 +61,13 @@ export default function AdminPage() {
   const [loadingReport, setLoadingReport] = useState(false);
 
   useEffect(() => {
-    if (!isSystemUser || !isAdminUser) {
+    if (!availableTabs.some((tab) => tab.key === activeTab)) {
+      setActiveTab(availableTabs[0]?.key || 'rates');
+    }
+  }, [activeTab, availableTabs]);
+
+  useEffect(() => {
+    if (!isSystemUser || (!isAdminUser && !isManagerUser)) {
       return;
     }
 
@@ -59,15 +75,23 @@ export default function AdminPage() {
       setLoadingHotels(true);
       setLoadingReport(true);
       try {
-        const [hotelsPayload, alertsPayload, accountsPayload, summaryPayload, revenuePayload, brandRevenuePayload] =
-          await Promise.all([
-            apiRequest('/hotels'),
-            apiRequest('/admin/rates/alerts').catch(() => ({ data: [] })),
-            apiRequest('/admin/accounts').catch(() => ({ data: { system_users: [], guest_accounts: [] } })),
-            apiRequest('/admin/reports/summary').catch(() => ({ data: null })),
-            apiRequest('/admin/reports/revenue').catch(() => ({ data: [] })),
-            apiRequest('/admin/reports/revenue-by-brand').catch(() => ({ data: [] })),
-          ]);
+        const [
+          hotelsPayload,
+          alertsPayload,
+          accountsPayload,
+          summaryPayload,
+          revenuePayload,
+          brandRevenuePayload,
+        ] = await Promise.all([
+          apiRequest('/hotels'),
+          apiRequest('/admin/rates/alerts').catch(() => ({ data: [] })),
+          isAdminUser
+            ? apiRequest('/admin/accounts').catch(() => ({ data: { system_users: [], guest_accounts: [] } }))
+            : Promise.resolve({ data: { system_users: [], guest_accounts: [] } }),
+          apiRequest('/admin/reports/summary').catch(() => ({ data: null })),
+          apiRequest('/admin/reports/revenue').catch(() => ({ data: [] })),
+          apiRequest('/admin/reports/revenue-by-brand').catch(() => ({ data: [] })),
+        ]);
 
         setHotels(hotelsPayload.data || []);
         setRateAlerts(alertsPayload.data || []);
@@ -75,8 +99,8 @@ export default function AdminPage() {
         setReportSummary(summaryPayload.data || null);
         setRevenueData(revenuePayload.data || []);
         setBrandRevenueData(brandRevenuePayload.data || []);
-      } catch (err) {
-        setFlash({ tone: 'error', text: err.message });
+      } catch (error) {
+        setFlash({ tone: 'error', text: error.message });
       } finally {
         setLoadingHotels(false);
         setLoadingReport(false);
@@ -84,14 +108,13 @@ export default function AdminPage() {
     }
 
     load();
-  }, [isAdminUser, isSystemUser, setFlash]);
+  }, [isAdminUser, isManagerUser, isSystemUser, setFlash]);
 
-  // Not logged in  login
   if (!isSystemUser) {
     return <Navigate to="/login" replace state={{ nextUrl: '/admin' }} />;
   }
-  // Logged in but not ADMIN  cashier portal
-  if (!isAdminUser) {
+
+  if (!isAdminUser && !isManagerUser) {
     return <Navigate to="/cashier" replace />;
   }
 
@@ -102,16 +125,20 @@ export default function AdminPage() {
     setTimeout(() => setFlash({ tone: 'success', text: 'Signed out.' }), 80);
   }
 
+  const activeTabMeta = availableTabs.find((tab) => tab.key === activeTab);
+
   return (
     <div className="app-shell">
       <main className="page-stack">
         <section className="admin-hero">
           <div className="admin-hero-copy">
-            <p className="page-eyebrow">Admin dashboard</p>
-            <h1 className="page-title">Operations control for LuxeReserve.</h1>
+            <p className="page-eyebrow">{isAdminUser ? 'Admin dashboard' : 'Manager dashboard'}</p>
+            <h1 className="page-title">
+              {isAdminUser ? 'Operations control for LuxeReserve.' : 'Revenue control for LuxeReserve.'}
+            </h1>
             <p className="page-text">
-              Welcome back, {authSession?.user?.full_name}. Use the tab bar below to switch between front desk,
-              inventory, account management, and reports without scrolling through the entire admin stack.
+              Welcome back, {authSession?.user?.full_name}. Use the module bar below to move directly to
+              {isAdminUser ? ' operations, controls, and reporting.' : ' pricing and reporting.'}
             </p>
           </div>
           <div className="admin-hero-actions">
@@ -126,10 +153,12 @@ export default function AdminPage() {
             <span>Hotels loaded</span>
             <strong>{hotels.length || (loadingHotels ? '...' : '0')}</strong>
           </article>
-          <article className="admin-metric-card">
-            <span>Guest accounts</span>
-            <strong>{accountSnapshot.guest_accounts.length}</strong>
-          </article>
+          {isAdminUser ? (
+            <article className="admin-metric-card">
+              <span>Guest accounts</span>
+              <strong>{accountSnapshot.guest_accounts.length}</strong>
+            </article>
+          ) : null}
           <article className="admin-metric-card">
             <span>Open rate alerts</span>
             <strong>{rateAlerts.length}</strong>
@@ -140,15 +169,13 @@ export default function AdminPage() {
           <div className="admin-tabs-head">
             <div>
               <p className="page-eyebrow">Modules</p>
-              <h2>Admin workspace</h2>
+              <h2>{isAdminUser ? 'Admin workspace' : 'Manager workspace'}</h2>
             </div>
-            <span className="admin-status-pill">
-              {ADMIN_TABS.find((tab) => tab.key === activeTab)?.note}
-            </span>
+            <span className="admin-status-pill">{activeTabMeta?.note}</span>
           </div>
 
           <div className="admin-tabs-bar" role="tablist" aria-label="Admin modules">
-            {ADMIN_TABS.map((tab) => (
+            {availableTabs.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
@@ -163,24 +190,30 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {activeTab === 'frontdesk'    ? <AdminFrontDesk hotels={hotels} /> : null}
-        {activeTab === 'inventory'    ? <AdminInventory hotels={hotels} loadingHotels={loadingHotels} /> : null}
-        {activeTab === 'housekeeping' ? <AdminHousekeeping hotels={hotels} /> : null}
-        {activeTab === 'maintenance'  ? <AdminMaintenance hotels={hotels} /> : null}
-        {activeTab === 'invoice'      ? <AdminInvoice hotels={hotels} /> : null}
-        {activeTab === 'rates'        ? <AdminRates hotels={hotels} /> : null}
-        {activeTab === 'promotions'   ? <AdminPromotions hotels={hotels} /> : null}
-        {activeTab === 'channels'   ? <AdminLocationChannels /> : null}
-        {activeTab === 'payments'   ? <AdminPayments hotels={hotels} /> : null}
-        {activeTab === 'accounts' ? (
+        {isAdminUser && activeTab === 'frontdesk' ? <AdminFrontDesk hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'inventory' ? <AdminInventory hotels={hotels} loadingHotels={loadingHotels} /> : null}
+        {isAdminUser && activeTab === 'housekeeping' ? <AdminHousekeeping hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'maintenance' ? <AdminMaintenance hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'invoice' ? <AdminInvoice hotels={hotels} /> : null}
+        {activeTab === 'rates' ? <AdminRates hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'promotions' ? <AdminPromotions hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'channels' ? <AdminLocationChannels /> : null}
+        {isAdminUser && activeTab === 'payments' ? <AdminPayments hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'accounts' ? (
           <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
         ) : null}
-        {activeTab === 'timeline' ? <AdminTimeline hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'timeline' ? <AdminTimeline hotels={hotels} /> : null}
         {activeTab === 'reports' ? (
-          <AdminReports reportSummary={reportSummary} revenueData={revenueData} brandRevenueData={brandRevenueData} loading={loadingReport} />
+          <AdminReports
+            reportSummary={reportSummary}
+            revenueData={revenueData}
+            brandRevenueData={brandRevenueData}
+            loading={loadingReport}
+          />
         ) : null}
-      <ToastContainer />
-    </main>
+
+        <ToastContainer />
+      </main>
     </div>
   );
 }

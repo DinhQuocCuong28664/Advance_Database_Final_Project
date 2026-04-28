@@ -19,6 +19,7 @@ const SEED = {
   staff: { id: 1 },           // SystemUser agent
   admin:      { username: 'admin',   password: 'admin'   },
   cashier:    { username: 'cashier', password: 'cashier' },
+  manager:    { username: 'manager', password: 'manager' },
   // Guest login credentials currently available in seeded auth data
   guestLogin: { email: 'dqc', password: 'dqc' },
 };

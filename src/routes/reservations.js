@@ -1,5 +1,5 @@
 /**
- * LuxeReserve  Reservation Routes
+ * LuxeReserve - Reservation Routes
  * Core flow: Booking with Pessimistic Locking
  */
 
@@ -142,6 +142,23 @@ router.post('/', async (req, res) => {
       const reservationCode = `RES-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
       let appliedVoucher = null;
       let discountAmount = 0;
+      const hotelCurrencyResult = await new sql.Request(transaction)
+        .input('hotelId', sql.BigInt, hotel_id)
+        .input('roomId', sql.BigInt, room_id)
+        .query(`
+          SELECT TOP 1 h.currency_code
+          FROM Hotel h
+          JOIN Room r ON r.hotel_id = h.hotel_id
+          WHERE h.hotel_id = @hotelId
+            AND r.room_id = @roomId
+        `);
+
+      if (hotelCurrencyResult.recordset.length === 0) {
+        await transaction.rollback();
+        return res.status(404).json({ success: false, error: 'Hotel or room not found, or room does not belong to selected hotel' });
+      }
+
+      const reservationCurrency = hotelCurrencyResult.recordset[0].currency_code || currency_code || 'VND';
 
       // 
       // STEP 1: Call sp_ReserveRoom for EACH night (Pessimistic Lock)
@@ -367,7 +384,7 @@ router.post('/', async (req, res) => {
         .input('nights', sql.Int, nightCount)
         .input('adults', sql.Int, adult_count || 2)
         .input('children', sql.Int, child_count || 0)
-        .input('currency', sql.Char(3), currency_code || 'VND')
+        .input('currency', sql.Char(3), reservationCurrency)
         .input('subtotal', sql.Decimal(18, 2), reservationSubtotal)
         .input('discount', sql.Decimal(18, 2), discountAmount)
         .input('total', sql.Decimal(18, 2), reservationTotal)
@@ -468,6 +485,7 @@ router.post('/', async (req, res) => {
         grand_total_amount: reservationTotal,
         deposit_required: requiresDeposit,
         deposit_amount: depositAmount,
+        currency_code: reservationCurrency,
         guest_id: resolvedGuestId,
         loyalty_redemption_code: appliedVoucher?.issued_promo_code || null,
         applied_promotion_code: appliedVoucher?.promotion_code || null,
@@ -503,7 +521,7 @@ router.post('/', async (req, res) => {
             reservation: {
               ...responseData,
               hotel_name: hotelName,
-              currency_code: currency_code || 'VND',
+              currency_code: reservationCurrency,
               special_request_text,
             },
           });
@@ -842,6 +860,12 @@ router.post('/:id/checkout', requireSystemUser, async (req, res) => {
       await req6.input('id', sql.BigInt, resvId)
         .input('agent', sql.BigInt, agent_id || null)
         .query(`INSERT INTO ReservationStatusHistory (reservation_id, old_status, new_status, changed_by, change_reason) VALUES (@id, 'CHECKED_IN', 'CHECKED_OUT', @agent, 'Guest checked out')`);
+
+      // Auto-cancel REQUESTED service orders on checkout
+      // CONFIRMED and DELIVERED orders are kept so cashier can still charge them
+      const req7 = new sql.Request(transaction);
+      await req7.input('id', sql.BigInt, resvId)
+        .query(`UPDATE ReservationService SET service_status = 'CANCELLED', updated_at = GETDATE() WHERE reservation_id = @id AND service_status = 'REQUESTED'`);
 
       await transaction.commit();
 

@@ -2,11 +2,12 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useFlash } from '../context/useFlash';
+import heroImage from '../assets/hero.png';
 
 export default function LoginPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { login, logout, authBusy, authSession, isSystemUser, isAdminUser } = useAuth();
+  const { login, logout, authBusy, authSession, isSystemUser, isAdminUser, isManagerUser } = useAuth();
   const { setFlash } = useFlash();
   const [form, setForm] = useState({ login: '', password: '' });
 
@@ -18,8 +19,8 @@ export default function LoginPage() {
   //  Already signed in as SYSTEM USER  show switch screen 
   // (prevents old admin session from blocking cashier login)
   if (authSession && isSystemUser) {
-    const portalPath  = isAdminUser ? '/admin' : '/cashier';
-    const portalLabel = isAdminUser ? 'Admin portal' : 'Front Desk portal';
+    const portalPath  = isAdminUser || isManagerUser ? '/admin' : '/cashier';
+    const portalLabel = isAdminUser ? 'Admin portal' : isManagerUser ? 'Manager portal' : 'Front Desk portal';
 
     return (
       <section className="page-card auth-shell">
@@ -67,7 +68,7 @@ export default function LoginPage() {
     // System users  portal by role
     if (result.user.user_type === 'SYSTEM_USER') {
       const roles = result.user.roles || [];
-      if (roles.includes('ADMIN')) {
+      if (roles.includes('ADMIN') || roles.includes('MANAGER')) {
         navigate('/admin', { replace: true });
       } else if (roles.includes('CASHIER') || roles.includes('FRONT_DESK')) {
         navigate('/cashier', { replace: true });
@@ -84,44 +85,65 @@ export default function LoginPage() {
 
   //  Login form 
   return (
-    <section className="page-card auth-shell">
-      <p className="auth-eyebrow">Shared login</p>
-      <h1 className="page-title">Sign in</h1>
-      <p className="auth-copy">
-        Use one form for both guest and staff. The app redirects automatically after login.
-      </p>
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <label>
-          Account
-          <input
-            type="text"
-            placeholder="Email, guest code, or staff username"
-            value={form.login}
-            onChange={(e) => setForm((c) => ({ ...c, login: e.target.value }))}
-            autoFocus
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            placeholder="Enter password"
-            value={form.password}
-            onChange={(e) => setForm((c) => ({ ...c, password: e.target.value }))}
-          />
-        </label>
-        <div className="button-row">
-          <button className="auth-primary-button" type="submit" disabled={authBusy === 'login'}>
-            {authBusy === 'login' ? 'Signing in...' : 'Sign in'}
-          </button>
-          <Link className="auth-secondary-button button-link" to="/register">
-            Create account
-          </Link>
+    <section className="page-card auth-shell login-media-shell">
+      <aside className="login-media-panel" aria-label="LuxeReserve destination preview">
+        <video
+          className="login-media-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster={heroImage}
+        >
+          <source src="/videos/luxury-hotel-login.webm" type="video/webm" />
+          <source src="/videos/luxury-hotel-login.mp4" type="video/mp4" />
+        </video>
+        <div className="login-media-overlay">
+          <p className="auth-eyebrow">LuxeReserve</p>
+          <h2>Asia's luxury stays, managed in one engine.</h2>
+          <span>Guests, front desk, managers, and admins share one secure access point.</span>
         </div>
-        <Link to="/forgot-password" style={{ color: 'var(--text-soft)', fontSize: '0.92rem', textDecoration: 'underline' }}>
-          Forgot your password?
-        </Link>
-      </form>
+      </aside>
+
+      <div className="login-form-panel">
+        <p className="auth-eyebrow">Shared login</p>
+        <h1 className="page-title">Sign in</h1>
+        <p className="auth-copy">
+          Use one form for both guest and staff. The app redirects automatically after login.
+        </p>
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <label>
+            Account
+            <input
+              type="text"
+              placeholder="Email, guest code, or staff username"
+              value={form.login}
+              onChange={(e) => setForm((c) => ({ ...c, login: e.target.value }))}
+              autoFocus
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              placeholder="Enter password"
+              value={form.password}
+              onChange={(e) => setForm((c) => ({ ...c, password: e.target.value }))}
+            />
+          </label>
+          <div className="button-row">
+            <button className="auth-primary-button" type="submit" disabled={authBusy === 'login'}>
+              {authBusy === 'login' ? 'Signing in...' : 'Sign in'}
+            </button>
+            <Link className="auth-secondary-button button-link" to="/register">
+              Create account
+            </Link>
+          </div>
+          <Link to="/forgot-password" style={{ color: 'var(--text-soft)', fontSize: '0.92rem', textDecoration: 'underline' }}>
+            Forgot your password?
+          </Link>
+        </form>
+      </div>
     </section>
   );
 }

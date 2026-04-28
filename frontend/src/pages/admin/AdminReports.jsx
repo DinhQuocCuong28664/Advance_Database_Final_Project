@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -11,6 +12,7 @@ function formatCurrency(value, currency = 'VND') {
 
 export default function AdminReports({ reportSummary, revenueData, brandRevenueData = [], loading }) {
   const { setFlash } = useFlash();
+  const [activeView, setActiveView] = useState('summary');
 
   function exportExcel() {
     const wb = XLSX.utils.book_new();
@@ -51,7 +53,6 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
       ];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(revRows), 'Revenue Detail');
     }
-
 
     if (brandRevenueData.length) {
       const brandRows = [
@@ -135,17 +136,17 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
 
   return (
     <section className="page-card page-card-wide" id="admin-reports">
-      <div className="admin-section-head">
+      <div className="admin-section-head report-section-header">
         <div>
           <p className="page-eyebrow">Analytics</p>
           <h2>Reports &amp; Statistics</h2>
         </div>
         <div className="report-export-btns">
           <button className="ghost-button" type="button" onClick={exportExcel} disabled={loading}>
-             Export Excel
+            Export Excel
           </button>
           <button className="primary-button" type="button" onClick={exportPDF} disabled={loading}>
-             Export PDF
+            Export PDF
           </button>
         </div>
       </div>
@@ -153,179 +154,194 @@ export default function AdminReports({ reportSummary, revenueData, brandRevenueD
       {loading ? (
         <p className="admin-empty">Loading report data...</p>
       ) : reportSummary ? (
-        <>
-          {/* KPI strip */}
-          <div className="report-kpi-grid">
-            <article className="report-kpi-card">
-              <span>Total Reservations</span>
-              <strong>{reportSummary.overview?.total_reservations ?? ''}</strong>
-            </article>
-            <article className="report-kpi-card">
-              <span>Active Reservations</span>
-              <strong>{reportSummary.overview?.active_reservations ?? ''}</strong>
-            </article>
-            <article className="report-kpi-card">
-              <span>Hotels With Bookings</span>
-              <strong>{reportSummary.overview?.hotels_with_bookings ?? ''}</strong>
-            </article>
-            <article className="report-kpi-card">
-              <span>Payment Methods Tracked</span>
-              <strong>{reportSummary.payment_stats?.length ?? ''}</strong>
-            </article>
+        <div className="report-stack">
+          <div className="report-tab-bar" role="tablist" aria-label="Report views">
+            <button
+              type="button"
+              className={`report-tab-btn${activeView === 'summary' ? ' active' : ''}`}
+              onClick={() => setActiveView('summary')}
+            >
+              Summary
+            </button>
+            <button
+              type="button"
+              className={`report-tab-btn${activeView === 'revenue' ? ' active' : ''}`}
+              onClick={() => setActiveView('revenue')}
+            >
+              Revenue
+            </button>
           </div>
 
-          <div className="report-two-col">
-            {/* Reservations by status */}
-            <div>
-              <h3 className="report-table-title">Reservations by Status</h3>
-              <table className="report-table">
-                <thead><tr><th>Status</th><th>Count</th></tr></thead>
-                <tbody>
-                  {(reportSummary.by_status || []).map((row) => (
-                    <tr key={row.reservation_status}>
-                      <td><span className={`rsv-badge rsv-${row.reservation_status?.toLowerCase()}`}>{row.reservation_status}</span></td>
-                      <td>{row.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Top hotels */}
-            <div>
-              <h3 className="report-table-title">Top Hotels by Revenue</h3>
-              <table className="report-table">
-                <thead><tr><th>Hotel</th><th>Bookings</th><th>Revenue</th></tr></thead>
-                <tbody>
-                  {(reportSummary.top_hotels || []).map((row, i) => (
-                    <tr key={i}>
-                      <td>{row.hotel_name}</td>
-                      <td>{row.bookings}</td>
-                      <td>{formatCurrency(row.total_revenue)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Payment breakdown */}
-          {reportSummary.payment_stats?.length > 0 && (
-            <div style={{ marginTop: '1.5rem' }}>
-              <h3 className="report-table-title">Payment Breakdown</h3>
-              <table className="report-table">
-                <thead><tr><th>Method</th><th>Transactions</th><th>Total Amount</th></tr></thead>
-                <tbody>
-                  {reportSummary.payment_stats.map((row, i) => (
-                    <tr key={i}>
-                      <td>{row.payment_method}</td>
-                      <td>{row.count}</td>
-                      <td>{formatCurrency(row.total_amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Revenue detail (Window Functions) */}
-          {revenueData.length > 0 && (
-            <div style={{ marginTop: '1.5rem' }}>
-              <h3 className="report-table-title">Revenue by Hotel &amp; Room Type <span className="report-tag">Window Functions</span></h3>
-              <div className="report-table-scroll">
-                <table className="report-table report-table--brand">
-                  <thead>
-                    <tr>
-                      <th>Hotel</th><th>Room Type</th><th>Year</th><th>Q</th>
-                      <th>Bookings</th><th>Revenue</th><th>Avg Rate/Night</th><th>Revenue Share</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {revenueData.map((row, i) => (
-                      <tr key={i}>
-                        <td>{row.hotel_name}</td>
-                        <td>{row.room_type_name}</td>
-                        <td>{row.year}</td>
-                        <td>Q{row.quarter}</td>
-                        <td>{row.booking_count}</td>
-                        <td>{formatCurrency(row.total_revenue)}</td>
-                        <td>{formatCurrency(row.avg_nightly_rate)}</td>
-                        <td>{Number(row.revenue_share_pct).toFixed(1)}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {activeView === 'summary' ? (
+            <>
+              <div className="report-kpi-grid">
+                <article className="report-kpi-card">
+                  <span>Total Reservations</span>
+                  <strong>{reportSummary.overview?.total_reservations ?? ''}</strong>
+                </article>
+                <article className="report-kpi-card">
+                  <span>Active Reservations</span>
+                  <strong>{reportSummary.overview?.active_reservations ?? ''}</strong>
+                </article>
+                <article className="report-kpi-card">
+                  <span>Hotels With Bookings</span>
+                  <strong>{reportSummary.overview?.hotels_with_bookings ?? ''}</strong>
+                </article>
+                <article className="report-kpi-card">
+                  <span>Payment Methods Tracked</span>
+                  <strong>{reportSummary.payment_stats?.length ?? ''}</strong>
+                </article>
               </div>
-            </div>
-          )}
 
+              <div className="report-two-col">
+                <div className="report-panel">
+                  <h3 className="report-table-title">Reservations by Status</h3>
+                  <table className="report-table">
+                    <thead><tr><th>Status</th><th>Count</th></tr></thead>
+                    <tbody>
+                      {(reportSummary.by_status || []).map((row) => (
+                        <tr key={row.reservation_status}>
+                          <td><span className={`rsv-badge rsv-${row.reservation_status?.toLowerCase()}`}>{row.reservation_status}</span></td>
+                          <td>{row.count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-          {/* Revenue by Brand (Chain  Brand  Hotel hierarchy + Window Functions) */}
-          {brandRevenueData.length > 0 && (
-            <div style={{ marginTop: '1.5rem' }}>
-              <h3 className="report-table-title">
-                Revenue by Brand &amp; Chain
-                <span className="report-tag">Window Functions</span>
-                <span className="report-tag report-tag--blue">Hierarchy</span>
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginBottom: 10 }}>
-                HotelChain  Brand  Hotel  DENSE_RANK, cumulative revenue &amp; share % within brand and chain
-              </p>
-              <div className="report-table-scroll">
-                <table className="report-table report-table--brand">
-                  <thead>
-                    <tr>
-                      <th>Chain</th>
-                      <th>Brand</th>
-                      <th>Hotel</th>
-                      <th>Year</th>
-                      <th>Q</th>
-                      <th>Bookings</th>
-                      <th>Revenue</th>
-                      <th>Avg Rate/Night</th>
-                      <th title="DENSE_RANK within Brand">Rank in Brand</th>
-                      <th title="Cumulative revenue within Brand over time">Cumul. Brand Rev.</th>
-                      <th className="brand-share-col" title="Revenue share % within entire Chain">Chain Share %</th>
-                      <th className="brand-share-col" title="Revenue share % within Brand">Brand Share %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {brandRevenueData.map((row, i) => (
-                      <tr key={i}>
-                        <td><strong>{row.chain_name}</strong></td>
-                        <td>{row.brand_name}</td>
-                        <td>{row.hotel_name}</td>
-                        <td>{row.year}</td>
-                        <td>Q{row.quarter}</td>
-                        <td>{row.booking_count}</td>
-                        <td>{formatCurrency(row.total_revenue)}</td>
-                        <td>{formatCurrency(row.avg_nightly_rate)}</td>
-                        <td>
-                          <span className={`brand-rank-badge brand-rank-badge--${row.revenue_rank_in_brand <= 3 ? row.revenue_rank_in_brand : 'other'}`}>
-                            #{row.revenue_rank_in_brand}
-                          </span>
-                        </td>
-                        <td>{formatCurrency(row.cumulative_brand_revenue)}</td>
-                        <td className="brand-share-col">
-                          <span className="brand-share-cell" title={`${Number(row.revenue_share_in_chain_pct).toFixed(1)}% of chain`}>
-                            <span className="brand-share-track">
-                              <span className="brand-share-bar" style={{ width: Math.min(Number(row.revenue_share_in_chain_pct), 100) + '%' }} />
-                            </span>
-                            <span className="brand-share-label">{Number(row.revenue_share_in_chain_pct).toFixed(1)}%</span>
-                          </span>
-                        </td>
-                        <td className="brand-share-col">
-                          <span className="brand-share-plain">{Number(row.revenue_share_in_brand_pct).toFixed(1)}%</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="report-panel">
+                  <h3 className="report-table-title">Top Hotels by Revenue</h3>
+                  <table className="report-table">
+                    <thead><tr><th>Hotel</th><th>Bookings</th><th>Revenue</th></tr></thead>
+                    <tbody>
+                      {(reportSummary.top_hotels || []).map((row, i) => (
+                        <tr key={i}>
+                          <td>{row.hotel_name}</td>
+                          <td>{row.bookings}</td>
+                          <td>{formatCurrency(row.total_revenue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
 
-        </>
+              {reportSummary.payment_stats?.length > 0 ? (
+                <div className="report-panel">
+                  <h3 className="report-table-title">Payment Breakdown</h3>
+                  <table className="report-table">
+                    <thead><tr><th>Method</th><th>Transactions</th><th>Total Amount</th></tr></thead>
+                    <tbody>
+                      {reportSummary.payment_stats.map((row, i) => (
+                        <tr key={i}>
+                          <td>{row.payment_method}</td>
+                          <td>{row.count}</td>
+                          <td>{formatCurrency(row.total_amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {revenueData.length > 0 ? (
+                <div className="report-panel">
+                  <h3 className="report-table-title">Revenue by Hotel &amp; Room Type <span className="report-tag">Window Functions</span></h3>
+                  <div className="report-table-scroll">
+                    <table className="report-table report-table--detail">
+                      <thead>
+                        <tr>
+                          <th>Hotel</th><th>Room Type</th><th>Year</th><th>Q</th>
+                          <th>Bookings</th><th>Revenue</th><th>Avg Rate/Night</th><th>Revenue Share</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {revenueData.map((row, i) => (
+                          <tr key={i}>
+                            <td>{row.hotel_name}</td>
+                            <td>{row.room_type_name}</td>
+                            <td>{row.year}</td>
+                            <td>Q{row.quarter}</td>
+                            <td>{row.booking_count}</td>
+                            <td>{formatCurrency(row.total_revenue)}</td>
+                            <td>{formatCurrency(row.avg_nightly_rate)}</td>
+                            <td>{Number(row.revenue_share_pct).toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
+              {brandRevenueData.length > 0 ? (
+                <div className="report-panel">
+                  <h3 className="report-table-title">
+                    Revenue by Brand &amp; Chain
+                    <span className="report-tag">Window Functions</span>
+                    <span className="report-tag report-tag--blue">Hierarchy</span>
+                  </h3>
+                  <p className="report-note">
+                    HotelChain  Brand  Hotel  DENSE_RANK, cumulative revenue &amp; share % within brand and chain
+                  </p>
+                  <div className="report-table-scroll">
+                    <table className="report-table report-table--brand">
+                      <thead>
+                        <tr>
+                          <th>Chain</th>
+                          <th>Brand</th>
+                          <th>Hotel</th>
+                          <th>Year</th>
+                          <th>Q</th>
+                          <th>Bookings</th>
+                          <th>Revenue</th>
+                          <th>Avg Rate/Night</th>
+                          <th title="DENSE_RANK within Brand">Rank in Brand</th>
+                          <th title="Cumulative revenue within Brand over time">Cumul. Brand Rev.</th>
+                          <th className="brand-share-col" title="Revenue share % within entire Chain">Chain Share %</th>
+                          <th className="brand-share-col" title="Revenue share % within Brand">Brand Share %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {brandRevenueData.map((row, i) => (
+                          <tr key={i}>
+                            <td><strong>{row.chain_name}</strong></td>
+                            <td>{row.brand_name}</td>
+                            <td>{row.hotel_name}</td>
+                            <td>{row.year}</td>
+                            <td>Q{row.quarter}</td>
+                            <td>{row.booking_count}</td>
+                            <td>{formatCurrency(row.total_revenue)}</td>
+                            <td>{formatCurrency(row.avg_nightly_rate)}</td>
+                            <td>
+                              <span className={`brand-rank-badge brand-rank-badge--${row.revenue_rank_in_brand <= 3 ? row.revenue_rank_in_brand : 'other'}`}>
+                                #{row.revenue_rank_in_brand}
+                              </span>
+                            </td>
+                            <td>{formatCurrency(row.cumulative_brand_revenue)}</td>
+                            <td className="brand-share-col">
+                              <span className="brand-share-cell" title={`${Number(row.revenue_share_in_chain_pct).toFixed(1)}% of chain`}>
+                                <span className="brand-share-track">
+                                  <span className="brand-share-bar" style={{ width: Math.min(Number(row.revenue_share_in_chain_pct), 100) + '%' }} />
+                                </span>
+                                <span className="brand-share-label">{Number(row.revenue_share_in_chain_pct).toFixed(1)}%</span>
+                              </span>
+                            </td>
+                            <td className="brand-share-col">
+                              <span className="brand-share-plain">{Number(row.revenue_share_in_brand_pct).toFixed(1)}%</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
       ) : (
         <p className="admin-empty">No report data available.</p>
       )}

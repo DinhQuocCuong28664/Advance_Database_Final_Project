@@ -430,11 +430,11 @@ async function expandCatalog() {
     await hotelCatalog.createIndex({ 'location.city': 1 });
     await hotelCatalog.createIndex({ star_rating: -1 });
 
-    console.log('Expanded Mongo hotel catalog successfully.');
-    console.log(`  - Upserted ${roomTypeCatalogDocs.length} room types`);
-    console.log(`  - Upserted ${hotelDocs.length} hotels`);
+    console.log('[OK] Expanded Mongo hotel catalog successfully.');
+    console.log(`    - Upserted ${roomTypeCatalogDocs.length} room types`);
+    console.log(`    - Upserted ${hotelDocs.length} hotels`);
   } catch (error) {
-    console.error('Mongo catalog expansion failed:', error.message);
+    console.error('[ERROR] Mongo catalog expansion failed:', error.message);
     process.exit(1);
   } finally {
     await client.close();

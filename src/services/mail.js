@@ -19,7 +19,7 @@ function getTransporter() {
   return transporter;
 }
 
-//  Shared HTML wrapper 
+// Shared HTML wrapper
 function htmlWrap(bodyHtml) {
   return `
     <!DOCTYPE html>
@@ -43,7 +43,7 @@ function htmlWrap(bodyHtml) {
             <!-- Footer -?
             <tr>
               <td style="background:#f0ebe4;padding:18px 36px;font-size:12px;color:#8a8a8a;text-align:center;">
-                 LuxeReserve  Global Luxury Hotel Reservation Engine<br />
+                 LuxeReserve - Global Luxury Hotel Reservation Engine<br />
                 This email was sent to you because you have a reservation with us.
               </td>
             </tr>
@@ -55,27 +55,27 @@ function htmlWrap(bodyHtml) {
   `;
 }
 
-//  Safe send (fire-and-forget, logs on failure) 
+// Safe send (fire-and-forget, logs on failure)
 async function safeSend(mailOptions) {
   if (!isMailConfigured()) {
-    console.log('[Mail] SMTP not configured  skipping email:', mailOptions.subject);
+    console.log('[WARN] [Mail] SMTP not configured - skipping email:', mailOptions.subject);
     return;
   }
   try {
     const mailer = getTransporter();
     const from = process.env.MAIL_FROM || process.env.SMTP_USER;
     await mailer.sendMail({ from, ...mailOptions });
-    console.log(`[Mail]  Sent "${mailOptions.subject}" to ${mailOptions.to}`);
+    console.log(`[OK] [Mail] Sent "${mailOptions.subject}" to ${mailOptions.to}`);
   } catch (err) {
-    console.error('[Mail]  Failed to send email:', err.message);
+    console.error('[ERROR] [Mail] Failed to send email:', err.message);
   }
 }
 
-//  1. OTP Verification 
+// 1. OTP Verification
 async function sendGuestVerificationOtp({ to, fullName, otpCode }) {
   await safeSend({
     to,
-    subject: 'LuxeReserve  Your verification code',
+    subject: 'LuxeReserve - Your verification code',
     text: `Hello ${fullName || 'guest'},\n\nYour verification code is: ${otpCode}\n\nExpires in 10 minutes.`,
     html: htmlWrap(`
       <h2 style="margin:0 0 16px;color:#143d42;">Welcome to LuxeReserve</h2>
@@ -92,7 +92,7 @@ async function sendGuestVerificationOtp({ to, fullName, otpCode }) {
 async function sendGuestBookingAccessOtp({ to, fullName, otpCode }) {
   await safeSend({
     to,
-    subject: 'LuxeReserve  Booking verification code',
+    subject: 'LuxeReserve - Booking verification code',
     text: `Hello ${fullName || 'guest'},\n\nUse this one-time code to continue your reservation with your existing email: ${otpCode}\n\nExpires in 10 minutes.`,
     html: htmlWrap(`
       <h2 style="margin:0 0 16px;color:#143d42;">Confirm your booking email</h2>
@@ -109,7 +109,7 @@ async function sendGuestBookingAccessOtp({ to, fullName, otpCode }) {
 async function sendGuestPasswordResetOtp({ to, fullName, otpCode }) {
   await safeSend({
     to,
-    subject: 'LuxeReserve  Password reset code',
+    subject: 'LuxeReserve - Password reset code',
     text: `Hello ${fullName || 'guest'},\n\nUse this code to reset your LuxeReserve password: ${otpCode}\n\nExpires in 10 minutes.`,
     html: htmlWrap(`
       <h2 style="margin:0 0 16px;color:#143d42;">Reset your password</h2>
@@ -123,7 +123,7 @@ async function sendGuestPasswordResetOtp({ to, fullName, otpCode }) {
   });
 }
 
-//  2. Booking Confirmation 
+// 2. Booking Confirmation
 async function sendBookingConfirmation({ to, fullName, reservation }) {
   const {
     reservation_code, hotel_name, room_type_name, room_number,
@@ -136,7 +136,7 @@ async function sendBookingConfirmation({ to, fullName, reservation }) {
 
   await safeSend({
     to,
-    subject: `LuxeReserve  Booking confirmed: ${reservation_code}`,
+    subject: `LuxeReserve - Booking confirmed: ${reservation_code}`,
     text: [
       `Hello ${fullName || 'guest'},`,
       '',
@@ -201,7 +201,7 @@ async function sendBookingConfirmation({ to, fullName, reservation }) {
   });
 }
 
-//  3. Cancellation Notice 
+// 3. Cancellation Notice
 async function sendCancellationNotice({ to, fullName, reservation, cancelledBy = 'guest', reason }) {
   const { reservation_code, hotel_name, checkin_date, checkout_date } = reservation;
   const fmt = (d) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -209,7 +209,7 @@ async function sendCancellationNotice({ to, fullName, reservation, cancelledBy =
 
   await safeSend({
     to,
-    subject: `LuxeReserve  Reservation ${reservation_code} cancelled`,
+    subject: `LuxeReserve - Reservation ${reservation_code} cancelled`,
     text: [
       `Hello ${fullName || 'guest'},`,
       '',
@@ -267,14 +267,14 @@ async function sendCancellationNotice({ to, fullName, reservation, cancelledBy =
   });
 }
 
-//  4. Check-in Reminder 
+// 4. Check-in Reminder
 async function sendCheckinReminder({ to, fullName, reservation }) {
   const { reservation_code, hotel_name, checkin_date, checkout_date } = reservation;
   const fmt = (d) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
   await safeSend({
     to,
-    subject: `LuxeReserve  Check-in confirmed: ${reservation_code}`,
+    subject: `LuxeReserve - Check-in confirmed: ${reservation_code}`,
     text: `Hello ${fullName || 'guest'},\n\nYou have successfully checked in to ${hotel_name}.\nReservation: ${reservation_code}\nCheck-out: ${fmt(checkout_date)}\n\nEnjoy your stay!`,
     html: htmlWrap(`
       <h2 style="margin:0 0 4px;color:#143d42;">Welcome! You're checked in </h2>

@@ -20,8 +20,8 @@ const STATUS_STYLE = {
   VERIFIED:    { bg: '#d1fae5', color: '#065f46' },
 };
 const TASK_ICON = {
-  CLEANING:     '', DEEP_CLEAN: '', TURNDOWN: '',
-  INSPECTION:   '', LINEN_CHANGE: '', OTHER: '',
+  CLEANING:     '🧹', DEEP_CLEAN: '🧼', TURNDOWN: '🛏️',
+  INSPECTION:   '🔍', LINEN_CHANGE: '🧺', OTHER: '✨',
 };
 
 // Valid next steps for each status
@@ -91,7 +91,13 @@ export default function AdminHousekeeping({ hotels }) {
   const loadStaff = useCallback(async () => {
     try {
       const p = await apiRequest('/admin/accounts');
-      setStaff((p.data?.system_users || []).filter(u => !['ADMIN'].includes(u.role)));
+      setStaff((p.data?.system_users || []).filter((user) => {
+        const roles = String(user.role_code || '')
+          .split(',')
+          .map((role) => role.trim())
+          .filter(Boolean);
+        return !roles.includes('ADMIN') && !roles.includes('MANAGER');
+      }));
     } catch { /* ignore */ }
   }, []);
 
@@ -180,7 +186,11 @@ export default function AdminHousekeeping({ hotels }) {
                 Staff member
                 <select value={assignStaff} onChange={e => setAssignStaff(e.target.value)} required>
                   <option value="">Select staff</option>
-                  {staff.map(s => <option key={s.user_id} value={s.user_id}>{s.full_name} ({s.role})</option>)}
+                  {staff.map((staffUser) => (
+                    <option key={staffUser.user_id} value={staffUser.user_id}>
+                      {staffUser.full_name} ({staffUser.role_code || 'STAFF'})
+                    </option>
+                  ))}
                 </select>
               </label>
               <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
@@ -301,12 +311,12 @@ export default function AdminHousekeeping({ hotels }) {
 
       {!loading && hotelId && tasks.length === 0 && (
         <div className="svc-orders-empty">
-          <span></span><p>No housekeeping tasks found.</p>
+          <span>🧹</span><p>No housekeeping tasks found.</p>
           <small>Adjust filters or create a new task.</small>
         </div>
       )}
       {!loading && !hotelId && (
-        <div className="svc-orders-empty"><span></span><p>Select a hotel to view tasks.</p></div>
+        <div className="svc-orders-empty"><span>🏨</span><p>Select a hotel to view tasks.</p></div>
       )}
 
       {tasks.length > 0 && (

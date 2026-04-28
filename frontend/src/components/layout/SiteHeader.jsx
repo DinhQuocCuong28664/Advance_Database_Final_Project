@@ -4,7 +4,7 @@ import { useFlash } from '../../context/useFlash';
 
 export default function SiteHeader() {
   const navigate = useNavigate();
-  const { authSession, guestAccounts, isSystemUser, isAdminUser, logout } = useAuth();
+  const { authSession, guestAccounts, isSystemUser, isAdminUser, isManagerUser, logout } = useAuth();
   const { setFlash } = useFlash();
 
   function handleLogout() {
@@ -33,9 +33,9 @@ export default function SiteHeader() {
               <button
                 type="button"
                 className="ghost-button"
-                onClick={() => navigate(isAdminUser ? '/admin' : '/cashier')}
+                onClick={() => navigate(isAdminUser || isManagerUser ? '/admin' : '/cashier')}
               >
-                {isAdminUser ? 'Admin portal' : 'Front Desk portal'}
+                {isAdminUser ? 'Admin portal' : isManagerUser ? 'Manager portal' : 'Front Desk portal'}
               </button>
             ) : (
               <>

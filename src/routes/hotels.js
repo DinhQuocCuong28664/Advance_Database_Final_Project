@@ -1,12 +1,12 @@
 /**
- * LuxeReserve  Hotel Routes
+ * LuxeReserve - Hotel Routes
  * HYBRID: SQL Server (operational) + MongoDB (rich content)
  */
 
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql, getMongoDb } = require('../config/database');
-const { requireAdminUser } = require('../middleware/auth');
+const { requireAdminUser, requireAuth } = require('../middleware/auth');
 
 // GET /api/hotels  List all hotels (Hybrid merge)
 router.get('/', async (req, res) => {
@@ -16,17 +16,55 @@ router.get('/', async (req, res) => {
 
     // SQL: operational data
     const sqlResult = await pool.request().query(`
+      WITH LocationAncestors AS (
+        SELECT
+          h.hotel_id,
+          l.location_id,
+          l.parent_location_id,
+          l.location_name,
+          l.location_type,
+          0 AS depth
+        FROM Hotel h
+        JOIN Location l ON h.location_id = l.location_id
+
+        UNION ALL
+
+        SELECT
+          a.hotel_id,
+          p.location_id,
+          p.parent_location_id,
+          p.location_name,
+          p.location_type,
+          a.depth + 1
+        FROM LocationAncestors a
+        JOIN Location p ON a.parent_location_id = p.location_id
+      )
       SELECT h.hotel_id, h.hotel_code, h.hotel_name, h.hotel_type,
              h.star_rating, h.status, h.currency_code,
              h.latitude, h.longitude,
              h.check_in_time, h.check_out_time, h.total_rooms,
              b.brand_name, c.chain_name,
-             l.location_name AS city_name
+             city.location_name AS city_name,
+             country.location_name AS country_name,
+             district.location_name AS district_name
       FROM Hotel h
       JOIN Brand b ON h.brand_id = b.brand_id
       JOIN HotelChain c ON b.chain_id = c.chain_id
-      JOIN Location l ON h.location_id = l.location_id
+      JOIN Location district ON h.location_id = district.location_id
+      OUTER APPLY (
+        SELECT TOP 1 location_name
+        FROM LocationAncestors
+        WHERE hotel_id = h.hotel_id AND location_type = 'CITY'
+        ORDER BY depth ASC
+      ) city
+      OUTER APPLY (
+        SELECT TOP 1 location_name
+        FROM LocationAncestors
+        WHERE hotel_id = h.hotel_id AND location_type = 'COUNTRY'
+        ORDER BY depth ASC
+      ) country
       WHERE h.status = 'ACTIVE'
+      OPTION (MAXRECURSION 10)
     `);
 
     // MongoDB: rich content
@@ -65,14 +103,52 @@ router.get('/:id', async (req, res) => {
     const sqlHotel = await pool.request()
       .input('hotelId', sql.BigInt, hotelId)
       .query(`
+        WITH LocationAncestors AS (
+          SELECT
+            h.hotel_id,
+            l.location_id,
+            l.parent_location_id,
+            l.location_name,
+            l.location_type,
+            0 AS depth
+          FROM Hotel h
+          JOIN Location l ON h.location_id = l.location_id
+          WHERE h.hotel_id = @hotelId
+
+          UNION ALL
+
+          SELECT
+            a.hotel_id,
+            p.location_id,
+            p.parent_location_id,
+            p.location_name,
+            p.location_type,
+            a.depth + 1
+          FROM LocationAncestors a
+          JOIN Location p ON a.parent_location_id = p.location_id
+        )
         SELECT h.*, b.brand_name, b.brand_positioning, c.chain_name, c.chain_code,
-               l.location_name AS city_name, lp.location_name AS country_name
+               city.location_name AS city_name,
+               country.location_name AS country_name,
+               district.location_name AS district_name
         FROM Hotel h
         JOIN Brand b ON h.brand_id = b.brand_id
         JOIN HotelChain c ON b.chain_id = c.chain_id
-        JOIN Location l ON h.location_id = l.location_id
-        LEFT JOIN Location lp ON l.parent_location_id = lp.location_id
+        JOIN Location district ON h.location_id = district.location_id
+        OUTER APPLY (
+          SELECT TOP 1 location_name
+          FROM LocationAncestors
+          WHERE hotel_id = h.hotel_id AND location_type = 'CITY'
+          ORDER BY depth ASC
+        ) city
+        OUTER APPLY (
+          SELECT TOP 1 location_name
+          FROM LocationAncestors
+          WHERE hotel_id = h.hotel_id AND location_type = 'COUNTRY'
+          ORDER BY depth ASC
+        ) country
         WHERE h.hotel_id = @hotelId
+        OPTION (MAXRECURSION 10)
       `);
 
     if (sqlHotel.recordset.length === 0) {
@@ -214,6 +290,157 @@ router.get('/:id', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/hotels/:id/reviews  Public hotel reviews
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const hotelId = parseInt(req.params.id, 10);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 12, 50);
+    if (isNaN(hotelId)) {
+      return res.status(400).json({ success: false, error: 'Invalid hotel ID' });
+    }
+
+    const pool = getSqlPool();
+    const [summaryResult, reviewsResult] = await Promise.all([
+      pool.request()
+        .input('hotelId', sql.BigInt, hotelId)
+        .query(`
+          SELECT
+            COUNT(*) AS review_count,
+            CAST(AVG(CAST(rating_score AS DECIMAL(10,2))) AS DECIMAL(10,2)) AS average_rating
+          FROM HotelReview
+          WHERE hotel_id = @hotelId
+            AND public_visible_flag = 1
+            AND moderation_status = 'PUBLISHED'
+        `),
+      pool.request()
+        .input('hotelId', sql.BigInt, hotelId)
+        .query(`
+          SELECT TOP (${limit})
+            hr.hotel_review_id,
+            hr.rating_score,
+            hr.review_title,
+            hr.review_text,
+            hr.created_at,
+            hr.reservation_id,
+            g.full_name AS guest_name,
+            r.reservation_code
+          FROM HotelReview hr
+          JOIN Guest g ON hr.guest_id = g.guest_id
+          JOIN Reservation r ON hr.reservation_id = r.reservation_id
+          WHERE hr.hotel_id = @hotelId
+            AND hr.public_visible_flag = 1
+            AND hr.moderation_status = 'PUBLISHED'
+          ORDER BY hr.created_at DESC, hr.hotel_review_id DESC
+        `),
+    ]);
+
+    const summary = summaryResult.recordset[0] || { review_count: 0, average_rating: null };
+    return res.json({
+      success: true,
+      summary: {
+        review_count: Number(summary.review_count || 0),
+        average_rating: summary.average_rating == null ? null : Number(summary.average_rating),
+      },
+      count: reviewsResult.recordset.length,
+      data: reviewsResult.recordset,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/hotels/:id/reviews  Guest review after completed stay
+router.post('/:id/reviews', requireAuth, async (req, res) => {
+  try {
+    if (req.auth?.user_type !== 'GUEST') {
+      return res.status(403).json({ success: false, error: 'Guest account required to submit a hotel review' });
+    }
+
+    const hotelId = parseInt(req.params.id, 10);
+    const reservationId = parseInt(req.body?.reservation_id, 10);
+    const ratingScore = parseInt(req.body?.rating_score, 10);
+    const reviewTitle = String(req.body?.review_title || '').trim();
+    const reviewText = String(req.body?.review_text || '').trim();
+    const guestId = Number(req.auth.sub);
+
+    if (isNaN(hotelId) || isNaN(reservationId)) {
+      return res.status(400).json({ success: false, error: 'Valid hotel_id and reservation_id are required' });
+    }
+    if (!Number.isInteger(ratingScore) || ratingScore < 1 || ratingScore > 5) {
+      return res.status(400).json({ success: false, error: 'rating_score must be an integer between 1 and 5' });
+    }
+    if (!reviewText) {
+      return res.status(400).json({ success: false, error: 'review_text is required' });
+    }
+
+    const pool = getSqlPool();
+
+    const reservationResult = await pool.request()
+      .input('hotelId', sql.BigInt, hotelId)
+      .input('reservationId', sql.BigInt, reservationId)
+      .input('guestId', sql.BigInt, guestId)
+      .query(`
+        SELECT TOP 1
+          r.reservation_id,
+          r.reservation_code,
+          r.reservation_status,
+          r.hotel_id,
+          r.guest_id
+        FROM Reservation r
+        WHERE r.reservation_id = @reservationId
+          AND r.hotel_id = @hotelId
+          AND r.guest_id = @guestId
+          AND r.reservation_status = 'CHECKED_OUT'
+      `);
+
+    if (reservationResult.recordset.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only completed stays at this hotel can be reviewed',
+      });
+    }
+
+    const existingReview = await pool.request()
+      .input('reservationId', sql.BigInt, reservationId)
+      .query(`
+        SELECT hotel_review_id
+        FROM HotelReview
+        WHERE reservation_id = @reservationId
+      `);
+
+    if (existingReview.recordset.length > 0) {
+      return res.status(409).json({ success: false, error: 'A review has already been submitted for this reservation' });
+    }
+
+    const insertResult = await pool.request()
+      .input('hotelId', sql.BigInt, hotelId)
+      .input('guestId', sql.BigInt, guestId)
+      .input('reservationId', sql.BigInt, reservationId)
+      .input('ratingScore', sql.Int, ratingScore)
+      .input('reviewTitle', sql.NVarChar(150), reviewTitle || null)
+      .input('reviewText', sql.NVarChar(1500), reviewText)
+      .query(`
+        INSERT INTO HotelReview (
+          hotel_id, guest_id, reservation_id, rating_score, review_title, review_text,
+          public_visible_flag, moderation_status
+        )
+        OUTPUT INSERTED.*
+        VALUES (
+          @hotelId, @guestId, @reservationId, @ratingScore, @reviewTitle, @reviewText,
+          1, 'PUBLISHED'
+        )
+      `);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Thank you. Your review is now visible on the hotel page.',
+      data: insertResult.recordset[0],
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

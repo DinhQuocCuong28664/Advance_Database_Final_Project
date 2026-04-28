@@ -136,7 +136,7 @@ BEGIN
 END;
 GO
 
-PRINT 'OK PROCEDURE sp_ReserveRoom created.';
+PRINT '[OK] PROCEDURE sp_ReserveRoom created.';
 GO
 
 -- ============================================================
@@ -352,7 +352,7 @@ BEGIN
 END;
 GO
 
-PRINT 'OK PROCEDURE sp_TransferRoom created.';
+PRINT '[OK] PROCEDURE sp_TransferRoom created.';
 GO
 
 

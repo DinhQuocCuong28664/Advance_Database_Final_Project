@@ -3,19 +3,19 @@ Project GlobalLuxuryHotelReservationEngine {
   Note: '''
   SQL schema for Global Luxury Hotel Reservation Engine.
   ========================================================
-  REMAKE VERSION — Sửa lỗi trùng lắp dữ liệu
-  Người thực hiện: NoSQL Specialist & Hierarchy Expert
+  REMAKE VERSION -- Fixes data redundancy issues
+  Author: NoSQL Specialist & Hierarchy Expert
   ========================================================
 
-  Các thay đổi so với bản gốc:
-  [FIX-1] Xóa currency_code khỏi HotelAmenity, RoomRate, ServiceCatalog (JOIN từ Hotel)
-  [FIX-2] Xóa hotel_id khỏi RateChangeLog, InventoryLockLog (JOIN từ Room/RoomRate)
-  [FIX-3] Ghi chú Reservation financial fields nên dùng computed/view
-  [FIX-4] Guest.full_name → computed column
-  [FIX-5] HotelAmenity: xóa amenity_name, amenity_category (chuyển sang MongoDB amenity_master)
-  [FIX-6] RoomType: xóa base_description, boolean features (chuyển sang MongoDB room_type_catalog)
-  [FIX-7] Thêm bảng Location cho hierarchy (Recursive CTE)
-  [FIX-8] RoomFeature: thêm CHECK constraint (ít nhất 1 FK phải NOT NULL)
+  Changes from original:
+  [FIX-1] Remove currency_code from HotelAmenity, RoomRate, ServiceCatalog (JOIN from Hotel)
+  [FIX-2] Remove hotel_id from RateChangeLog, InventoryLockLog (JOIN from Room/RoomRate)
+  [FIX-3] Note Reservation financial fields should use computed/view
+  [FIX-4] Guest.full_name -> computed column
+  [FIX-5] HotelAmenity: remove amenity_name, amenity_category (moved to MongoDB amenity_master)
+  [FIX-6] RoomType: remove base_description, boolean features (moved to MongoDB room_type_catalog)
+  [FIX-7] Add Location table for hierarchy (Recursive CTE)
+  [FIX-8] RoomFeature: add CHECK constraint (at least 1 FK must be NOT NULL)
 
   Purpose:
   - ACID-safe booking and payment transactions
@@ -25,17 +25,17 @@ Project GlobalLuxuryHotelReservationEngine {
   - Luxury guest preferences and add-on services
 
   MongoDB collections (hybrid design):
-  - Hotel_Catalog      → rich content, images, embedded amenities & room_types
-  - Amenities          → amenity master data (name, category, description, images, tags)
-  - Images             → hotel/room media gallery
-  - guest_profile_projection → read-optimized guest profile
+  - Hotel_Catalog      -> rich content, images, embedded amenities & room_types
+  - Amenities          -> amenity master data (name, category, description, images, tags)
+  - Images             -> hotel/room media gallery
+  - guest_profile_projection -> read-optimized guest profile
   - review_summary
   - search_audit_log
   '''
 }
 
 // ============================
-// ENUMS (không thay đổi)
+// ENUMS (unchanged)
 // ============================
 
 Enum hotel_status {
@@ -424,7 +424,7 @@ Enum audit_action_type {
   STATUS_CHANGE
 }
 
-// [FIX-7] NEW — Enum cho Location hierarchy
+// [FIX-7] NEW -- Enum for Location hierarchy
 Enum location_type {
   REGION
   COUNTRY
@@ -474,9 +474,9 @@ Table Brand {
 }
 
 // =============================================================
-// [FIX-7] NEW — Bảng Location: cấu trúc phân cấp (adjacency list)
-// Hỗ trợ Recursive CTE để query theo vùng/quốc gia/thành phố
-// VD: Lấy tất cả khách sạn trong vùng "Đông Nam Á"
+// [FIX-7] NEW -- Location table: hierarchical structure (adjacency list)
+// Supports Recursive CTE to query by region/country/city
+// Example: Get all hotels in the "Southeast Asia" region
 // =============================================================
 Table Location {
   location_id bigint [pk, increment]
@@ -485,7 +485,7 @@ Table Location {
   location_name varchar(150) [not null]
   location_type location_type [not null, note: 'REGION / COUNTRY / STATE_PROVINCE / CITY / DISTRICT']
   level int [not null, note: '0=Region, 1=Country, 2=State, 3=City, 4=District']
-  iso_code varchar(10) [note: 'ISO 3166 code nếu có (VD: VN, US, SG)']
+  iso_code varchar(10) [note: 'ISO 3166 code if applicable (e.g. VN, US, SG)']
   latitude decimal(10,7)
   longitude decimal(10,7)
   timezone varchar(64)
@@ -498,20 +498,20 @@ Table Location {
   }
 
   Note: '''
-  [FIX-7] Bảng mới — Cấu trúc phân cấp vị trí địa lý.
-  Ví dụ hierarchy:
-    Đông Nam Á (REGION, level=0)
-      └── Vietnam (COUNTRY, level=1)
-            ├── Hồ Chí Minh (STATE_PROVINCE, level=2)
-            │     └── TP. Hồ Chí Minh (CITY, level=3)
-            │           ├── Quận 1 (DISTRICT, level=4)
-            │           └── Quận 7 (DISTRICT, level=4)
-            └── Khánh Hòa (STATE_PROVINCE, level=2)
-                  └── Nha Trang (CITY, level=3)
+  [FIX-7] New table -- Geographic location hierarchy.
+  Example hierarchy:
+    Southeast Asia (REGION, level=0)
+      +-- Vietnam (COUNTRY, level=1)
+            +-- Ho Chi Minh (STATE_PROVINCE, level=2)
+            |     +-- Ho Chi Minh City (CITY, level=3)
+            |           +-- District 1 (DISTRICT, level=4)
+            |           +-- District 7 (DISTRICT, level=4)
+            +-- Khanh Hoa (STATE_PROVINCE, level=2)
+                  +-- Nha Trang (CITY, level=3)
 
-  Recursive CTE ví dụ:
+  Recursive CTE example:
   WITH RECURSIVE LocationTree AS (
-    SELECT * FROM Location WHERE location_name = N''Đông Nam Á''
+    SELECT * FROM Location WHERE location_name = N''Southeast Asia''
     UNION ALL
     SELECT L.* FROM Location L
       JOIN LocationTree LT ON L.parent_location_id = LT.location_id
@@ -543,8 +543,8 @@ Table Hotel {
   contact_phone varchar(30)
   reservation_email varchar(150)
   reservation_phone varchar(30)
-  // [FIX-7] Thay thế flat address fields bằng FK tới Location hierarchy
-  location_id bigint [not null, note: 'FK tới Location (level DISTRICT hoặc CITY). Thay cho country_code, city, district riêng lẻ']
+  // [FIX-7] Replace flat address fields with FK to Location hierarchy
+  location_id bigint [not null, note: 'FK to Location (level DISTRICT or CITY). Replaces separate country_code, city, district fields']
   address_line_1 varchar(200) [not null]
   address_line_2 varchar(200)
   postal_code varchar(20)
@@ -555,8 +555,8 @@ Table Hotel {
 
   Note: '''
   Physical hotel property.
-  [FIX-7] Đã thêm location_id FK thay cho flat fields: country_code, state_province, city, district.
-  Giờ có thể dùng Recursive CTE trên Location để query theo region/country/city.
+  [FIX-7] Added location_id FK replacing flat fields: country_code, state_province, city, district.
+  Recursive CTE on Location can now query by region/country/city.
   '''
 }
 
@@ -582,18 +582,18 @@ Table HotelPolicy {
 }
 
 // =============================================================
-// [FIX-5] HotelAmenity — Xóa amenity_name, amenity_category
-// [FIX-1] HotelAmenity — Xóa currency_code
-// Master data (name, category, description) → MongoDB amenity_master
-// SQL chỉ giữ operational mapping + fees
+// [FIX-5] HotelAmenity -- Remove amenity_name, amenity_category
+// [FIX-1] HotelAmenity -- Remove currency_code
+// Master data (name, category, description) -> MongoDB amenity_master
+// SQL keeps only operational mapping + fees
 // =============================================================
 Table HotelAmenity {
   hotel_amenity_id bigint [pk, increment]
   hotel_id bigint [not null]
-  amenity_code varchar(50) [not null, note: 'Link key tới MongoDB amenity_master collection']
-  // [FIX-5] ĐÃ XÓA: amenity_name varchar(150)       → lấy từ MongoDB amenity_master
-  // [FIX-5] ĐÃ XÓA: amenity_category amenity_category → lấy từ MongoDB amenity_master
-  // [FIX-1] ĐÃ XÓA: currency_code char(3)            → JOIN từ Hotel.currency_code
+  amenity_code varchar(50) [not null, note: 'Link key to MongoDB amenity_master collection']
+  // [FIX-5] REMOVED: amenity_name varchar(150)         -> fetched from MongoDB amenity_master
+  // [FIX-5] REMOVED: amenity_category amenity_category  -> fetched from MongoDB amenity_master
+  // [FIX-1] REMOVED: currency_code char(3)              -> JOIN from Hotel.currency_code
   is_complimentary boolean [not null, default: true]
   is_chargeable boolean [not null, default: false]
   base_fee decimal(18,2)
@@ -608,21 +608,21 @@ Table HotelAmenity {
   }
 
   Note: '''
-  [FIX-1] Xóa currency_code → JOIN Hotel.currency_code
-  [FIX-5] Xóa amenity_name, amenity_category → lấy từ MongoDB amenity_master bằng amenity_code
+  [FIX-1] Remove currency_code -> JOIN Hotel.currency_code
+  [FIX-5] Remove amenity_name, amenity_category -> fetched from MongoDB amenity_master by amenity_code
   Hybrid query: SQL operational data + MongoDB rich content
   '''
 }
 
 // =============================================================
-// [FIX-6] RoomType — Xóa base_description, boolean features
-// Rich content chuyển sang MongoDB room_type_catalog
-// SQL giữ operational fields cho booking logic
+// [FIX-6] RoomType -- Remove base_description, boolean features
+// Rich content moved to MongoDB room_type_catalog
+// SQL keeps operational fields for booking logic
 // =============================================================
 Table RoomType {
   room_type_id bigint [pk, increment]
   hotel_id bigint [not null]
-  room_type_code varchar(50) [not null, note: 'Link key tới MongoDB room_type_catalog']
+  room_type_code varchar(50) [not null, note: 'Link key to MongoDB room_type_catalog']
   room_type_name varchar(150) [not null]
   category room_category [not null]
   bed_type bed_type [not null]
@@ -632,9 +632,9 @@ Table RoomType {
   room_size_sqm decimal(10,2)
   view_type view_type
   smoking_allowed boolean [not null, default: false]
-  // [FIX-6] ĐÃ XÓA các boolean features → chuyển sang MongoDB room_type_catalog embedded doc:
+  // [FIX-6] REMOVED boolean features -> moved to MongoDB room_type_catalog embedded doc:
   // has_balcony, has_private_pool, has_lounge_access, has_butler_service
-  // [FIX-6] ĐÃ XÓA: base_description text → chuyển sang MongoDB room_type_catalog
+  // [FIX-6] REMOVED: base_description text -> moved to MongoDB room_type_catalog
   status brand_status [not null, default: 'ACTIVE']
   created_at datetime [not null]
   updated_at datetime [not null]
@@ -645,9 +645,9 @@ Table RoomType {
 
   Note: '''
   Commercial room type sold to guests.
-  [FIX-6] Xóa base_description, has_balcony, has_private_pool, has_lounge_access, has_butler_service
-  → Chuyển sang MongoDB room_type_catalog collection (rich content + images + features embedded).
-  Link qua room_type_code.
+  [FIX-6] Remove base_description, has_balcony, has_private_pool, has_lounge_access, has_butler_service
+  -> Moved to MongoDB room_type_catalog collection (rich content + images + features embedded).
+  Linked via room_type_code.
   '''
 }
 
@@ -678,7 +678,7 @@ Table Room {
 }
 
 // =============================================================
-// [FIX-8] RoomFeature — Thêm CHECK constraint
+// [FIX-8] RoomFeature -- Add CHECK constraint
 // =============================================================
 Table RoomFeature {
   room_feature_id bigint [pk, increment]
@@ -693,7 +693,7 @@ Table RoomFeature {
 
   Note: '''
   Feature attached either to a room type or a physical room.
-  [FIX-8] CHECK constraint: ít nhất 1 trong 2 FK phải NOT NULL.
+  [FIX-8] CHECK constraint: at least 1 of the 2 FKs must be NOT NULL.
   SQL: ALTER TABLE RoomFeature
        ADD CONSTRAINT CK_RoomFeature_AtLeastOneFK
        CHECK (room_id IS NOT NULL OR room_type_id IS NOT NULL);
@@ -702,7 +702,7 @@ Table RoomFeature {
 
 Table RoomAvailability {
   availability_id bigint [pk, increment]
-  hotel_id bigint [not null, note: 'Giữ lại (denormalized) cho performance — query filter theo hotel thường xuyên']
+  hotel_id bigint [not null, note: 'Kept (denormalized) for performance -- hotel filter query is frequent']
   room_id bigint [not null]
   stay_date date [not null]
   availability_status availability_status [not null, default: 'OPEN']
@@ -724,7 +724,7 @@ Table RoomAvailability {
     (hotel_id, availability_status, stay_date)
   }
 
-  Note: 'Critical table for inventory checks and pessimistic locking. hotel_id giữ denormalized cho performance.'
+  Note: 'Critical table for inventory checks and pessimistic locking. hotel_id kept denormalized for performance.'
 }
 
 Table RatePlan {
@@ -751,7 +751,7 @@ Table RatePlan {
 }
 
 // =============================================================
-// [FIX-1] RoomRate — Xóa currency_code
+// [FIX-1] RoomRate -- Remove currency_code
 // =============================================================
 Table RoomRate {
   room_rate_id bigint [pk, increment]
@@ -763,7 +763,7 @@ Table RoomRate {
   discount_amount decimal(18,2) [not null, default: 0]
   discount_percent decimal(5,2) [not null, default: 0]
   final_rate decimal(18,2) [not null]
-  // [FIX-1] ĐÃ XÓA: currency_code char(3) → JOIN từ Hotel.currency_code qua hotel_id
+  // [FIX-1] REMOVED: currency_code char(3) -> JOIN from Hotel.currency_code via hotel_id
   tax_inclusive_flag boolean [not null, default: false]
   available_inventory_count int
   price_source price_source [not null, default: 'MANUAL']
@@ -780,19 +780,19 @@ Table RoomRate {
 
   Note: '''
   Daily sell rate by room type and rate plan.
-  [FIX-1] Xóa currency_code → JOIN Hotel.currency_code qua hotel_id
+  [FIX-1] Remove currency_code -> JOIN Hotel.currency_code via hotel_id
   '''
 }
 
 // =============================================================
-// [FIX-2] RateChangeLog — Xóa hotel_id (JOIN từ RoomRate)
+// [FIX-2] RateChangeLog -- Remove hotel_id (JOIN from RoomRate)
 // =============================================================
 Table RateChangeLog {
   rate_change_log_id bigint [pk, increment]
-  room_rate_id bigint [not null, note: 'FK tới RoomRate — từ đây JOIN sang hotel_id, room_type_id, rate_plan_id']
-  // [FIX-2] ĐÃ XÓA: hotel_id bigint     → JOIN RoomRate.hotel_id
-  // [FIX-2] ĐÃ XÓA: room_type_id bigint  → JOIN RoomRate.room_type_id
-  // [FIX-2] ĐÃ XÓA: rate_plan_id bigint  → JOIN RoomRate.rate_plan_id
+  room_rate_id bigint [not null, note: 'FK to RoomRate -- from here JOIN to hotel_id, room_type_id, rate_plan_id']
+  // [FIX-2] REMOVED: hotel_id bigint     -> JOIN RoomRate.hotel_id
+  // [FIX-2] REMOVED: room_type_id bigint  -> JOIN RoomRate.room_type_id
+  // [FIX-2] REMOVED: rate_plan_id bigint  -> JOIN RoomRate.rate_plan_id
   old_rate decimal(18,2) [not null]
   new_rate decimal(18,2) [not null]
   change_amount decimal(18,2) [not null]
@@ -809,8 +809,8 @@ Table RateChangeLog {
 
   Note: '''
   Populated by trigger when rate change exceeds policy threshold.
-  [FIX-2] Xóa hotel_id, room_type_id, rate_plan_id → đã có qua RoomRate FK.
-  Query: JOIN RoomRate ON room_rate_id → lấy hotel_id, room_type_id, rate_plan_id.
+  [FIX-2] Remove hotel_id, room_type_id, rate_plan_id -> already available via RoomRate FK.
+  Query: JOIN RoomRate ON room_rate_id -> get hotel_id, room_type_id, rate_plan_id.
   '''
 }
 
@@ -822,7 +822,7 @@ Table Promotion {
   promotion_name varchar(150) [not null]
   promotion_type varchar(50) [not null]
   discount_value decimal(18,2) [not null]
-  currency_code char(3) [note: 'Giữ lại — promotion có thể cross-hotel, cần currency riêng']
+  currency_code char(3) [note: 'Kept -- promotions may be cross-hotel and need their own currency']
   applies_to varchar(30) [not null]
   booking_start_date date [not null]
   booking_end_date date [not null]
@@ -840,7 +840,7 @@ Table Promotion {
 }
 
 // =============================================================
-// [FIX-4] Guest — full_name thành computed column
+// [FIX-4] Guest -- full_name becomes a computed column
 // =============================================================
 Table Guest {
   guest_id bigint [pk, increment]
@@ -849,8 +849,8 @@ Table Guest {
   first_name varchar(100) [not null]
   middle_name varchar(100)
   last_name varchar(100) [not null]
-  // [FIX-4] ĐÃ XÓA: full_name varchar(220)
-  // → Thay bằng computed column:
+  // [FIX-4] REMOVED: full_name varchar(220)
+  // -> Replaced with computed column:
   // ALTER TABLE Guest ADD full_name AS (
   //   CONCAT(COALESCE(first_name,''), ' ', COALESCE(middle_name,''), ' ', COALESCE(last_name,''))
   // ) PERSISTED;
@@ -876,7 +876,7 @@ Table Guest {
 
   Note: 
   '''
-  [FIX-4] full_name đã xóa khỏi schema → dùng computed column:
+  [FIX-4] full_name removed from schema -> use computed column:
   ALTER TABLE Guest ADD full_name AS (
     CONCAT(COALESCE(first_name,''), ' ', COALESCE(middle_name,''), ' ', COALESCE(last_name,''))
   ) PERSISTED;
@@ -947,7 +947,7 @@ Table BookingChannel {
 }
 
 // =============================================================
-// [FIX-3] Reservation — Ghi chú: financial fields nên là computed/view
+// [FIX-3] Reservation -- Note: financial fields should be computed/view
 // =============================================================
 Table Reservation {
   reservation_id bigint [pk, increment]
@@ -964,15 +964,15 @@ Table Reservation {
   adult_count int [not null]
   child_count int [not null, default: 0]
   room_count int [not null, default: 1]
-  currency_code char(3) [not null, note: 'Giữ lại — snapshot tại thời điểm đặt phòng']
-  // [FIX-3] Các trường financial NÊN tính từ ReservationRoom + ReservationService
-  // Khuyến nghị: tạo VIEW vw_ReservationTotal thay vì lưu cứng
-  // Hoặc dùng computed columns. Giữ tạm để backward compatible.
-  subtotal_amount decimal(18,2) [not null, default: 0, note: 'FIX-3: Nên là SUM(ReservationRoom.room_subtotal)']
-  tax_amount decimal(18,2) [not null, default: 0, note: 'FIX-3: Nên là SUM(ReservationRoom.tax_amount)']
+  currency_code char(3) [not null, note: 'Kept -- snapshot at booking time']
+  // [FIX-3] Financial fields SHOULD be computed from ReservationRoom + ReservationService
+  // Recommendation: create VIEW vw_ReservationTotal instead of storing directly
+  // Or use computed columns. Kept temporarily for backward compatibility.
+  subtotal_amount decimal(18,2) [not null, default: 0, note: 'FIX-3: Should be SUM(ReservationRoom.room_subtotal)']
+  tax_amount decimal(18,2) [not null, default: 0, note: 'FIX-3: Should be SUM(ReservationRoom.tax_amount)']
   service_charge_amount decimal(18,2) [not null, default: 0]
-  discount_amount decimal(18,2) [not null, default: 0, note: 'FIX-3: Nên là SUM(ReservationRoom.discount_amount)']
-  grand_total_amount decimal(18,2) [not null, default: 0, note: 'FIX-3: Nên = subtotal + tax + service_charge - discount']
+  discount_amount decimal(18,2) [not null, default: 0, note: 'FIX-3: Should be SUM(ReservationRoom.discount_amount)']
+  grand_total_amount decimal(18,2) [not null, default: 0, note: 'FIX-3: Should be subtotal + tax + service_charge - discount']
   deposit_required_flag boolean [not null, default: false]
   deposit_amount decimal(18,2) [not null, default: 0]
   guarantee_type guarantee_type [not null, default: 'NONE']
@@ -991,8 +991,8 @@ Table Reservation {
 
   Note: '''
   Reservation header.
-  [FIX-3] Financial fields (subtotal, tax, discount, grand_total) trùng lắp với ReservationRoom.
-  Khuyến nghị tạo VIEW:
+  [FIX-3] Financial fields (subtotal, tax, discount, grand_total) overlap with ReservationRoom.
+  Recommendation: create a VIEW:
   CREATE VIEW vw_ReservationTotal AS
   SELECT r.reservation_id,
          SUM(rr.room_subtotal) AS subtotal,
@@ -1039,7 +1039,7 @@ Table ReservationGuest {
   reservation_guest_id bigint [pk, increment]
   reservation_id bigint [not null]
   guest_id bigint
-  full_name varchar(220) [not null, note: 'Giữ lại — snapshot tại thời điểm booking, khách có thể đổi tên sau']
+  full_name varchar(220) [not null, note: 'Kept -- snapshot at booking time; guest may change name later']
   is_primary_guest boolean [not null, default: false]
   age_category age_category [not null]
   nationality_country_code char(2)
@@ -1072,7 +1072,7 @@ Table Payment {
   payment_status payment_status [not null, default: 'INITIATED']
   gateway_transaction_id varchar(120)
   amount decimal(18,2) [not null]
-  currency_code char(3) [not null, note: 'Giữ lại — snapshot giao dịch, có thể khác currency hotel']
+  currency_code char(3) [not null, note: 'Kept -- transaction snapshot; may differ from hotel currency']
   exchange_rate decimal(18,6)
   paid_at datetime
   failure_reason varchar(255)
@@ -1109,17 +1109,17 @@ Table Invoice {
   billing_name varchar(150)
   billing_tax_no varchar(50)
   billing_address text
-  subtotal_amount decimal(18,2) [not null, default: 0, note: 'Historical snapshot — giữ nguyên']
+  subtotal_amount decimal(18,2) [not null, default: 0, note: 'Historical snapshot -- keep as-is']
   tax_amount decimal(18,2) [not null, default: 0]
   service_charge_amount decimal(18,2) [not null, default: 0]
   total_amount decimal(18,2) [not null, default: 0]
-  currency_code char(3) [not null, note: 'Giữ lại — snapshot hóa đơn']
+  currency_code char(3) [not null, note: 'Kept -- invoice snapshot']
   status invoice_status [not null, default: 'DRAFT']
   created_at datetime [not null]
 }
 
 // =============================================================
-// [FIX-1] ServiceCatalog — Xóa currency_code
+// [FIX-1] ServiceCatalog -- Remove currency_code
 // =============================================================
 Table ServiceCatalog {
   service_id bigint [pk, increment]
@@ -1129,7 +1129,7 @@ Table ServiceCatalog {
   service_category service_category [not null]
   pricing_model pricing_model [not null]
   base_price decimal(18,2) [not null, default: 0]
-  // [FIX-1] ĐÃ XÓA: currency_code char(3) → JOIN từ Hotel.currency_code
+  // [FIX-1] REMOVED: currency_code char(3) -> JOIN from Hotel.currency_code
   is_active boolean [not null, default: true]
   requires_advance_booking boolean [not null, default: false]
   description_short varchar(255)
@@ -1141,8 +1141,8 @@ Table ServiceCatalog {
   }
 
   Note: '''
-  [FIX-1] Xóa currency_code → JOIN Hotel.currency_code qua hotel_id.
-  Service luôn thuộc 1 hotel → dùng chung currency.
+  [FIX-1] Remove currency_code -> JOIN Hotel.currency_code via hotel_id.
+  Service always belongs to 1 hotel -> share the same currency.
   '''
 }
 
@@ -1177,7 +1177,7 @@ Table StayRecord {
 
 Table HousekeepingTask {
   hk_task_id bigint [pk, increment]
-  hotel_id bigint [not null, note: 'Giữ lại (denormalized) — query filter theo hotel thường xuyên']
+  hotel_id bigint [not null, note: 'Kept (denormalized) for performance -- hotel filter query is frequent']
   room_id bigint [not null]
   task_type hk_task_type [not null]
   task_status hk_task_status [not null, default: 'OPEN']
@@ -1250,12 +1250,12 @@ Table UserRole {
 }
 
 // =============================================================
-// [FIX-2] InventoryLockLog — Xóa hotel_id
+// [FIX-2] InventoryLockLog -- Remove hotel_id
 // =============================================================
 Table InventoryLockLog {
   lock_log_id bigint [pk, increment]
   reservation_code_attempt varchar(50)
-  // [FIX-2] ĐÃ XÓA: hotel_id bigint → JOIN Room.hotel_id qua room_id
+  // [FIX-2] REMOVED: hotel_id bigint -> JOIN Room.hotel_id via room_id
   room_id bigint [not null]
   stay_date date [not null]
   lock_acquired_at datetime
@@ -1271,8 +1271,8 @@ Table InventoryLockLog {
 
   Note: '''
   Technical/audit table to support concurrency defense.
-  [FIX-2] Xóa hotel_id → JOIN Room.hotel_id nếu cần filter theo hotel.
-  Bảng audit, ít query trực tiếp theo hotel.
+  [FIX-2] Remove hotel_id -> JOIN Room.hotel_id if hotel filter is needed.
+  Audit table; rarely queried directly by hotel.
   '''
 }
 
@@ -1322,7 +1322,7 @@ Ref: RoomRate.rate_plan_id > RatePlan.rate_plan_id
 Ref: RoomRate.created_by > SystemUser.user_id
 Ref: RoomRate.updated_by > SystemUser.user_id
 
-// [FIX-2] RateChangeLog — chỉ giữ FK tới RoomRate
+// [FIX-2] RateChangeLog -- only keeps FK to RoomRate
 Ref: RateChangeLog.room_rate_id > RoomRate.room_rate_id
 Ref: RateChangeLog.triggered_by > SystemUser.user_id
 
@@ -1380,7 +1380,7 @@ Ref: UserRole.user_id > SystemUser.user_id
 Ref: UserRole.role_id > Role.role_id
 Ref: UserRole.assigned_by > SystemUser.user_id
 
-// [FIX-2] InventoryLockLog — xóa hotel_id ref
+// [FIX-2] InventoryLockLog -- removed hotel_id ref
 Ref: InventoryLockLog.room_id > Room.room_id
 
 Ref: AuditLog.changed_by > SystemUser.user_id

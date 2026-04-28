@@ -74,5 +74,5 @@ LEFT JOIN (
 ) pay_totals ON r.reservation_id = pay_totals.reservation_id;
 GO
 
-PRINT 'OK VIEW vw_ReservationTotal created.';
+PRINT '[OK] VIEW vw_ReservationTotal created.';
 GO

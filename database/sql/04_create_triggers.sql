@@ -61,7 +61,7 @@ BEGIN
 END;
 GO
 
-PRINT 'OK TRIGGER trg_RoomRate_PriceIntegrityGuard created.';
+PRINT '[OK] TRIGGER trg_RoomRate_PriceIntegrityGuard created.';
 GO
 
 -- ============================================================
@@ -124,5 +124,5 @@ BEGIN
 END;
 GO
 
-PRINT 'OK TRIGGER trg_Reservation_CancellationAudit created.';
+PRINT '[OK] TRIGGER trg_Reservation_CancellationAudit created.';
 GO

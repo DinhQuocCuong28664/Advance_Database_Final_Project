@@ -1,5 +1,5 @@
 /**
- * LuxeReserve  Room Routes
+ * LuxeReserve - Room Routes
  * Room availability, search by date range
  */
 
@@ -25,9 +25,11 @@ router.get('/availability', async (req, res) => {
                rt.room_type_name, rt.category, rt.bed_type,
                rt.max_adults, rt.room_size_sqm, rt.view_type,
                rt.room_type_code,
+               h.currency_code,
                MIN(rr.final_rate) AS min_nightly_rate
         FROM Room r
         JOIN RoomType rt ON r.room_type_id = rt.room_type_id
+        JOIN Hotel h ON r.hotel_id = h.hotel_id
         LEFT JOIN RoomRate rr ON rt.room_type_id = rr.room_type_id
           AND rr.rate_date >= @checkin AND rr.rate_date < @checkout
         WHERE r.hotel_id = @hotelId
@@ -41,8 +43,7 @@ router.get('/availability', async (req, res) => {
         GROUP BY r.room_id, r.room_number, r.floor_number,
                  rt.room_type_name, rt.category, rt.bed_type,
                  rt.max_adults, rt.room_size_sqm, rt.view_type,
-                 rt.room_type_code
-        HAVING MIN(rr.final_rate) > 0
+                 rt.room_type_code, h.currency_code
         ORDER BY rt.category, r.floor_number
       `);
 

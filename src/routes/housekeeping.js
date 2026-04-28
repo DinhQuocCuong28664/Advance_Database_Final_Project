@@ -1,5 +1,5 @@
 /**
- * LuxeReserve  Housekeeping Routes
+ * LuxeReserve - Housekeeping Routes
  * Manage housekeeping tasks: assign, track, complete
  * Activates: HousekeepingTask (assigned_staff_id, scheduled_for, started_at, completed_at, note)
  *            Room (housekeeping_status)
@@ -8,6 +8,27 @@
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
+
+function normalizeSqlDateTime(value) {
+  if (!value) return null;
+
+  const raw = String(value).trim();
+  const localDateTime = raw.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::(\d{2}))?/);
+  if (localDateTime) {
+    return `${localDateTime[1]} ${localDateTime[2]}:${localDateTime[3] || '00'}`;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const pad = (n) => String(n).padStart(2, '0');
+  return [
+    `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`,
+    `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}:${pad(parsed.getSeconds())}`,
+  ].join(' ');
+}
 
 // 
 // GET /api/housekeeping?hotel_id=1&status=OPEN
@@ -85,6 +106,11 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, error: 'hotel_id, room_id, task_type required' });
     }
 
+    const scheduledSql = normalizeSqlDateTime(scheduled_for);
+    if (scheduled_for && !scheduledSql) {
+      return res.status(400).json({ success: false, error: 'scheduled_for must be a valid date/time' });
+    }
+
     const pool = getSqlPool();
     const result = await pool.request()
       .input('hotelId', sql.BigInt, hotel_id)
@@ -92,12 +118,12 @@ router.post('/', async (req, res) => {
       .input('type', sql.VarChar(15), task_type)
       .input('priority', sql.VarChar(10), priority_level || 'MEDIUM')
       .input('note', sql.NVarChar(255), note || null)
-      .input('scheduled', sql.DateTime, scheduled_for ? new Date(scheduled_for) : null)
+      .input('scheduled', sql.VarChar(19), scheduledSql)
       .input('staffId', sql.BigInt, assigned_staff_id || null)
       .query(`
         INSERT INTO HousekeepingTask (hotel_id, room_id, task_type, task_status, priority_level, note, scheduled_for, assigned_staff_id)
         OUTPUT INSERTED.*
-        VALUES (@hotelId, @roomId, @type, CASE WHEN @staffId IS NOT NULL THEN 'ASSIGNED' ELSE 'OPEN' END, @priority, @note, @scheduled, @staffId)
+        VALUES (@hotelId, @roomId, @type, CASE WHEN @staffId IS NOT NULL THEN 'ASSIGNED' ELSE 'OPEN' END, @priority, @note, TRY_CONVERT(DATETIME, @scheduled, 120), @staffId)
       `);
 
     res.status(201).json({ success: true, data: result.recordset[0] });
@@ -119,16 +145,21 @@ router.put('/:id/assign', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Valid task ID and staff_id required' });
     }
 
+    const scheduledSql = normalizeSqlDateTime(scheduled_for);
+    if (scheduled_for && !scheduledSql) {
+      return res.status(400).json({ success: false, error: 'scheduled_for must be a valid date/time' });
+    }
+
     const pool = getSqlPool();
     const result = await pool.request()
       .input('taskId', sql.BigInt, taskId)
       .input('staffId', sql.BigInt, staff_id)
-      .input('scheduled', sql.DateTime, scheduled_for ? new Date(scheduled_for) : null)
+      .input('scheduled', sql.VarChar(19), scheduledSql)
       .query(`
         UPDATE HousekeepingTask
         SET assigned_staff_id = @staffId,
             task_status = 'ASSIGNED',
-            scheduled_for = ISNULL(@scheduled, scheduled_for),
+            scheduled_for = ISNULL(TRY_CONVERT(DATETIME, @scheduled, 120), scheduled_for),
             updated_at = GETDATE()
         OUTPUT INSERTED.*
         WHERE hk_task_id = @taskId AND task_status IN ('OPEN', 'ASSIGNED')

@@ -1,5 +1,5 @@
 /**
- * LuxeReserve  Payment Routes
+ * LuxeReserve - Payment Routes
  */
 
 const express = require('express');
@@ -41,6 +41,7 @@ router.post('/', async (req, res) => {
     const resvCheck = await pool.request()
       .input('resvId', sql.BigInt, reservation_id)
       .query(`SELECT reservation_id, guest_id, reservation_status, grand_total_amount, deposit_amount
+                   , currency_code
               FROM Reservation WHERE reservation_id = @resvId`);
     if (resvCheck.recordset.length === 0) {
       return res.status(404).json({ success: false, error: 'Reservation not found' });
@@ -130,7 +131,7 @@ router.post('/', async (req, res) => {
       .input('type', sql.VarChar(20), resolvedType)
       .input('method', sql.VarChar(20), resolvedMethod)
       .input('amount', sql.Decimal(18, 2), amount)
-      .input('currency', sql.Char(3), currency_code || 'VND')
+      .input('currency', sql.Char(3), reservation.currency_code || currency_code || 'VND')
       .query(`
         INSERT INTO Payment (reservation_id, payment_reference, payment_type, payment_method, payment_status, amount, currency_code, paid_at)
         OUTPUT INSERTED.*

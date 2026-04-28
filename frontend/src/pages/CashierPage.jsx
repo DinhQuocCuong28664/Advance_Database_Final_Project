@@ -9,7 +9,7 @@ import '../styles/Admin.css';
 
 export default function CashierPage() {
   const navigate = useNavigate();
-  const { authSession, isSystemUser, isCashierUser, isAdminUser, logout } = useAuth();
+  const { authSession, isSystemUser, isCashierUser, isAdminUser, isManagerUser, logout } = useAuth();
   const { setFlash } = useFlash();
 
   const [hotels, setHotels]               = useState([]);
@@ -48,7 +48,7 @@ export default function CashierPage() {
     return <Navigate to="/login" replace state={{ nextUrl: '/cashier' }} />;
   }
   // Admin has separate management  no need to access cashier portal
-  if (!isCashierUser && isAdminUser) {
+  if (!isCashierUser && (isAdminUser || isManagerUser)) {
     return <Navigate to="/admin" replace />;
   }
 

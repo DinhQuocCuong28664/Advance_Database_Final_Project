@@ -1,5 +1,5 @@
 /**
- * LuxeReserve  Maintenance Routes
+ * LuxeReserve - Maintenance Routes
  * Manage maintenance tickets: create, assign, resolve
  * Activates: MaintenanceTicket (14 cols), Room.maintenance_status
  */
@@ -15,7 +15,7 @@ const { getSqlPool, sql } = require('../config/database');
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();
-    const { hotel_id, status, severity } = req.query;
+    const { hotel_id, room_id, status, severity } = req.query;
 
     if (!hotel_id) {
       return res.status(400).json({ success: false, error: 'hotel_id is required' });
@@ -24,6 +24,10 @@ router.get('/', async (req, res) => {
     const request = pool.request().input('hotelId', sql.BigInt, parseInt(hotel_id));
     let filters = 'WHERE mt.hotel_id = @hotelId';
 
+    if (room_id) {
+      filters += ' AND mt.room_id = @roomId';
+      request.input('roomId', sql.BigInt, parseInt(room_id));
+    }
     if (status) {
       filters += ' AND mt.status = @status';
       request.input('status', sql.VarChar(15), status);

@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
   const systemRoles    = Array.isArray(authSession?.user?.roles) ? authSession.user.roles : [];
   const hasSystemRole  = (roleCode) => systemRoles.includes(roleCode);
   const isAdminUser    = isSystemUser && hasSystemRole('ADMIN');
+  const isManagerUser  = isSystemUser && hasSystemRole('MANAGER');
   const isCashierUser  = isSystemUser && (hasSystemRole('CASHIER') || hasSystemRole('FRONT_DESK'));
 
   useEffect(() => {
@@ -187,6 +188,7 @@ export function AuthProvider({ children }) {
         isSystemUser,
         isGuestUser,
         isAdminUser,
+        isManagerUser,
         isCashierUser,
         guestAccounts,
         login,

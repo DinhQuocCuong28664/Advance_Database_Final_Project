@@ -738,7 +738,7 @@ export default function AdminRates({ hotels = [] }) {
 
           {!loadingPlans && ratePlans.length === 0 ? (
             <div className="svc-orders-empty">
-              <span>Plans</span>
+              <span>🧾</span>
               <p>No rate plans found for the selected filters.</p>
               <small>Create a new plan or widen the filters above.</small>
             </div>
@@ -943,7 +943,7 @@ export default function AdminRates({ hotels = [] }) {
                     <span className="rate-alert-type">{alert.room_type_name}</span>
                     <span className="rate-alert-date">{fmtDate(alert.rate_date)}</span>
                     <span className="rate-alert-change">
-                      {fmtCurrency(alert.old_rate, alertCurrency)} {'?'} {fmtCurrency(alert.new_rate, alertCurrency)}
+                      {fmtCurrency(alert.old_rate, alertCurrency)} {'\u2192'} {fmtCurrency(alert.new_rate, alertCurrency)}
                       <em> ({Number(alert.change_percent || 0).toFixed(1)}%)</em>
                     </span>
                   </div>
@@ -992,7 +992,7 @@ export default function AdminRates({ hotels = [] }) {
 
           {!loadingRates && !searchedRates ? (
             <div className="svc-orders-empty">
-              <span>Rates</span>
+              <span>💰</span>
               <p>Select a hotel and date range, then load nightly rates.</p>
               <small>Use the room type filter after at least one load.</small>
             </div>
@@ -1000,7 +1000,7 @@ export default function AdminRates({ hotels = [] }) {
 
           {!loadingRates && searchedRates && roomTypes.length === 0 ? (
             <div className="svc-orders-empty">
-              <span>Empty</span>
+              <span>📭</span>
               <p>No rate rows matched the selected filters.</p>
               <small>Try another hotel, wider dates, or clear the room type filter.</small>
             </div>

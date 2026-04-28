@@ -20,5 +20,5 @@ GO
 USE LuxeReserve;
 GO
 
-PRINT 'OK Database LuxeReserve created successfully.';
+PRINT '[OK] Database LuxeReserve created successfully.';
 GO

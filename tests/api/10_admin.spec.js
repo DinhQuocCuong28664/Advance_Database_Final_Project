@@ -13,6 +13,7 @@ const { test, expect } = require('@playwright/test');
 const { SEED, DATES } = require('./helpers');
 
 let adminToken = null;
+let managerToken = null;
 let availabilityRecord = null; // from rooms/availability
 
 test.describe(' Admin API', () => {
@@ -24,6 +25,13 @@ test.describe(' Admin API', () => {
     });
     if (res.status() === 200) {
       adminToken = (await res.json()).token;
+    }
+
+    const managerRes = await request.post('/api/auth/admin/login', {
+      data: { username: SEED.manager.username, password: SEED.manager.password },
+    });
+    if (managerRes.status() === 200) {
+      managerToken = (await managerRes.json()).token;
     }
 
     // Get an availability record for optimistic locking tests
@@ -55,6 +63,13 @@ test.describe(' Admin API', () => {
     expect(res.status()).toBe(401);
   });
 
+  test('GET /admin/rates/alerts  manager role  200', async ({ request }) => {
+    const res = await request.get('/api/admin/rates/alerts', {
+      headers: { Authorization: `Bearer ${managerToken}` },
+    });
+    expect(res.status()).toBe(200);
+  });
+
   //  GET /admin/reports/revenue 
   test('GET /admin/reports/revenue  returns revenue analytics with ranking', async ({ request }) => {
     const res = await request.get('/api/admin/reports/revenue', {
@@ -76,6 +91,13 @@ test.describe(' Admin API', () => {
   test('GET /admin/reports/revenue  no token  401', async ({ request }) => {
     const res = await request.get('/api/admin/reports/revenue');
     expect(res.status()).toBe(401);
+  });
+
+  test('GET /admin/reports/revenue  manager role  200', async ({ request }) => {
+    const res = await request.get('/api/admin/reports/revenue', {
+      headers: { Authorization: `Bearer ${managerToken}` },
+    });
+    expect(res.status()).toBe(200);
   });
 
   //  GET /admin/reports/revenue-by-brand 
@@ -132,6 +154,13 @@ test.describe(' Admin API', () => {
       data: { final_rate: 999999 },
     });
     expect(res.status()).toBe(401);
+  });
+
+  test('GET /admin/accounts  manager role  403', async ({ request }) => {
+    const res = await request.get('/api/admin/accounts', {
+      headers: { Authorization: `Bearer ${managerToken}` },
+    });
+    expect(res.status()).toBe(403);
   });
 
   //  PUT /admin/availability/:id (Optimistic Locking) 

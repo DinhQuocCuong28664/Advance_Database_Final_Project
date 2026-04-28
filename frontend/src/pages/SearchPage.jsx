@@ -123,7 +123,9 @@ function normalizeText(value) {
 function buildSearchHaystack(hotel) {
   return normalizeText([
     hotel.hotel_name,
+    hotel.district_name,
     hotel.city_name,
+    hotel.country_name,
     hotel.brand_name,
     hotel.chain_name,
     hotel.location_detail?.city,
@@ -161,9 +163,18 @@ function StarRating({ stars }) {
   );
 }
 
+function formatMoney(value, currency = 'VND') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: ['VND', 'JPY', 'KRW'].includes(currency) ? 0 : 2,
+  }).format(Number(value || 0));
+}
+
 function HotelCard({ hotel, checkin, checkout, guests, onPreviewDirections, directionsState, directionsLoading }) {
   const navigate = useNavigate();
   const minRate = hotel.min_nightly_rate;
+  const currency = hotel.currency_code || 'VND';
   const locationText = [
     hotel.location_detail?.district || hotel.city_name,
     hotel.location_detail?.city,
@@ -191,7 +202,7 @@ function HotelCard({ hotel, checkin, checkout, guests, onPreviewDirections, dire
             {minRate ? (
               <>
                 <span className="search-price-from">from</span>
-                <strong className="search-price-val">{Number(minRate).toLocaleString('en-US')} VND</strong>
+                <strong className="search-price-val">{formatMoney(minRate, currency)}</strong>
                 <span className="search-price-night">/night</span>
               </>
             ) : (
@@ -242,6 +253,7 @@ export default function SearchPage() {
   const [availabilityByHotel, setAvailabilityByHotel] = useState({});
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [filters, setFilters] = useState({ minPrice: '', maxPrice: '', stars: '', brand: '' });
+  const [destinationOptions, setDestinationOptions] = useState([]);
   const [directionsLoadingHotelId, setDirectionsLoadingHotelId] = useState(null);
   const [directionsStateByHotel, setDirectionsStateByHotel] = useState({});
   const [previewHotel, setPreviewHotel] = useState(null);
@@ -264,6 +276,27 @@ export default function SearchPage() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiRequest('/locations')
+      .then((res) => {
+        if (cancelled) return;
+        const options = (res.data || [])
+          .filter((location) => ['CITY', 'DISTRICT'].includes(location.location_type))
+          .map((location) => location.location_name)
+          .filter(Boolean);
+        setDestinationOptions([...new Set(options)].sort((a, b) => a.localeCompare(b)));
+      })
+      .catch(() => {
+        if (!cancelled) setDestinationOptions([]);
       });
 
     return () => {
@@ -486,12 +519,18 @@ export default function SearchPage() {
       <div className="search-top-bar">
         <form className="search-top-form" onSubmit={handleSearchSubmit}>
           <input
+            list="search-destination-list"
             type="text"
             placeholder="Destination, hotel, city..."
             value={search.destination}
             onChange={(event) => updateSearch({ destination: event.target.value })}
             className="search-top-input"
           />
+          <datalist id="search-destination-list">
+            {destinationOptions.map((destination) => (
+              <option key={destination} value={destination} />
+            ))}
+          </datalist>
           <input
             type="date"
             value={search.checkin}

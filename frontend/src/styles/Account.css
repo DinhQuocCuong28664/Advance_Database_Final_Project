@@ -420,6 +420,168 @@
   color: var(--panel-strong);
 }
 
+.acct-booking-list {
+  display: grid;
+  gap: 16px;
+}
+
+.acct-booking-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(20, 61, 66, 0.1);
+  background: rgba(255, 252, 248, 0.92);
+}
+
+.acct-booking-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.acct-booking-top h3 {
+  margin: 4px 0 0;
+  color: var(--text-strong);
+}
+
+.acct-booking-code {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.acct-booking-meta {
+  margin: 6px 0 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.acct-booking-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.acct-booking-status--confirmed { background: rgba(72,160,120,0.15); color: #1a5c3a; }
+.acct-booking-status--checked_in { background: rgba(45,93,166,0.15); color: #1a3d80; }
+.acct-booking-status--checked_out { background: rgba(107,114,128,0.15); color: #374151; }
+.acct-booking-status--cancelled { background: rgba(200,80,60,0.15); color: #8b2012; }
+.acct-booking-status--pending { background: rgba(240,160,30,0.15); color: #7a5500; }
+.acct-booking-status--no_show { background: rgba(180,130,20,0.15); color: #7a5500; }
+
+.acct-booking-dates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(20, 61, 66, 0.03);
+  border: 1px solid rgba(20, 61, 66, 0.07);
+}
+
+.acct-booking-dates div {
+  display: grid;
+  gap: 4px;
+}
+
+.acct-booking-dates span {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-soft);
+}
+
+.acct-booking-dates strong {
+  color: var(--text-strong);
+}
+
+.acct-booking-actions,
+.acct-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.acct-review-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(20, 61, 66, 0.06);
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.acct-review-posted {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(20, 61, 66, 0.05);
+  border: 1px solid rgba(20, 61, 66, 0.08);
+}
+
+.acct-review-posted strong {
+  color: var(--text-strong);
+}
+
+.acct-review-posted p {
+  margin: 6px 0 0;
+  color: var(--text-soft);
+}
+
+.acct-review-form {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(20, 61, 66, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.acct-review-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.acct-review-form-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.acct-review-form-grid input,
+.acct-review-form-grid select,
+.acct-review-form-grid textarea {
+  padding: 10px 12px;
+  border: 1.5px solid rgba(20, 61, 66, 0.14);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text-strong);
+}
+
+.acct-review-form-wide {
+  grid-column: 1 / -1;
+}
+
 .acct-redemption-right {
   flex-shrink: 0;
 }

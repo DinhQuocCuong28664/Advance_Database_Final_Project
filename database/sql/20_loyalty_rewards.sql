@@ -90,5 +90,5 @@ SET redeemable_points_cost = CASE promotion_code
 WHERE promotion_code IN ('MARRIOTT-ELITE-APR', 'IC-SG-CLUB-MEMBER');
 GO
 
-PRINT 'Loyalty reward promotions and redemption table are ready.';
+PRINT '[OK] Loyalty reward promotions and LoyaltyRedemption table are ready.';
 GO

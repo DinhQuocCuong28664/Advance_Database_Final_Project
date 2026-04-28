@@ -137,7 +137,7 @@ router.get('/ipn', async (req, res) => {
     if (Math.abs(result.amount - serverAmount) > 1) {
       // Small rounding tolerance of 1 VND
       console.warn(`[VNPay IPN] Amount mismatch: got ${result.amount}, expected ~${serverAmount}`);
-      // Don't reject  just log and accept (VNPay requirement)
+      // Don't reject - just log and accept (VNPay requirement)
     }
 
     if (result.responseCode === '00') {
@@ -169,7 +169,7 @@ router.get('/ipn', async (req, res) => {
   }
 });
 
-//  Helper: upsert payment record 
+// Helper: upsert payment record
 async function _recordVnpayPayment(result, source) {
   try {
     const pool = getSqlPool();

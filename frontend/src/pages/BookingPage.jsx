@@ -11,8 +11,12 @@ function nightsBetween(a, b) {
   return Math.max(1, Math.round(ms / 86400000));
 }
 
-function fmt(n) {
-  return Number(n || 0).toLocaleString('en-US');
+function fmt(n, currency = 'VND') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: ['VND', 'JPY', 'KRW'].includes(currency) ? 0 : 2,
+  }).format(Number(n || 0));
 }
 
 function looksLikeEmail(value) {
@@ -30,6 +34,7 @@ export default function BookingPage() {
   const guests      = Number(searchParams.get('guests')) || 1;
   const nightlyRate = Number(searchParams.get('rate'))   || 0;
   const roomName    = searchParams.get('room_name')  || 'Selected room';
+  const bookingCurrency = searchParams.get('currency') || 'VND';
 
   const nights       = checkin && checkout ? nightsBetween(checkin, checkout) : 1;
   const subtotal     = nightlyRate * nights;
@@ -138,7 +143,7 @@ export default function BookingPage() {
           checkout_date:        checkout,
           adult_count:          guests,
           nightly_rate:         nightlyRate,
-          currency_code:        'VND',
+          currency_code:        bookingCurrency,
           guest_id:             guestId || undefined,
           guest_profile:        guestProfile,
           special_request_text: form.special_requests || null,
@@ -177,7 +182,7 @@ export default function BookingPage() {
           reservation_id: res.reservation_id,
           amount:         serverDepositAmt,
           payment_method: form.payment_method,
-          currency_code:  'VND',
+          currency_code:  res.currency_code || bookingCurrency,
           payment_type:   'DEPOSIT',
         }),
       }).catch(() => null); // non-blocking
@@ -199,10 +204,11 @@ export default function BookingPage() {
     const discountAmount = reservation.discount_amount ?? 0;
     const grandTotal   = reservation.total ?? reservation.grand_total_amount ?? subtotal;
     const remaining    = grandTotal - paidDeposit;
+    const currency = reservation.currency_code || bookingCurrency;
 
     return (
       <div className="booking-done">
-        <div className="booking-done-icon"></div>
+        <div className="booking-done-icon">✅</div>
         <p className="page-eyebrow">Booking confirmed</p>
         <h1 className="booking-done-title">You're all set!</h1>
         <p className="booking-done-sub">
@@ -217,11 +223,11 @@ export default function BookingPage() {
           <div><span>Check-in</span><strong>{checkin}</strong></div>
           <div><span>Check-out</span><strong>{checkout}</strong></div>
           <div><span>Nights</span><strong>{nights}</strong></div>
-          <div><span>Stay subtotal</span><strong>{fmt(subtotalAmount)} VND</strong></div>
+          <div><span>Stay subtotal</span><strong>{fmt(subtotalAmount, currency)}</strong></div>
           {discountAmount > 0 && (
-            <div><span>Loyalty discount</span><strong>-{fmt(discountAmount)} VND</strong></div>
+            <div><span>Loyalty discount</span><strong>-{fmt(discountAmount, currency)}</strong></div>
           )}
-          <div><span>Total stay</span><strong>{fmt(grandTotal)} VND</strong></div>
+          <div><span>Total stay</span><strong>{fmt(grandTotal, currency)}</strong></div>
           {reservation.loyalty_redemption_code && (
             <div className="booking-done-balance">
               <span>Applied voucher</span>
@@ -230,11 +236,11 @@ export default function BookingPage() {
           )}
           <div className="booking-done-deposit">
             <span>Deposit paid (30%)</span>
-            <strong className="done-deposit-val">{fmt(paidDeposit)} VND</strong>
+            <strong className="done-deposit-val">{fmt(paidDeposit, currency)}</strong>
           </div>
           <div className="booking-done-balance">
             <span>Balance due at check-out</span>
-            <strong>{fmt(remaining)} VND</strong>
+            <strong>{fmt(remaining, currency)}</strong>
           </div>
         </div>
 
@@ -351,9 +357,9 @@ export default function BookingPage() {
                 <span className="deposit-notice-icon">i</span>
                 <span>
                   A non-refundable deposit of{' '}
-                  <strong>{fmt(depositDue)} VND</strong>{' '}
+                  <strong>{fmt(depositDue, bookingCurrency)}</strong>{' '}
                   (30% of total) is charged at booking. The remaining{' '}
-                  <strong>{fmt(balanceDue)} VND</strong> is due at check-out.
+                  <strong>{fmt(balanceDue, bookingCurrency)}</strong> is due at check-out.
                 </span>
               </div>
 
@@ -376,10 +382,10 @@ export default function BookingPage() {
               </div>
 
               <div className="booking-deposit-notice">
-                <span className="deposit-notice-icon"></span>
+                <span className="deposit-notice-icon">💳</span>
                 <span>
                   By confirming, you authorise a deposit charge of{' '}
-                  <strong>{fmt(depositDue)} VND</strong>.
+                  <strong>{fmt(depositDue, bookingCurrency)}</strong>.
                   {enteredLoyaltyCode ? ' If the voucher is valid, the final charge will be recalculated after the discount is applied.' : ''}
                   This deposit is <strong>non-refundable</strong> upon cancellation.
                 </span>
@@ -389,7 +395,7 @@ export default function BookingPage() {
               <div className="booking-confirm-actions">
                 <button type="button" className="ghost-button" onClick={() => setStep('details')}> Edit details</button>
                 <button className="primary-button" type="submit" disabled={busy}>
-                  {busy ? 'Confirming...' : `Pay deposit ${fmt(depositDue)} VND`}
+                  {busy ? 'Confirming...' : `Pay deposit ${fmt(depositDue, bookingCurrency)}`}
                 </button>
               </div>
             </>
@@ -410,8 +416,8 @@ export default function BookingPage() {
               <span>Check-out</span><strong>{checkout}</strong>
             </div>
             <div className="booking-summary-row">
-              <span>{nights} night{nights > 1 ? 's' : ''}  {fmt(nightlyRate)} VND</span>
-              <strong>{fmt(subtotal)} VND</strong>
+              <span>{nights} night{nights > 1 ? 's' : ''}  {fmt(nightlyRate, bookingCurrency)}</span>
+              <strong>{fmt(subtotal, bookingCurrency)}</strong>
             </div>
             {enteredLoyaltyCode && (
               <div className="booking-summary-row">
@@ -425,16 +431,16 @@ export default function BookingPage() {
             <hr className="booking-summary-divider" />
             <div className="booking-summary-total">
               <span>Total stay</span>
-              <strong>{fmt(subtotal)} VND</strong>
+              <strong>{fmt(subtotal, bookingCurrency)}</strong>
             </div>
             <hr className="booking-summary-divider" />
             <div className="booking-summary-row booking-deposit-row">
               <span>Deposit now (30%)</span>
-              <strong className="deposit-highlight">{fmt(depositDue)} VND</strong>
+              <strong className="deposit-highlight">{fmt(depositDue, bookingCurrency)}</strong>
             </div>
             <div className="booking-summary-row">
               <span>Balance at check-out</span>
-              <strong>{fmt(balanceDue)} VND</strong>
+              <strong>{fmt(balanceDue, bookingCurrency)}</strong>
             </div>
           </div>
         </aside>

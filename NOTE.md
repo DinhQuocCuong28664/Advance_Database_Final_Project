@@ -29,6 +29,9 @@ npm run db:email
 npm run db:seed
 npm run db:auth
 npm run db:demo
+node database/mongodb/02_seed_data.js
+node database/mongodb/03_expand_catalog.js
+node database/mongodb/04_seed_real_hotel_images.js
 ```
 
 ### DB setup order
@@ -42,7 +45,19 @@ npm run db:demo
 11_email_verification.sql
 06_seed_data.sql
 07_auth_extension.sql        # optional sync for demo auth baseline
+20_loyalty_rewards.sql       # loyalty redemption table/backfill if needed
+21_add_manager_role.sql      # manager role/user migration if needed
+22_add_hotel_reviews.sql     # hotel review migration if needed
+23_seed_city_filter_hotels.sql # optional city filter demo hotels
 19_seed_demo_operations.sql  # optional operational demo data
+```
+
+### MongoDB setup order
+
+```text
+02_seed_data.js              # base Hotel_Catalog, amenity_master, room_type_catalog
+03_expand_catalog.js         # expanded hotel catalog for network hotels
+04_seed_real_hotel_images.js # replaces fake CDN image URLs with demo-safe public image URLs
 ```
 
 ---
@@ -69,6 +84,11 @@ npm run db:demo
 ---
 
 ## Admin Workspace Tabs
+
+Admin and manager access are split:
+
+- `ADMIN` sees the full workspace below.
+- `MANAGER` sees a reduced workspace with `Rates` and `Reports` only.
 
 | Tab Key | Label | Component |
 |---|---|---|
@@ -110,6 +130,8 @@ npm run db:demo
 |---|---|---|
 | `GET` | `/api/hotels` | List hotels |
 | `GET` | `/api/hotels/:id` | Hotel detail with room types, amenities, policies, room features |
+| `GET` | `/api/hotels/:id/reviews` | Public published hotel reviews |
+| `POST` | `/api/hotels/:id/reviews` | Guest publishes one review for a checked-out reservation |
 | `GET` | `/api/hotels/:id/features` | List room features for a hotel |
 | `POST` | `/api/hotels/:id/features` | Create room feature |
 | `DELETE` | `/api/hotels/:id/features/:fid` | Delete room feature |
@@ -128,6 +150,10 @@ npm run db:demo
 |---|---|---|
 | `GET` | `/api/guests/:id` | Guest profile, loyalty, preferences |
 | `GET` | `/api/guests/:id/stays` | Stay history |
+| `GET` | `/api/guests/:id/reviews` | Reviews submitted by guest |
+| `GET` | `/api/guests/:id/loyalty-rewards` | Redeemable loyalty promotions |
+| `GET` | `/api/guests/:id/loyalty-redemptions` | Guest redemption history |
+| `POST` | `/api/guests/:id/loyalty-rewards/:promotionId/redeem` | Redeem points for promotion voucher |
 
 ### Reservations
 
@@ -213,6 +239,7 @@ npm run db:demo
 | `GET` | `/api/admin/rates/alerts` | Rate change alerts |
 | `PUT` | `/api/admin/availability/:id` | Availability update with optimistic locking |
 | `GET` | `/api/admin/history` | Reservation status history timeline |
+| `GET` | `/api/admin/operations-log` | Focused booking, cancellation, check-in, and check-out log |
 | `GET` | `/api/admin/channels` | Booking channel stats |
 | `GET` | `/api/admin/location-tree` | Nested location tree with hotel counts |
 | `GET` | `/api/admin/reports/summary` | KPI summary |
@@ -289,8 +316,10 @@ npm run db:demo
 
 ### AdminTimeline
 
-- Reservation status timeline from `ReservationStatusHistory`.
-- Filters by hotel, destination status, date range, reservation code.
+- Two modes:
+  - `Operations log`: focused hotel history for successful bookings, cancellations, check-ins, and check-outs.
+  - `Full audit timeline`: detailed status transitions from `ReservationStatusHistory`.
+- Filters by hotel, operation/status, date range, reservation code.
 
 ### AdminReports
 
@@ -301,17 +330,37 @@ npm run db:demo
 
 ### AccountPage
 
-- Tabs: Overview, Reservations, In-house Services, Loyalty, Profile.
+- Tabs: Overview, Bookings & Reviews, In-house Services, Loyalty, Profile.
 - In-house Services tab uses active `CHECKED_IN` reservation.
+- Room issue reports persist after reload through `/api/maintenance?hotel_id=&room_id=`.
+- Bookings & Reviews lets checked-out guests publish short hotel reviews.
+- Loyalty tab supports point redemption into promotion voucher codes.
 - Profile tab includes change password form.
 
 ### BookingPage
 
 - Supports direct route and search-driven route.
+- Uses the selected hotel's native currency from the room/hotel payload.
+- Supports redeemed loyalty voucher codes for eligible promotions.
 - Handles booking email collision flow:
   - check whether email exists
   - send OTP if email already has an account
   - submit booking with OTP validation
+
+### SearchPage
+
+- Destination dropdown is available on both Dashboard and Search.
+- Search matches hotel, city, country, and district names.
+- Hotel cards display native hotel currency.
+- Route preview uses browser geolocation, embedded map preview, and Google Maps handoff.
+
+### LoginPage
+
+- Login has a media panel with optional video background.
+- Video files are expected under `frontend/public/videos`:
+  - `luxury-hotel-login.webm`
+  - `luxury-hotel-login.mp4`
+- If no video exists, the poster image fallback is used.
 
 ---
 
@@ -365,6 +414,27 @@ npm run db:demo
 | `ServiceCatalog`, `ReservationService`, `StayRecord` | In-stay operations |
 | `HousekeepingTask`, `MaintenanceTicket` | Operations management |
 | `InventoryLockLog`, `AuditLog` | Audit and locking logs |
+| `LoyaltyRedemption` | Redeemed promotion vouchers from loyalty points |
+| `HotelReview` | Public guest reviews after checked-out stays |
+
+---
+
+## MongoDB Scope
+
+MongoDB is used as a rich-content store. SQL Server remains the source of truth for transactional data.
+
+| Collection | Purpose |
+|---|---|
+| `Hotel_Catalog` | Hotel descriptions, image gallery metadata, location detail, embedded amenity and room summaries |
+| `room_type_catalog` | Room type descriptions, feature text, image metadata |
+| `amenity_master` | Amenity names, icons, tags, descriptions |
+
+### Image and video policy
+
+- Store image/video files in `frontend/public`, CDN, or object storage.
+- Store only URLs/paths and metadata in MongoDB.
+- Do not store large binary images/videos directly in SQL Server or MongoDB for this project.
+- Current hotel demo images are updated by `database/mongodb/04_seed_real_hotel_images.js`.
 
 ---
 
@@ -376,9 +446,10 @@ Current consolidated baseline includes:
 
 - 9 hotels
 - hotel, location, room, rate, promotion, service catalog, and room feature data
-- 3 demo login accounts only:
+- 4 demo login accounts:
   - `admin / admin`
   - `cashier / cashier`
+  - `manager / manager`
   - `dqc / dqc`
 
 Guest demo account details:
@@ -399,6 +470,21 @@ Adds rerunnable sample data for feature demos:
 
 This script is intended for UI demos and QA, not baseline initialization.
 
+### City filter seed: `23_seed_city_filter_hotels.sql`
+
+Adds three extra hotels so city-level search/filter demos have multiple properties:
+
+- Bangkok: `W Bangkok`, `The Ritz-Carlton, Bangkok Riverside`
+- Singapore City: `InterContinental Singapore`, `W Singapore Marina Bay`
+- Ho Chi Minh City: `The Ritz-Carlton, Saigon`, `W Saigon Riverside`
+
+After this optional seed, the demo network has 12 hotels.
+
+### Mongo image seed: `04_seed_real_hotel_images.js`
+
+Replaces fake `cdn.luxereserve.com` image URLs with public demo image URLs in `Hotel_Catalog.images`.
+Dashboard destinations and hotel/search cards consume these URLs through `/api/hotels`.
+
 ---
 
 ## Credentials
@@ -407,6 +493,7 @@ This script is intended for UI demos and QA, not baseline initialization.
 |---|---|---|
 | Admin | `admin` | `admin` |
 | Cashier | `cashier` | `cashier` |
+| Manager | `manager` | `manager` |
 | Guest | `dqc` | `dqc` |
 
 ---
@@ -418,8 +505,10 @@ This script is intended for UI demos and QA, not baseline initialization.
 | Embed `AdditionalGuests` directly inside Front Desk detail UI | Medium | API and component already exist |
 | Surface `AuditLog` in admin UI | Medium | Table exists but no UI yet |
 | Production auth and RBAC hardening | High | Current note tracks feature scope, not security readiness |
-| Realtime updates for operations modules | Low | Would improve housekeeping and maintenance workflows |
+| True realtime updates with WebSocket/SSE | Low | Front Desk has auto-refresh on filter/tab changes; push updates are not implemented |
 | Internationalization | Low | UI is still mostly English-first |
+| Mixed-currency reporting normalization | Medium | Reports display transactional values; no FX conversion layer is implemented |
+| VNPay for non-VND hotels | Low | VNPay is VND-specific; non-VND hotels should use cash/card mock or future gateway integration |
 
 ---
 
@@ -433,3 +522,49 @@ This note is intended to match the current repository state:
 - current UI modules that are already wired
 
 If code and this file drift, update this file after the code is stabilized.
+
+---
+
+## 2026-04-28 — Apply RULE.md conventions to all database files
+
+Changes: fix all PRINT / console.log / console.error messages to use ASCII prefix
+(`[OK]`, `[ERROR]`) per Rule 2 (no emoji, no non-prefixed output). Also removed
+plain-text password strings from PRINT statements (moved reference to ACCOUNT.md).
+
+- database/sql/01_create_database.sql (line 23): Added [OK] prefix to PRINT
+- database/sql/02_create_tables.sql (lines 42-1113): Added [OK] prefix to all 30 table PRINT statements and summary block
+- database/sql/03_create_views.sql (line 77): Added [OK] prefix to PRINT
+- database/sql/04_create_triggers.sql (lines 64, 127): Added [OK] prefix to PRINT
+- database/sql/05_create_procedures.sql (lines 139, 355): Added [OK] prefix to PRINT
+- database/sql/07_auth_extension.sql (lines 60-64): Added [OK] prefix, removed plain-text credentials from PRINT
+- database/sql/20_loyalty_rewards.sql (line 93): Added [OK] prefix to PRINT
+- database/sql/21_add_manager_role.sql (lines 56-57): Added [OK] prefix, removed plain-text credentials from PRINT
+- database/sql/22_add_hotel_reviews.sql (line 36): Added [OK] prefix to PRINT
+- database/mongodb/02_seed_data.js (lines 17, 29, 114, 187, 314, 316-321, 324): Added [OK]/[ERROR] prefix to all console messages
+- database/mongodb/03_expand_catalog.js (lines 433-435, 437): Added [OK]/[ERROR] prefix to all console messages
+- database/mongodb/03_expand_catalog.js (lines 433-435, 437): Added [OK]/[ERROR] prefix to all console messages
+- database/mongodb/04_seed_real_hotel_images.js (lines 181, 188): Added [OK]/[ERROR] prefix to all console messages
+
+---
+
+## 2026-04-28 — Apply RULE.md conventions to all backend (src/) files
+
+Changes: fix all emoji/Unicode characters in JSDoc headers, comment banners,
+console messages, and string literals per Rule 1 (English-only in code) and
+Rule 2 (no emoji/special Unicode in code files).
+
+- src/app.js (lines 1-177): Fixed JSDoc header, comment banners (// -> // ===), emoji in console messages and JSON response string literals
+- src/config/database.js (lines 1-87): Fixed JSDoc header, comment banners, emoji in console.log/error messages
+- src/services/mail.js (lines 22-277): Fixed comment section banners, emoji in console messages, emoji in email subject strings and HTML footer text
+- src/services/vnpay.js: No changes needed (already clean)
+- src/routes/rooms.js (line 2): Fixed JSDoc header emoji
+- src/routes/payments.js (line 2): Fixed JSDoc header emoji
+- src/routes/maintenance.js (line 2): Fixed JSDoc header emoji
+- src/routes/housekeeping.js (line 2): Fixed JSDoc header emoji
+- src/routes/hotels.js (line 2): Fixed JSDoc header emoji
+- src/routes/guests.js (line 2): Fixed JSDoc header emoji
+- src/routes/admin.js (line 2): Fixed JSDoc header emoji
+- src/routes/reservations.js (line 2): Fixed JSDoc header emoji
+- src/routes/services.js (lines 2, 200, 240): Fixed JSDoc header and inline comment section banners
+- src/routes/vnpay.js (lines 140, 172): Fixed inline comment and helper comment banner
+

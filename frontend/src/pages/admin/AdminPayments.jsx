@@ -17,10 +17,10 @@ const TYPE_LABELS = {
   REFUND:          { label: 'Refund',           color: '#dc2626' },
 };
 const METHOD_LABELS = {
-  CASH:          ' Cash',
-  CREDIT_CARD:   ' Card',
-  BANK_TRANSFER: ' Bank',
-  VNPAY:         ' VNPay',
+  CASH:          '💵 Cash',
+  CREDIT_CARD:   '💳 Card',
+  BANK_TRANSFER: '🏦 Bank',
+  VNPAY:         '🌐 VNPay',
 };
 const STATUS_COLORS = {
   CAPTURED:   { bg: '#dcfce7', color: '#14532d' },
@@ -172,13 +172,13 @@ export default function AdminPayments({ hotels = [] }) {
       {loading && <p className="fd-loading" style={{ padding: '40px 0', textAlign: 'center' }}>Loading payments...</p>}
       {!loading && searched && payments.length === 0 && (
         <div className="svc-orders-empty">
-          <span style={{ fontSize: '2rem' }}></span>
+          <span style={{ fontSize: '2rem' }}>💳</span>
           <p>No payments found for the selected filters.</p>
         </div>
       )}
       {!loading && !searched && (
         <div className="svc-orders-empty">
-          <span style={{ fontSize: '2rem' }}></span>
+          <span style={{ fontSize: '2rem' }}>🔎</span>
           <p>Set filters and click <strong>Search</strong> to view payment history.</p>
         </div>
       )}

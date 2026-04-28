@@ -32,10 +32,11 @@ UPDATE SystemUser
 SET password_hash = CASE username
     WHEN 'admin' THEN '$2b$10$LRArHF87Ay2k8uPTI0scPenxOBIehsGYeKOQnFgWUC/nRmr7RoK3K'
     WHEN 'cashier' THEN '$2b$10$Sml4F/p99J/tvZbRXS.CJuxBAul4U/vnkN.QMSs0YwnHiARYBlnuW'
+    WHEN 'manager' THEN '$2b$10$wUlcEcOW/ZdUavpz3S9s0uuANC7rHtquuGbdAMIQK22iAw2lYRgfe'
     ELSE password_hash
 END,
 updated_at = GETDATE()
-WHERE username IN ('admin', 'cashier');
+WHERE username IN ('admin', 'cashier', 'manager');
 GO
 
 MERGE GuestAuth AS target
@@ -56,8 +57,6 @@ WHEN NOT MATCHED THEN
     VALUES (source.guest_id, source.login_email, source.password_hash, 'ACTIVE', GETDATE());
 GO
 
-PRINT 'Auth extension applied.';
-PRINT 'Admin test credentials: admin / admin';
-PRINT 'Cashier test credentials: cashier / cashier';
-PRINT 'Guest test credentials: dqc / dqc';
+PRINT '[OK] Auth extension applied.';
+PRINT '[OK] Test accounts: admin, cashier, manager, dqc (see .agent/ACCOUNT.md)';
 GO

@@ -15,6 +15,26 @@ function nightsBetween(checkinDate, checkoutDate) {
   return Math.max(1, Math.round(ms / 86400000));
 }
 
+function formatMoney(value, currency = 'VND') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: ['VND', 'JPY', 'KRW'].includes(currency) ? 0 : 2,
+  }).format(Number(value || 0));
+}
+
+function formatReviewDate(value) {
+  return value ? new Date(value).toLocaleDateString('en-GB', { dateStyle: 'medium' }) : '';
+}
+
+function maskGuestName(value) {
+  const parts = String(value || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'Verified guest';
+  if (parts.length === 1) return `${parts[0].slice(0, 1).toUpperCase()}***`;
+  const last = parts[parts.length - 1];
+  return `${parts[0]} ${last.slice(0, 1).toUpperCase()}.`;
+}
+
 function StarRating({ stars }) {
   return (
     <span className="star-rating">
@@ -28,6 +48,7 @@ function StarRating({ stars }) {
 function RoomCard({ room, checkin, checkout, onSelect }) {
   const nights = nightsBetween(checkin, checkout);
   const nightlyRate = Number(room.min_nightly_rate || room.nightly_rate || 0);
+  const currency = room.currency_code || 'VND';
   const total = nightlyRate * nights;
   const isOpen = room.availability_status === 'OPEN' || !room.availability_status;
 
@@ -84,11 +105,11 @@ function RoomCard({ room, checkin, checkout, onSelect }) {
           {nightlyRate > 0 ? (
             <>
               <div className="room-nightly">
-                <strong>{nightlyRate.toLocaleString('en-US')} VND</strong>
+                <strong>{formatMoney(nightlyRate, currency)}</strong>
                 <span>/night</span>
               </div>
               <div className="room-total">
-                {total.toLocaleString('en-US')} VND total - {nights} night{nights > 1 ? 's' : ''}
+                {formatMoney(total, currency)} total - {nights} night{nights > 1 ? 's' : ''}
               </div>
             </>
           ) : (
@@ -123,6 +144,8 @@ export default function HotelPage() {
   const [hotel, setHotel] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [promos, setPromos] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [reviewSummary, setReviewSummary] = useState({ review_count: 0, average_rating: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -134,10 +157,11 @@ export default function HotelPage() {
       setLoading(true);
       setError(null);
       try {
-        const [hotelRes, roomsRes, promosRes] = await Promise.all([
+        const [hotelRes, roomsRes, promosRes, reviewsRes] = await Promise.all([
           apiRequest(`/hotels/${id}`),
           apiRequest(`/rooms/availability?hotel_id=${id}&checkin=${checkin}&checkout=${checkout}`),
           apiRequest('/promotions').catch(() => ({ data: [], promotions: [] })),
+          apiRequest(`/hotels/${id}/reviews`).catch(() => ({ data: [], summary: { review_count: 0, average_rating: null } })),
         ]);
         if (cancelled) return;
 
@@ -145,6 +169,8 @@ export default function HotelPage() {
         setRooms(roomsRes.data || roomsRes.rooms || roomsRes.availability || []);
         const promoList = promosRes.data || promosRes.promotions || [];
         setPromos(promoList.slice(0, 2));
+        setReviews(reviewsRes.data || []);
+        setReviewSummary(reviewsRes.summary || { review_count: 0, average_rating: null });
       } catch (err) {
         if (!cancelled) {
           setError(err.message);
@@ -164,7 +190,7 @@ export default function HotelPage() {
 
   function handleSelectRoom(room) {
     navigate(
-      `/booking/${id}/${room.room_id || room.availability_id}?checkin=${checkin}&checkout=${checkout}&guests=${guests}&rate=${room.min_nightly_rate || room.nightly_rate || 0}&room_name=${encodeURIComponent(room.room_type_name || room.room_type || 'Room')}`
+      `/booking/${id}/${room.room_id || room.availability_id}?checkin=${checkin}&checkout=${checkout}&guests=${guests}&rate=${room.min_nightly_rate || room.nightly_rate || 0}&currency=${room.currency_code || hotel.currency_code || 'VND'}&room_name=${encodeURIComponent(room.room_type_name || room.room_type || 'Room')}`
     );
   }
 
@@ -263,6 +289,44 @@ export default function HotelPage() {
               </div>
             </div>
           )}
+
+          <div className="hotel-reviews">
+            <div className="hotel-reviews-head">
+              <div>
+                <h2 className="hotel-section-title">Guest reviews</h2>
+                <p className="hotel-reviews-copy">
+                  Verified reviews from guests who completed their stay at this property.
+                </p>
+              </div>
+              {Number(reviewSummary.review_count || 0) > 0 ? (
+                <div className="hotel-review-summary">
+                  <strong>{Number(reviewSummary.average_rating || 0).toFixed(1)}/5</strong>
+                  <span>{reviewSummary.review_count} review{Number(reviewSummary.review_count) > 1 ? 's' : ''}</span>
+                </div>
+              ) : null}
+            </div>
+
+            {reviews.length === 0 ? (
+              <div className="hotel-review-empty">
+                <p>No public reviews yet for this hotel.</p>
+              </div>
+            ) : (
+              <div className="hotel-review-list">
+                {reviews.map((review) => (
+                  <article key={review.hotel_review_id} className="hotel-review-card">
+                    <div className="hotel-review-top">
+                      <div>
+                        <strong>{review.review_title || 'Verified guest review'}</strong>
+                        <span>{maskGuestName(review.guest_name)} - {formatReviewDate(review.created_at)}</span>
+                      </div>
+                      <div className="hotel-review-rating">{review.rating_score}/5</div>
+                    </div>
+                    <p className="hotel-review-text">{review.review_text}</p>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="hotel-rooms">
             <h2 className="hotel-section-title">Available rooms</h2>

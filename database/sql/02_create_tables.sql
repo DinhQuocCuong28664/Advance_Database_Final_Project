@@ -39,7 +39,7 @@ CREATE INDEX IX_Location_Parent   ON Location(parent_location_id);
 CREATE INDEX IX_Location_TypeName ON Location(location_type, location_name);
 GO
 
-PRINT '  OK Location';
+PRINT '[OK] Location';
 GO
 
 -- ============================================================
@@ -66,7 +66,7 @@ CREATE TABLE HotelChain (
 );
 GO
 
-PRINT '  OK HotelChain';
+PRINT '[OK] HotelChain';
 GO
 
 CREATE TABLE Brand (
@@ -87,7 +87,7 @@ CREATE TABLE Brand (
 );
 GO
 
-PRINT '  OK Brand';
+PRINT '[OK] Brand';
 GO
 
 CREATE TABLE Hotel (
@@ -128,7 +128,7 @@ CREATE TABLE Hotel (
 );
 GO
 
-PRINT '  OK Hotel';
+PRINT '[OK] Hotel';
 GO
 
 -- ============================================================
@@ -160,7 +160,7 @@ CREATE TABLE HotelPolicy (
 );
 GO
 
-PRINT '  OK HotelPolicy';
+PRINT '[OK] HotelPolicy';
 GO
 
 -- [FIX-1] Removed currency_code, [FIX-5] moved amenity_name/category to MongoDB
@@ -182,7 +182,7 @@ CREATE TABLE HotelAmenity (
 );
 GO
 
-PRINT '  OK HotelAmenity';
+PRINT '[OK] HotelAmenity';
 GO
 
 -- ============================================================
@@ -216,7 +216,7 @@ CREATE TABLE RoomType (
 );
 GO
 
-PRINT '  OK RoomType';
+PRINT '[OK] RoomType';
 GO
 
 CREATE TABLE Room (
@@ -248,7 +248,7 @@ CREATE TABLE Room (
 );
 GO
 
-PRINT '  OK Room';
+PRINT '[OK] Room';
 GO
 
 -- [FIX-8] CHECK constraint: at least 1 FK must be NOT NULL
@@ -269,7 +269,7 @@ CREATE TABLE RoomFeature (
 );
 GO
 
-PRINT '  OK RoomFeature';
+PRINT '[OK] RoomFeature';
 GO
 
 -- Critical inventory table - supports pessimistic locking
@@ -300,7 +300,7 @@ CREATE INDEX IX_RoomAvail_HotelDate   ON RoomAvailability(hotel_id, stay_date);
 CREATE INDEX IX_RoomAvail_HotelStatus ON RoomAvailability(hotel_id, availability_status, stay_date);
 GO
 
-PRINT '  OK RoomAvailability';
+PRINT '[OK] RoomAvailability';
 GO
 
 -- ============================================================
@@ -346,7 +346,7 @@ CREATE INDEX IX_Guest_Email ON Guest(email);
 CREATE INDEX IX_Guest_Phone ON Guest(phone_country_code, phone_number);
 GO
 
-PRINT '  OK Guest';
+PRINT '[OK] Guest';
 GO
 
 CREATE TABLE GuestAddress (
@@ -368,7 +368,7 @@ CREATE TABLE GuestAddress (
 );
 GO
 
-PRINT '  OK GuestAddress';
+PRINT '[OK] GuestAddress';
 GO
 
 CREATE TABLE GuestPreference (
@@ -390,7 +390,7 @@ CREATE TABLE GuestPreference (
 CREATE INDEX IX_GuestPref_Type ON GuestPreference(guest_id, preference_type);
 GO
 
-PRINT '  OK GuestPreference';
+PRINT '[OK] GuestPreference';
 GO
 
 CREATE TABLE LoyaltyAccount (
@@ -416,7 +416,7 @@ CREATE TABLE LoyaltyAccount (
 );
 GO
 
-PRINT '  OK LoyaltyAccount';
+PRINT '[OK] LoyaltyAccount';
 GO
 
 CREATE TABLE GuestAuth (
@@ -438,7 +438,7 @@ CREATE TABLE GuestAuth (
 CREATE INDEX IX_GuestAuth_LoginEmail ON GuestAuth(login_email);
 GO
 
-PRINT '  OK GuestAuth';
+PRINT '[OK] GuestAuth';
 GO
 
 -- ============================================================
@@ -467,7 +467,7 @@ CREATE TABLE SystemUser (
 );
 GO
 
-PRINT '  OK SystemUser';
+PRINT '[OK] SystemUser';
 GO
 
 CREATE TABLE Role (
@@ -481,7 +481,7 @@ CREATE TABLE Role (
 );
 GO
 
-PRINT '  OK Role';
+PRINT '[OK] Role';
 GO
 
 CREATE TABLE UserRole (
@@ -498,7 +498,7 @@ CREATE TABLE UserRole (
 );
 GO
 
-PRINT '  OK UserRole';
+PRINT '[OK] UserRole';
 GO
 
 -- ============================================================
@@ -532,7 +532,7 @@ CREATE TABLE RatePlan (
 );
 GO
 
-PRINT '  OK RatePlan';
+PRINT '[OK] RatePlan';
 GO
 
 -- [FIX-1] Removed currency_code -> JOIN Hotel.currency_code
@@ -567,7 +567,7 @@ CREATE TABLE RoomRate (
 CREATE INDEX IX_RoomRate_HotelDate ON RoomRate(hotel_id, rate_date);
 GO
 
-PRINT '  OK RoomRate';
+PRINT '[OK] RoomRate';
 GO
 
 -- [FIX-2] Removed hotel_id, room_type_id, rate_plan_id -> JOIN from RoomRate
@@ -592,7 +592,7 @@ CREATE TABLE RateChangeLog (
 CREATE INDEX IX_RCL_RateTime ON RateChangeLog(room_rate_id, triggered_at);
 GO
 
-PRINT '  OK RateChangeLog';
+PRINT '[OK] RateChangeLog';
 GO
 
 CREATE TABLE Promotion (
@@ -626,7 +626,7 @@ CREATE TABLE Promotion (
 );
 GO
 
-PRINT '  OK Promotion';
+PRINT '[OK] Promotion';
 GO
 
 -- ============================================================
@@ -650,7 +650,7 @@ CREATE TABLE BookingChannel (
 );
 GO
 
-PRINT '  OK BookingChannel';
+PRINT '[OK] BookingChannel';
 GO
 
 -- [FIX-3] Financial fields kept for backward compat - use vw_ReservationTotal instead
@@ -700,7 +700,7 @@ CREATE INDEX IX_Resv_GuestDate      ON Reservation(guest_id, booking_datetime);
 CREATE INDEX IX_Resv_HotelStatus    ON Reservation(hotel_id, reservation_status, checkin_date);
 GO
 
-PRINT '  OK Reservation';
+PRINT '[OK] Reservation';
 GO
 
 CREATE TABLE ReservationRoom (
@@ -736,7 +736,7 @@ CREATE INDEX IX_ResvRoom_Room       ON ReservationRoom(room_id, stay_start_date,
 CREATE INDEX IX_ResvRoom_RoomType   ON ReservationRoom(room_type_id, stay_start_date, stay_end_date);
 GO
 
-PRINT '  OK ReservationRoom';
+PRINT '[OK] ReservationRoom';
 GO
 
 CREATE TABLE ReservationGuest (
@@ -758,7 +758,7 @@ CREATE TABLE ReservationGuest (
 );
 GO
 
-PRINT '  OK ReservationGuest';
+PRINT '[OK] ReservationGuest';
 GO
 
 CREATE TABLE ReservationStatusHistory (
@@ -776,7 +776,7 @@ CREATE TABLE ReservationStatusHistory (
 CREATE INDEX IX_ResvHist_ResvTime ON ReservationStatusHistory(reservation_id, changed_at);
 GO
 
-PRINT '  OK ReservationStatusHistory';
+PRINT '[OK] ReservationStatusHistory';
 GO
 
 CREATE TABLE LoyaltyRedemption (
@@ -808,7 +808,7 @@ CREATE INDEX IX_LoyaltyRedemption_GuestStatus ON LoyaltyRedemption(guest_id, sta
 CREATE INDEX IX_LoyaltyRedemption_PromoStatus ON LoyaltyRedemption(promotion_id, status);
 GO
 
-PRINT '  OK LoyaltyRedemption';
+PRINT '[OK] LoyaltyRedemption';
 GO
 
 -- ============================================================
@@ -840,7 +840,7 @@ CREATE TABLE Payment (
 CREATE INDEX IX_Payment_ResvStatus ON Payment(reservation_id, payment_status);
 GO
 
-PRINT '  OK Payment';
+PRINT '[OK] Payment';
 GO
 
 CREATE TABLE PaymentCardToken (
@@ -864,7 +864,7 @@ CREATE TABLE PaymentCardToken (
 );
 GO
 
-PRINT '  OK PaymentCardToken';
+PRINT '[OK] PaymentCardToken';
 GO
 
 CREATE TABLE Invoice (
@@ -891,7 +891,7 @@ CREATE TABLE Invoice (
 );
 GO
 
-PRINT '  OK Invoice';
+PRINT '[OK] Invoice';
 GO
 
 -- ============================================================
@@ -920,7 +920,7 @@ CREATE TABLE ServiceCatalog (
 );
 GO
 
-PRINT '  OK ServiceCatalog';
+PRINT '[OK] ServiceCatalog';
 GO
 
 CREATE TABLE ReservationService (
@@ -945,7 +945,7 @@ CREATE TABLE ReservationService (
 );
 GO
 
-PRINT '  OK ReservationService';
+PRINT '[OK] ReservationService';
 GO
 
 CREATE TABLE StayRecord (
@@ -967,7 +967,34 @@ CREATE TABLE StayRecord (
 );
 GO
 
-PRINT '  OK StayRecord';
+PRINT '[OK] StayRecord';
+GO
+
+CREATE TABLE HotelReview (
+    hotel_review_id         BIGINT IDENTITY(1,1) PRIMARY KEY,
+    hotel_id                BIGINT          NOT NULL,
+    guest_id                BIGINT          NOT NULL,
+    reservation_id          BIGINT          NOT NULL,
+    rating_score            INT             NOT NULL,
+    review_title            NVARCHAR(150)   NULL,
+    review_text             NVARCHAR(1500)  NOT NULL,
+    public_visible_flag     BIT             NOT NULL DEFAULT 1,
+    moderation_status       VARCHAR(15)     NOT NULL DEFAULT 'PUBLISHED',
+    created_at              DATETIME        NOT NULL DEFAULT GETDATE(),
+    updated_at              DATETIME        NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_HotelReview_Hotel FOREIGN KEY (hotel_id) REFERENCES Hotel(hotel_id),
+    CONSTRAINT FK_HotelReview_Guest FOREIGN KEY (guest_id) REFERENCES Guest(guest_id),
+    CONSTRAINT FK_HotelReview_Reservation FOREIGN KEY (reservation_id) REFERENCES Reservation(reservation_id),
+    CONSTRAINT UQ_HotelReview_Reservation UNIQUE (reservation_id),
+    CONSTRAINT CK_HotelReview_Rating CHECK (rating_score BETWEEN 1 AND 5),
+    CONSTRAINT CK_HotelReview_Moderation CHECK (moderation_status IN ('PUBLISHED','HIDDEN'))
+);
+CREATE INDEX IX_HotelReview_HotelPublished ON HotelReview(hotel_id, public_visible_flag, moderation_status, created_at DESC);
+CREATE INDEX IX_HotelReview_GuestCreated ON HotelReview(guest_id, created_at DESC);
+GO
+
+PRINT '[OK] HotelReview';
 GO
 
 -- ============================================================
@@ -1000,7 +1027,7 @@ CREATE INDEX IX_HK_HotelStatus ON HousekeepingTask(hotel_id, task_status, schedu
 CREATE INDEX IX_HK_RoomStatus  ON HousekeepingTask(room_id, task_status);
 GO
 
-PRINT '  OK HousekeepingTask';
+PRINT '[OK] HousekeepingTask';
 GO
 
 CREATE TABLE MaintenanceTicket (
@@ -1028,7 +1055,7 @@ CREATE TABLE MaintenanceTicket (
 );
 GO
 
-PRINT '  OK MaintenanceTicket';
+PRINT '[OK] MaintenanceTicket';
 GO
 
 -- ============================================================
@@ -1054,7 +1081,7 @@ CREATE TABLE InventoryLockLog (
 CREATE INDEX IX_LockLog_RoomDate ON InventoryLockLog(room_id, stay_date);
 GO
 
-PRINT '  OK InventoryLockLog';
+PRINT '[OK] InventoryLockLog';
 GO
 
 CREATE TABLE AuditLog (
@@ -1073,7 +1100,7 @@ CREATE TABLE AuditLog (
 );
 GO
 
-PRINT '  OK AuditLog';
+PRINT '[OK] AuditLog';
 GO
 
 -- ============================================================
@@ -1082,6 +1109,6 @@ GO
 
 PRINT '';
 PRINT '==========================================';
-PRINT '  OK ALL 30 TABLES CREATED SUCCESSFULLY';
+PRINT '[OK] ALL 30 TABLES CREATED SUCCESSFULLY';
 PRINT '==========================================';
 GO

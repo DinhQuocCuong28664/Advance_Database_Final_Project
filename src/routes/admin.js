@@ -1,17 +1,17 @@
 /**
- * LuxeReserve  Admin Routes
+ * LuxeReserve - Admin Routes
  * Rate management (triggers Price Guard), reports (Window Functions)
  */
 
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
-const { requireAdminUser } = require('../middleware/auth');
+const { requireSystemUser, requireAdminUser, requireAdminOrManagerUser } = require('../middleware/auth');
 
-router.use(requireAdminUser);
+router.use(requireSystemUser);
 
 // PUT /api/admin/rates/:id  Update room rate (triggers Price Integrity Guard)
-router.put('/rates/:id', async (req, res) => {
+router.put('/rates/:id', requireAdminOrManagerUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const rateId = parseInt(req.params.id);
@@ -82,7 +82,7 @@ router.put('/rates/:id', async (req, res) => {
 });
 
 // GET /api/admin/rates/alerts  View Price Guard alerts
-router.get('/rates/alerts', async (req, res) => {
+router.get('/rates/alerts', requireAdminOrManagerUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const result = await pool.request().query(`
@@ -102,15 +102,22 @@ router.get('/rates/alerts', async (req, res) => {
 });
 
 // GET /api/admin/accounts  Admin account management snapshot
-router.get('/accounts', async (req, res) => {
+router.get('/accounts', requireAdminUser, async (req, res) => {
   try {
     const pool = getSqlPool();
 
     const [systemUsers, guestAccounts] = await Promise.all([
       pool.request().query(`
         SELECT su.user_id, su.username, su.full_name, su.email, su.department,
+               sr.role_code,
                su.account_status, su.last_login_at
         FROM SystemUser su
+        OUTER APPLY (
+          SELECT STRING_AGG(r.role_code, ', ') AS role_code
+          FROM UserRole ur
+          JOIN Role r ON ur.role_id = r.role_id
+          WHERE ur.user_id = su.user_id
+        ) sr
         ORDER BY su.user_id
       `),
       pool.request().query(`
@@ -137,7 +144,7 @@ router.get('/accounts', async (req, res) => {
 });
 
 // PUT /api/admin/accounts/system/:id  update system user account status
-router.put('/accounts/system/:id', async (req, res) => {
+router.put('/accounts/system/:id', requireAdminUser, async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
     const { account_status } = req.body;
@@ -177,7 +184,7 @@ router.put('/accounts/system/:id', async (req, res) => {
 });
 
 // PUT /api/admin/accounts/guest/:id  update guest login account status
-router.put('/accounts/guest/:id', async (req, res) => {
+router.put('/accounts/guest/:id', requireAdminUser, async (req, res) => {
   try {
     const guestAuthId = parseInt(req.params.id, 10);
     const { account_status } = req.body;
@@ -215,7 +222,7 @@ router.put('/accounts/guest/:id', async (req, res) => {
 // 
 // GET /api/admin/reports/summary  Dashboard KPIs
 // 
-router.get('/reports/summary', async (req, res) => {
+router.get('/reports/summary', requireAdminOrManagerUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const [overview, byStatus, topHotels, paymentStats] = await Promise.all([
@@ -276,7 +283,7 @@ router.get('/reports/summary', async (req, res) => {
 
 // 
 // GET /api/admin/reports/revenue  Revenue Intelligence (Window Functions)
-router.get('/reports/revenue', async (req, res) => {
+router.get('/reports/revenue', requireAdminOrManagerUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const result = await pool.request().query(`
@@ -324,7 +331,7 @@ router.get('/reports/revenue', async (req, res) => {
 // Revenue Analytics grouped by Brand & Chain (Window Functions)
 // Demonstrates: HotelChain  Brand  Hotel hierarchy utilization
 // 
-router.get('/reports/revenue-by-brand', async (req, res) => {
+router.get('/reports/revenue-by-brand', requireAdminOrManagerUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const result = await pool.request().query(`
@@ -382,7 +389,7 @@ router.get('/reports/revenue-by-brand', async (req, res) => {
 // Update room availability with version check
 // Uses version_no column for conflict detection
 // 
-router.put('/availability/:id', async (req, res) => {
+router.put('/availability/:id', requireAdminUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const availId = parseInt(req.params.id);
@@ -467,7 +474,7 @@ router.put('/availability/:id', async (req, res) => {
 // GET /api/admin/rates?hotel_id=&date_from=&date_to=&room_type_id=
 // List RoomRate rows for rate management UI
 // 
-router.get('/rates', async (req, res) => {
+router.get('/rates', requireAdminOrManagerUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const { hotel_id, date_from, date_to, room_type_id, limit = 300 } = req.query;
@@ -559,7 +566,7 @@ router.get('/rates', async (req, res) => {
 // Reservation Status History  audit/timeline view
 // Filters: hotel_id, reservation_id, status, date_from, date_to, limit
 // 
-router.get('/history', async (req, res) => {
+router.get('/history', requireAdminUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const {
@@ -644,12 +651,126 @@ router.get('/history', async (req, res) => {
   }
 });
 
+// 
+// GET /api/admin/operations-log
+// Hotel-level reservation lifecycle log: booking created, cancelled, check-in, check-out
+// 
+router.get('/operations-log', requireAdminUser, async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const { hotel_id, event_type, date_from, date_to, reservation_code, limit = 150 } = req.query;
+
+    const request = pool.request();
+    const filters = [];
+
+    if (hotel_id) {
+      request.input('hotelId', sql.BigInt, parseInt(hotel_id));
+      filters.push('events.hotel_id = @hotelId');
+    }
+    if (event_type) {
+      request.input('eventType', sql.VarChar(30), event_type.toUpperCase());
+      filters.push('events.event_type = @eventType');
+    }
+    if (date_from) {
+      request.input('dateFrom', sql.VarChar(10), String(date_from).slice(0, 10));
+      filters.push('CAST(events.event_at AS DATE) >= @dateFrom');
+    }
+    if (date_to) {
+      request.input('dateTo', sql.VarChar(10), String(date_to).slice(0, 10));
+      filters.push('CAST(events.event_at AS DATE) <= @dateTo');
+    }
+    if (reservation_code) {
+      request.input('reservationCode', sql.VarChar(50), `%${String(reservation_code).trim()}%`);
+      filters.push('events.reservation_code LIKE @reservationCode');
+    }
+
+    request.input('limit', sql.Int, Math.min(parseInt(limit) || 150, 500));
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+
+    const result = await request.query(`
+      WITH events AS (
+        SELECT
+          r.reservation_id,
+          r.reservation_code,
+          r.hotel_id,
+          h.hotel_name,
+          g.first_name + ' ' + g.last_name AS guest_name,
+          g.email AS guest_email,
+          rr.room_id,
+          rm.room_number,
+          r.checkin_date,
+          r.checkout_date,
+          r.reservation_status,
+          'BOOKED' AS event_type,
+          r.created_at AS event_at,
+          CAST('Reservation created successfully' AS NVARCHAR(255)) AS event_note,
+          CAST(NULL AS NVARCHAR(255)) AS agent_name
+        FROM Reservation r
+        JOIN Hotel h ON r.hotel_id = h.hotel_id
+        JOIN Guest g ON r.guest_id = g.guest_id
+        LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+        LEFT JOIN Room rm ON rr.room_id = rm.room_id
+
+        UNION ALL
+
+        SELECT
+          r.reservation_id,
+          r.reservation_code,
+          r.hotel_id,
+          h.hotel_name,
+          g.first_name + ' ' + g.last_name AS guest_name,
+          g.email AS guest_email,
+          rr.room_id,
+          rm.room_number,
+          r.checkin_date,
+          r.checkout_date,
+          r.reservation_status,
+          CASE rsh.new_status
+            WHEN 'CANCELLED' THEN 'CANCELLED'
+            WHEN 'CHECKED_IN' THEN 'CHECKED_IN'
+            WHEN 'CHECKED_OUT' THEN 'CHECKED_OUT'
+          END AS event_type,
+          rsh.changed_at AS event_at,
+          rsh.change_reason AS event_note,
+          su.full_name AS agent_name
+        FROM ReservationStatusHistory rsh
+        JOIN Reservation r ON rsh.reservation_id = r.reservation_id
+        JOIN Hotel h ON r.hotel_id = h.hotel_id
+        JOIN Guest g ON r.guest_id = g.guest_id
+        LEFT JOIN SystemUser su ON rsh.changed_by = su.user_id
+        LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+        LEFT JOIN Room rm ON rr.room_id = rm.room_id
+        WHERE rsh.new_status IN ('CANCELLED', 'CHECKED_IN', 'CHECKED_OUT')
+      )
+      SELECT TOP (@limit) *
+      FROM events
+      ${whereClause}
+      ORDER BY event_at DESC, reservation_id DESC
+    `);
+
+    const rows = result.recordset;
+    const byEventType = rows.reduce((acc, row) => {
+      acc[row.event_type] = (acc[row.event_type] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      count: rows.length,
+      summary: { by_event_type: byEventType },
+      data: rows,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 
 // 
 // GET /api/admin/channels
 // BookingChannel list + reservation/revenue stats
 // 
-router.get('/channels', async (req, res) => {
+router.get('/channels', requireAdminUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const result = await pool.request().query(`
@@ -687,7 +808,7 @@ router.get('/channels', async (req, res) => {
 // Full location hierarchy with hotel counts
 // Uses Recursive CTE (from Location table)
 // 
-router.get('/location-tree', async (req, res) => {
+router.get('/location-tree', requireAdminUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const result = await pool.request().query(`
@@ -736,7 +857,7 @@ router.get('/location-tree', async (req, res) => {
 // 
 // GET /api/admin/rate-plans  List rate plans (filterable by hotel)
 // 
-router.get('/rate-plans', async (req, res) => {
+router.get('/rate-plans', requireAdminOrManagerUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const { hotel_id, status, type } = req.query;
@@ -791,7 +912,7 @@ router.get('/rate-plans', async (req, res) => {
 // 
 // GET /api/admin/rate-plans/:id  Get single rate plan
 // 
-router.get('/rate-plans/:id', async (req, res) => {
+router.get('/rate-plans/:id', requireAdminOrManagerUser, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ success: false, error: 'Invalid rate plan ID' });
@@ -828,7 +949,7 @@ router.get('/rate-plans/:id', async (req, res) => {
 const VALID_RATE_PLAN_TYPES = ['BAR', 'NON_REFUNDABLE', 'MEMBER', 'PACKAGE', 'CORPORATE', 'PROMO'];
 const VALID_MEAL_INCLUSIONS = ['ROOM_ONLY', 'BREAKFAST', 'HALF_BOARD', 'FULL_BOARD', 'ALL_INCLUSIVE'];
 
-router.post('/rate-plans', async (req, res) => {
+router.post('/rate-plans', requireAdminOrManagerUser, async (req, res) => {
   try {
     const {
       hotel_id, rate_plan_code, rate_plan_name, rate_plan_type,
@@ -911,7 +1032,7 @@ router.post('/rate-plans', async (req, res) => {
 // 
 // PUT /api/admin/rate-plans/:id  Update rate plan
 // 
-router.put('/rate-plans/:id', async (req, res) => {
+router.put('/rate-plans/:id', requireAdminOrManagerUser, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ success: false, error: 'Invalid rate plan ID' });
@@ -987,7 +1108,7 @@ router.put('/rate-plans/:id', async (req, res) => {
 // 
 // DELETE /api/admin/rate-plans/:id  Soft-delete (INACTIVE)
 // 
-router.delete('/rate-plans/:id', async (req, res) => {
+router.delete('/rate-plans/:id', requireAdminOrManagerUser, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ success: false, error: 'Invalid rate plan ID' });

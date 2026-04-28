@@ -337,6 +337,81 @@
   box-shadow: 0 18px 48px rgba(20, 32, 36, 0.08);
 }
 
+.login-media-shell {
+  width: min(100%, 980px);
+  grid-template-columns: minmax(300px, 0.95fr) minmax(340px, 1fr);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  background: rgba(255, 251, 246, 0.92);
+}
+
+.login-media-panel {
+  position: relative;
+  min-height: 592px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(20, 61, 66, 0.92), rgba(43, 111, 112, 0.7)),
+    var(--panel-strong);
+}
+
+.login-media-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.76;
+  filter: saturate(0.92) contrast(1.05);
+}
+
+.login-media-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 24% 20%, rgba(255, 251, 246, 0.22), transparent 34%),
+    linear-gradient(180deg, rgba(10, 34, 38, 0.1), rgba(10, 34, 38, 0.72));
+}
+
+.login-media-overlay {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 36px;
+  color: var(--text-on-dark);
+}
+
+.login-media-overlay .auth-eyebrow {
+  color: rgba(255, 220, 166, 0.92);
+}
+
+.login-media-overlay h2 {
+  max-width: 10ch;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4.6rem);
+  line-height: 0.92;
+  letter-spacing: -0.05em;
+}
+
+.login-media-overlay span {
+  max-width: 360px;
+  color: rgba(255, 251, 246, 0.82);
+  line-height: 1.6;
+}
+
+.login-form-panel {
+  display: grid;
+  align-content: center;
+  gap: 16px;
+  padding: clamp(28px, 5vw, 52px);
+}
+
 .auth-eyebrow { color: var(--accent); font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; }
 .auth-copy { color: var(--text-soft); font-size: 1rem; line-height: 1.6; }
 
@@ -435,6 +510,9 @@ button, .button-link {
   .admin-account-row, .admin-card-title, .admin-account-controls { flex-direction: column; align-items: stretch; }
   .footer-grid { grid-template-columns: repeat(3, max-content); justify-content: space-between; }
   .footer-destination-links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .login-media-shell { grid-template-columns: 1fr; }
+  .login-media-panel { min-height: 280px; }
+  .login-media-overlay h2 { max-width: 14ch; }
 }
 
 @media (max-width: 720px) {

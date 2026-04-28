@@ -119,26 +119,18 @@ function HeroSearch() {
 }
 
 //  Destination Card 
-const DEST_IMAGES = {
-  'Vietnam': 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=600&q=80',
-  'Thailand': 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=600&q=80',
-  'Japan': 'https://images.unsplash.com/photo-1492571350019-22de08371fd3?w=600&q=80',
-  'Singapore': 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=600&q=80',
-  'Indonesia': 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600&q=80',
-  'South Korea': 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?w=600&q=80',
-};
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80';
 
-function DestCard({ city, country, count }) {
+function DestCard({ city, country, count, image }) {
   const navigate = useNavigate();
-  const img = DEST_IMAGES[country] || FALLBACK_IMG;
+  const img = image || FALLBACK_IMG;
   return (
     <button
       className="dest-card"
       type="button"
       onClick={() => navigate(`/search?destination=${encodeURIComponent(`${city}, ${country}`)}&checkin=${today()}&checkout=${addDays(today(), 2)}&guests=1`)}
     >
-      <img src={img} alt={city} className="dest-card-img" />
+      <img src={img} alt={city} className="dest-card-img" onError={imgError} />
       <div className="dest-card-overlay">
         <strong>{city}</strong>
         <span>{count} {count === 1 ? 'property' : 'properties'}</span>
@@ -151,9 +143,13 @@ function DestCard({ city, country, count }) {
 function PromoCard({ promo }) {
   const navigate = useNavigate();
   // Backend fields: promotion_name, promotion_type, discount_value, booking_end_date
-  const discount = promo.promotion_type === 'PERCENT'
+  const discount = ['PERCENT', 'PERCENT_OFF'].includes(promo.promotion_type)
     ? `${promo.discount_value}% off`
-    : `${Number(promo.discount_value || 0).toLocaleString()} VND off`;
+    : `${new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: promo.currency_code || 'USD',
+        maximumFractionDigits: ['VND', 'JPY', 'KRW'].includes(promo.currency_code) ? 0 : 2,
+      }).format(Number(promo.discount_value || 0))} off`;
 
   return (
     <div className="promo-card">
@@ -173,18 +169,11 @@ function PromoCard({ promo }) {
 //  Main Page 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [locations, setLocations] = useState([]);
   const [promos, setPromos] = useState([]);
   const [hotels, setHotels] = useState([]);
 
   useEffect(() => {
     // All 3 endpoints return { success, count, data: [...] }
-    apiRequest('/locations').then((r) => {
-      const list = (r.data || []).filter(
-        (l) => l.location_type === 'CITY' || l.location_type === 'DISTRICT'
-      );
-      setLocations(list);
-    }).catch(() => {});
     apiRequest('/promotions').then((r) => {
       // JOIN in backend can produce duplicate rows per promotion  deduplicate
       const seen = new Set();
@@ -195,18 +184,29 @@ export default function DashboardPage() {
       });
       setPromos(unique.slice(0, 3));
     }).catch(() => {});
-    apiRequest('/hotels').then((r) => setHotels((r.data || r.hotels || []).slice(0, 4))).catch(() => {});
+    apiRequest('/hotels').then((r) => setHotels(r.data || r.hotels || [])).catch(() => {});
   }, []);
 
-  // Build destination groups from city-level locations
+  // Build destination groups from hotel catalog so cards can use MongoDB hero images.
   const destMap = {};
-  locations.forEach((l) => {
-    // location_name is the city/district name; use it as the key
-    const key = l.location_name;
-    if (!destMap[key]) destMap[key] = { country: key, cities: [key], count: l.hotel_count || 1 };
-    else destMap[key].count += l.hotel_count || 1;
+  hotels.forEach((hotel) => {
+    const city = hotel.location_detail?.city || hotel.city_name || hotel.district_name;
+    const country = hotel.location_detail?.country || hotel.country_name || '';
+    if (!city) return;
+
+    const key = `${city}|${country}`;
+    if (!destMap[key]) {
+      destMap[key] = {
+        city,
+        country,
+        count: 0,
+        image: resolveHotelImage(hotel),
+      };
+    }
+    destMap[key].count += 1;
   });
   const topDests = Object.values(destMap).slice(0, 6);
+  const featuredHotels = hotels.slice(0, 4);
 
   return (
     <div className="home-page">
@@ -254,14 +254,14 @@ export default function DashboardPage() {
           </div>
           <div className="dest-grid">
             {topDests.map((d) => (
-              <DestCard key={d.country} city={d.cities[0] || d.country} country={d.country} count={d.count} />
+              <DestCard key={`${d.city}-${d.country}`} city={d.city} country={d.country} count={d.count} image={d.image} />
             ))}
           </div>
         </section>
       )}
 
       {/*  FEATURED HOTELS  */}
-      {hotels.length > 0 && (
+      {featuredHotels.length > 0 && (
         <section className="home-section">
           <div className="home-section-head">
             <div>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
             </button>
           </div>
           <div className="featured-grid">
-            {hotels.map((h) => (
+            {featuredHotels.map((h) => (
               <button
                 key={h.hotel_id}
                 className="featured-card"
@@ -322,10 +322,10 @@ export default function DashboardPage() {
       {/*  TRUST STRIP  */}
       <section className="trust-strip">
         {[
-          { icon: '', title: 'Curated luxury', desc: 'Every property vetted for exceptional standards.' },
-          { icon: '', title: 'Secure booking', desc: 'Your data and payments are always protected.' },
-          { icon: '', title: 'Loyalty rewards', desc: 'Earn points on every stay. Redeem for upgrades.' },
-          { icon: '', title: 'Global network', desc: "Properties across Asia's top destinations." },
+          { icon: '💎', title: 'Curated luxury', desc: 'Every property vetted for exceptional standards.' },
+          { icon: '🔒', title: 'Secure booking', desc: 'Your data and payments are always protected.' },
+          { icon: '🎁', title: 'Loyalty rewards', desc: 'Earn points on every stay. Redeem for upgrades.' },
+          { icon: '🌐', title: 'Global network', desc: "Properties across Asia's top destinations." },
         ].map((t) => (
           <div key={t.title} className="trust-item">
             <span className="trust-icon">{t.icon}</span>

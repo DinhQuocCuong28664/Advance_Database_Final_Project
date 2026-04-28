@@ -1,5 +1,5 @@
 /**
- * LuxeReserve  Guest Routes
+ * LuxeReserve - Guest Routes
  */
 
 const express = require('express');
@@ -504,6 +504,48 @@ router.get('/:id/stays', requireAuth, async (req, res) => {
         LEFT JOIN RoomType   rt ON rr.room_type_id        = rt.room_type_id
         WHERE r.guest_id = @id
         ORDER BY sr.actual_checkin_at DESC, sr.stay_id DESC
+      `);
+
+    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/guests/:id/reviews  Guest review history
+router.get('/:id/reviews', requireAuth, async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const guestId = parseInt(req.params.id, 10);
+    if (isNaN(guestId)) {
+      return res.status(400).json({ success: false, error: 'Invalid guest ID' });
+    }
+    if (!ensureGuestAccess(req, res, guestId)) {
+      return;
+    }
+
+    const result = await pool.request()
+      .input('guestId', sql.BigInt, guestId)
+      .query(`
+        SELECT
+          hr.hotel_review_id,
+          hr.hotel_id,
+          hr.reservation_id,
+          hr.rating_score,
+          hr.review_title,
+          hr.review_text,
+          hr.public_visible_flag,
+          hr.moderation_status,
+          hr.created_at,
+          h.hotel_name,
+          r.reservation_code,
+          r.checkin_date,
+          r.checkout_date
+        FROM HotelReview hr
+        JOIN Hotel h ON hr.hotel_id = h.hotel_id
+        JOIN Reservation r ON hr.reservation_id = r.reservation_id
+        WHERE hr.guest_id = @guestId
+        ORDER BY hr.created_at DESC, hr.hotel_review_id DESC
       `);
 
     res.json({ success: true, count: result.recordset.length, data: result.recordset });

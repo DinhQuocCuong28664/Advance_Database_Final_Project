@@ -59,6 +59,10 @@ BEGIN TRY
     JOIN ReservationRoom rr ON rr.reservation_room_id = sr.reservation_room_id
     JOIN @demoReservations d ON d.reservation_id = rr.reservation_id;
 
+    DELETE hr
+    FROM HotelReview hr
+    JOIN @demoReservations d ON d.reservation_id = hr.reservation_id;
+
     DELETE rg
     FROM ReservationGuest rg
     JOIN @demoReservations d ON d.reservation_id = rg.reservation_id;
@@ -328,6 +332,17 @@ BEGIN TRY
     (@resCancelled, NULL, 'PENDING', 2, N'[DEMO] Reservation created through call center', DATEADD(DAY, -1, GETDATE())),
     (@resCancelled, 'PENDING', 'CONFIRMED', 2, N'[DEMO] Reservation confirmed by agent', DATEADD(HOUR, -20, GETDATE())),
     (@resCancelled, 'CONFIRMED', 'CANCELLED', 2, N'[DEMO] Hotel cancelled due inventory maintenance block', DATEADD(HOUR, -12, GETDATE()));
+
+    INSERT INTO HotelReview (
+        hotel_id, guest_id, reservation_id, rating_score, review_title, review_text,
+        public_visible_flag, moderation_status, created_at, updated_at
+    ) VALUES
+    (
+        1, 1, @resCompleted, 5,
+        N'Excellent city stay',
+        N'[DEMO] Smooth check-in, spacious room, and attentive staff throughout the stay. Would book this property again.',
+        1, 'PUBLISHED', DATEADD(DAY, -4, GETDATE()), DATEADD(DAY, -4, GETDATE())
+    );
 
     INSERT INTO HousekeepingTask (
         hotel_id, room_id, task_type, task_status, priority_level, assigned_staff_id,

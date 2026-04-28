@@ -30,7 +30,7 @@ export default function VnpayReturnPage() {
   return (
     <div className="vnpay-return-page">
       <div className={`vnpay-result-card ${isSuccess ? 'vnpay-success' : 'vnpay-failed'}`}>
-        <div className="vnpay-result-icon">{isSuccess ? '' : ''}</div>
+        <div className="vnpay-result-icon">{isSuccess ? '✅' : '❌'}</div>
 
         <p className="page-eyebrow">{isSuccess ? 'Payment successful' : 'Payment unsuccessful'}</p>
 

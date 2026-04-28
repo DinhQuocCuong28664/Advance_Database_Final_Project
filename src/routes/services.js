@@ -1,5 +1,5 @@
 /**
- * LuxeReserve  Service Routes
+ * LuxeReserve - Service Routes
  * Manage hotel services & incidental charges during stay
  */
 
@@ -19,6 +19,27 @@ function ensureReservationAccess(req, res, guestId) {
 
   res.status(403).json({ success: false, error: 'You are not authorised to access this reservation service data' });
   return false;
+}
+
+function normalizeSqlDateTime(value) {
+  if (!value) return null;
+
+  const raw = String(value).trim();
+  const localDateTime = raw.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::(\d{2}))?/);
+  if (localDateTime) {
+    return `${localDateTime[1]} ${localDateTime[2]}:${localDateTime[3] || '00'}`;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const pad = (n) => String(n).padStart(2, '0');
+  return [
+    `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`,
+    `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}:${pad(parsed.getSeconds())}`,
+  ].join(' ');
 }
 
 // 
@@ -120,6 +141,11 @@ router.post('/order', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'This service is currently unavailable' });
     }
 
+    const scheduledAtSql = normalizeSqlDateTime(scheduled_at);
+    if (scheduled_at && !scheduledAtSql) {
+      return res.status(400).json({ success: false, error: 'scheduled_at must be a valid date/time' });
+    }
+
     // Calculate amounts
     const qty = quantity || 1;
     const unitPrice = parseFloat(service.base_price);
@@ -130,7 +156,7 @@ router.post('/order', requireAuth, async (req, res) => {
       .input('resvId', sql.BigInt, reservation_id)
       .input('resvRoomId', sql.BigInt, reservation.reservation_room_id || null)
       .input('svcId', sql.BigInt, service_id)
-      .input('scheduledAt', sql.DateTime, scheduled_at ? new Date(scheduled_at) : null)
+      .input('scheduledAt', sql.VarChar(19), scheduledAtSql)
       .input('qty', sql.Int, qty)
       .input('unitPrice', sql.Decimal(18, 2), unitPrice)
       .input('finalAmount', sql.Decimal(18, 2), finalAmount)
@@ -140,7 +166,7 @@ router.post('/order', requireAuth, async (req, res) => {
           (reservation_id, reservation_room_id, service_id, scheduled_at,
            quantity, unit_price, final_amount, service_status, special_instruction)
         OUTPUT INSERTED.*
-        VALUES (@resvId, @resvRoomId, @svcId, @scheduledAt,
+        VALUES (@resvId, @resvRoomId, @svcId, TRY_CONVERT(DATETIME, @scheduledAt, 120),
                 @qty, @unitPrice, @finalAmount, 'REQUESTED', @instruction)
       `);
 
@@ -171,7 +197,7 @@ router.get('/orders', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Provide reservation_id or hotel_id' });
     }
 
-    //  Guest view: single reservation 
+    // Guest view: single reservation
     if (reservation_id) {
       const accessCheck = await pool.request()
         .input('resvId', sql.BigInt, parseInt(reservation_id))
@@ -211,7 +237,7 @@ router.get('/orders', requireAuth, async (req, res) => {
       });
     }
 
-    //  Staff view: all orders for a hotel (optional status filter) 
+    // Staff view: all orders for a hotel (optional status filter)
     if (req.auth?.user_type !== 'SYSTEM_USER') {
       return res.status(403).json({ success: false, error: 'System user access required for hotel-wide service orders' });
     }
@@ -287,6 +313,32 @@ router.put('/orders/:id/status', requireSystemUser, async (req, res) => {
 
     const pool = getSqlPool();
 
+
+    // Validate order and reservation status before allowing update
+    const orderCheck = await pool.request()
+      .input('orderId', sql.BigInt, orderId)
+      .query(`
+        SELECT rs.reservation_service_id, rs.service_status,
+               r.reservation_id, r.reservation_status
+        FROM ReservationService rs
+        JOIN Reservation r ON rs.reservation_id = r.reservation_id
+        WHERE rs.reservation_service_id = @orderId
+      `);
+
+    if (orderCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Service order not found' });
+    }
+
+    const orderRow = orderCheck.recordset[0];
+
+    // Block CONFIRM/DELIVER if reservation is already closed
+    if (['CONFIRMED', 'DELIVERED'].includes(status) &&
+        ['CHECKED_OUT', 'CANCELLED', 'NO_SHOW'].includes(orderRow.reservation_status)) {
+      return res.status(409).json({
+        success: false,
+        error: 'Cannot update service to ' + status + ': reservation is already ' + orderRow.reservation_status + '. Only CANCELLED is allowed.',
+      });
+    }
     const result = await pool.request()
       .input('orderId', sql.BigInt, orderId)
       .input('status', sql.VarChar(15), status)
@@ -344,6 +396,14 @@ router.post('/orders/:id/pay', requireSystemUser, async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Cannot pay for a cancelled service order'
+      });
+    }
+
+    // Block payment for orders that were never confirmed before checkout
+    if (order.service_status === 'REQUESTED') {
+      return res.status(409).json({
+        success: false,
+        error: 'Service order is still REQUESTED and was not confirmed. Please cancel it instead of charging.',
       });
     }
 

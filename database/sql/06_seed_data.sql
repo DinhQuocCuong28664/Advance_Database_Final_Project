@@ -241,7 +241,8 @@ GO
 SET IDENTITY_INSERT SystemUser ON;
 INSERT INTO SystemUser (user_id, hotel_id, username, password_hash, full_name, email, department, account_status) VALUES
 (1, 1, 'admin',   '$2b$10$LRArHF87Ay2k8uPTI0scPenxOBIehsGYeKOQnFgWUC/nRmr7RoK3K', N'Admin',   'admin@luxereserve.local',   'IT',           'ACTIVE'),
-(2, 1, 'cashier', '$2b$10$Sml4F/p99J/tvZbRXS.CJuxBAul4U/vnkN.QMSs0YwnHiARYBlnuW', N'Cashier', 'cashier@luxereserve.local', 'FRONT_OFFICE', 'ACTIVE');
+(2, 1, 'cashier', '$2b$10$Sml4F/p99J/tvZbRXS.CJuxBAul4U/vnkN.QMSs0YwnHiARYBlnuW', N'Cashier', 'cashier@luxereserve.local', 'FRONT_OFFICE', 'ACTIVE'),
+(3, 1, 'manager', '$2b$10$wUlcEcOW/ZdUavpz3S9s0uuANC7rHtquuGbdAMIQK22iAw2lYRgfe', N'Manager', 'manager@luxereserve.local', 'MANAGEMENT', 'ACTIVE');
 SET IDENTITY_INSERT SystemUser OFF;
 GO
 
@@ -252,13 +253,14 @@ SET IDENTITY_INSERT Role ON;
 INSERT INTO Role (role_id, role_code, role_name) VALUES
 (1, 'ADMIN',        N'System Administrator'),
 (2, 'FRONT_DESK',   N'Front Desk Agent'),
-(3, 'REV_MANAGER',  N'Revenue Manager'),
+(3, 'MANAGER',      N'Revenue Manager'),
 (4, 'HK_MANAGER',   N'Housekeeping Manager'),
 (5, 'CASHIER',      N'Cashier');
 SET IDENTITY_INSERT Role OFF;
 
 INSERT INTO UserRole (user_id, role_id, assigned_by) VALUES
 (1, 1, NULL),
+(3, 3, 1),
 (2, 2, 1),
 (2, 5, 1);
 GO
@@ -935,7 +937,7 @@ PRINT '========================================';
 PRINT '  CONSOLIDATED SEED COMPLETE';
 PRINT '  - 9 hotels, rates, availability, promotions';
 PRINT '  - full service catalog + room features';
-PRINT '  - 3 login accounts: admin, cashier, dqc';
+PRINT '  - 4 login accounts: admin, cashier, manager, dqc';
 PRINT '========================================';
 GO
 

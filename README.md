@@ -91,6 +91,7 @@ room features, and the normalized demo accounts:
 
 - `admin / admin`
 - `cashier / cashier`
+- `manager / manager`
 - `dqc / dqc`
 
 The guest demo account logs in with guest code `dqc`.
@@ -174,7 +175,7 @@ Frontend is at **http://localhost:5173**  proxies all `/api` requests to the bac
 | `/login` | Shared login (guest + admin) | Public |
 | `/register` | Guest registration with OTP email verification | Public |
 | `/account` | Guest account hub  bookings, loyalty | Guest only |
-| `/admin` | Admin dashboard  inventory, accounts, revenue | Admin only |
+| `/admin` | Admin and manager dashboard  pricing, reports, operations | Admin / Manager |
 
 ---
 
@@ -184,6 +185,7 @@ Frontend is at **http://localhost:5173**  proxies all `/api` requests to the bac
 |---|---|---|
 | Admin | `admin` | `admin` |
 | Cashier | `cashier` | `cashier` |
+| Manager | `manager` | `manager` |
 | Guest (dqc) | `dqc` | `dqc` |
 
 ---
