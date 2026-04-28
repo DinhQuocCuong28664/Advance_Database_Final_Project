@@ -180,25 +180,9 @@ router.post('/', async (req, res) => {
           return res.status(404).json({ success: false, error: 'Guest not found' });
         }
 
-        if (guest_profile) {
-          await new sql.Request(transaction)
-            .input('guestId', sql.BigInt, resolvedGuestId)
-            .input('firstName', sql.NVarChar(100), String(guest_profile.first_name || '').trim() || null)
-            .input('lastName', sql.NVarChar(100), String(guest_profile.last_name || '').trim() || null)
-            .input('email', sql.VarChar(150), String(guest_profile.email || '').trim() || null)
-            .input('phoneCountryCode', sql.VarChar(10), guest_profile.phone_country_code || null)
-            .input('phoneNumber', sql.VarChar(30), guest_profile.phone_number || null)
-            .query(`
-              UPDATE Guest
-              SET first_name = COALESCE(@firstName, first_name),
-                  last_name = COALESCE(@lastName, last_name),
-                  email = COALESCE(@email, email),
-                  phone_country_code = @phoneCountryCode,
-                  phone_number = @phoneNumber,
-                  updated_at = GETDATE()
-              WHERE guest_id = @guestId
-            `);
-        }
+        // Do NOT update the Guest profile from booking form data.
+        // guest_profile in the request body is only a pre-fill hint for the booking form.
+        // Profile changes must go through the dedicated endpoint: PUT /api/guests/:id.
       } else {
         const existingGuestAuth = await new sql.Request(transaction)
           .input('loginEmail', sql.VarChar(150), String(guest_profile.email).trim())

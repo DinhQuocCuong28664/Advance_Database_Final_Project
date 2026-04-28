@@ -594,3 +594,19 @@ GET /rooms/availability (which requires checkin+checkout date params).
     maintenance_status, room_type_name, category, bed_type, max_adults, etc.
   - Required param: hotel_id; optional: limit (default 100, max 500)
   - Used by: AdminHousekeeping.jsx, AdminMaintenance.jsx
+
+## 2026-04-29 - Fix: booking form no longer overwrites guest profile
+
+Bug: POST /api/reservations was updating the Guest table (first_name, last_name,
+email, phone) with data from the booking form whenever a logged-in guest made a
+reservation. This caused the profile in My Account to be overwritten with
+whatever the guest typed in the booking form.
+
+Root cause: An UPDATE Guest block ran unconditionally when guest_profile was
+present in the request body, even for authenticated guests who already had a profile.
+
+Fix: Removed the UPDATE Guest block for logged-in guests (resolvedGuestId path).
+The guest_profile field in POST /reservations is now treated as a read-only
+pre-fill hint. Profile changes must go through PUT /api/guests/:id only.
+
+- src/routes/reservations.js (lines 183-185): Replaced UPDATE Guest block with comment
