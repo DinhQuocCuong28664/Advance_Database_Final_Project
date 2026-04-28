@@ -472,6 +472,73 @@ router.post('/', requireSystemUser, async (req, res) => {
   }
 });
 
+// PUT /api/guests/:id  Update own profile (name + phone only)
+// Email, guest_code, and identity fields are locked - cannot be changed here.
+router.put('/:id', requireAuth, async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const guestId = parseInt(req.params.id, 10);
+
+    if (isNaN(guestId)) {
+      return res.status(400).json({ success: false, error: 'Invalid guest ID' });
+    }
+    if (!ensureGuestAccess(req, res, guestId)) {
+      return;
+    }
+
+    const { first_name, last_name, phone_country_code, phone_number } = req.body;
+
+    // Validate: first_name and last_name are required
+    const cleanFirst = String(first_name || '').trim();
+    const cleanLast  = String(last_name  || '').trim();
+    if (!cleanFirst || !cleanLast) {
+      return res.status(400).json({ success: false, error: 'first_name and last_name are required' });
+    }
+    if (cleanFirst.length > 100 || cleanLast.length > 100) {
+      return res.status(400).json({ success: false, error: 'first_name and last_name must be 100 characters or fewer' });
+    }
+
+    const cleanPhoneCC  = String(phone_country_code || '').trim() || null;
+    const cleanPhone    = String(phone_number        || '').trim() || null;
+    if (cleanPhone && cleanPhone.length > 30) {
+      return res.status(400).json({ success: false, error: 'phone_number must be 30 characters or fewer' });
+    }
+
+    const result = await pool.request()
+      .input('guestId',          sql.BigInt,       guestId)
+      .input('firstName',        sql.NVarChar(100), cleanFirst)
+      .input('lastName',         sql.NVarChar(100), cleanLast)
+      .input('phoneCountryCode', sql.VarChar(10),   cleanPhoneCC)
+      .input('phoneNumber',      sql.VarChar(30),   cleanPhone)
+      .query(`
+        UPDATE Guest
+        SET first_name         = @firstName,
+            last_name          = @lastName,
+            phone_country_code = @phoneCountryCode,
+            phone_number       = @phoneNumber,
+            updated_at         = GETDATE()
+        OUTPUT
+          INSERTED.guest_id,
+          INSERTED.first_name,
+          INSERTED.last_name,
+          INSERTED.full_name,
+          INSERTED.phone_country_code,
+          INSERTED.phone_number,
+          INSERTED.updated_at
+        WHERE guest_id = @guestId
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, error: 'Guest not found' });
+    }
+
+    res.json({ success: true, data: result.recordset[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
 // GET /api/guests/:id/stays  Stay history with hotel + room detail
 router.get('/:id/stays', requireAuth, async (req, res) => {
   try {

@@ -919,6 +919,11 @@ export default function AccountPage() {
   const [stays,        setStays]        = useState([]);
   const staysLoadedRef = useRef(false);
 
+  // Profile edit state
+  const [profileEdit, setProfileEdit] = useState(null);  // null = not editing
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg,    setProfileMsg]    = useState(null); // { type:'ok'|'err', text }
+
   const guestId = authSession?.user?.guest_id;
 
   async function loadGuestProfile() {
@@ -928,6 +933,41 @@ export default function AccountPage() {
       setGuestProfile(payload.data);
     } catch {
       // Keep the page usable even if the profile refresh fails.
+    }
+  }
+
+  function startEditProfile() {
+    setProfileEdit({
+      first_name:         guestProfile?.first_name        || '',
+      last_name:          guestProfile?.last_name         || '',
+      phone_country_code: guestProfile?.phone_country_code || '',
+      phone_number:       guestProfile?.phone_number       || '',
+    });
+    setProfileMsg(null);
+  }
+
+  async function handleProfileSave(e) {
+    e.preventDefault();
+    if (!profileEdit) return;
+    setProfileSaving(true);
+    setProfileMsg(null);
+    try {
+      const payload = await apiRequest(`/guests/${guestId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          first_name:         profileEdit.first_name.trim(),
+          last_name:          profileEdit.last_name.trim(),
+          phone_country_code: profileEdit.phone_country_code.trim() || null,
+          phone_number:       profileEdit.phone_number.trim()       || null,
+        }),
+      });
+      setGuestProfile((prev) => ({ ...prev, ...payload.data }));
+      setProfileEdit(null);
+      setProfileMsg({ type: 'ok', text: 'Profile updated successfully.' });
+    } catch (err) {
+      setProfileMsg({ type: 'err', text: err.message || 'Failed to save profile.' });
+    } finally {
+      setProfileSaving(false);
     }
   }
 
@@ -1182,6 +1222,7 @@ export default function AccountPage() {
             </section>
           )}
 
+
           {/*  TAB: Profile  */}
           {activeTab === 'Profile' && (
             <section className="page-card">
@@ -1194,15 +1235,101 @@ export default function AccountPage() {
 
               {/* Personal info */}
               <div className="acct-profile-section">
-                <p className="acct-section-label">Personal details</p>
-                <div className="acct-profile-grid">
-                  <div><span>Full name</span><strong>{authSession.user.full_name}</strong></div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <p className="acct-section-label" style={{ marginBottom: 0 }}>Personal details</p>
+                  {!profileEdit && (
+                    <button className="btn-outline" style={{ fontSize: '0.82rem', padding: '4px 14px' }} onClick={startEditProfile}>
+                      Edit
+                    </button>
+                  )}
+                </div>
+
+                {/* Read-only identity fields */}
+                <div className="acct-profile-grid" style={{ marginBottom: 16 }}>
                   <div><span>Email</span><strong>{authSession.user.email}</strong></div>
                   <div><span>Guest code</span><strong>{authSession.user.guest_code || ''}</strong></div>
                   <div><span>Nationality</span><strong>{guestProfile?.nationality_country_code || ''}</strong></div>
-                  <div><span>Phone</span><strong>{guestProfile ? `${guestProfile.phone_country_code || ''}${guestProfile.phone_number || ''}` : ''}</strong></div>
-                  <div><span>VIP status</span><strong>{guestProfile?.vip_flag ? ' VIP' : 'Standard'}</strong></div>
+                  <div><span>VIP status</span><strong>{guestProfile?.vip_flag ? 'VIP' : 'Standard'}</strong></div>
                 </div>
+
+                {/* Editable fields */}
+                {profileEdit ? (
+                  <form onSubmit={handleProfileSave} style={{ display: 'grid', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--text-soft)' }}>First name</span>
+                        <input
+                          className="form-input"
+                          value={profileEdit.first_name}
+                          onChange={(e) => setProfileEdit((s) => ({ ...s, first_name: e.target.value }))}
+                          required
+                          maxLength={100}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--text-soft)' }}>Last name</span>
+                        <input
+                          className="form-input"
+                          value={profileEdit.last_name}
+                          onChange={(e) => setProfileEdit((s) => ({ ...s, last_name: e.target.value }))}
+                          required
+                          maxLength={100}
+                        />
+                      </label>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--text-soft)' }}>Country code</span>
+                        <input
+                          className="form-input"
+                          placeholder="+84"
+                          value={profileEdit.phone_country_code}
+                          onChange={(e) => setProfileEdit((s) => ({ ...s, phone_country_code: e.target.value }))}
+                          maxLength={10}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--text-soft)' }}>Phone number</span>
+                        <input
+                          className="form-input"
+                          placeholder="0912 345 678"
+                          value={profileEdit.phone_number}
+                          onChange={(e) => setProfileEdit((s) => ({ ...s, phone_number: e.target.value }))}
+                          maxLength={30}
+                        />
+                      </label>
+                    </div>
+                    {profileMsg && (
+                      <p style={{ fontSize: '0.85rem', color: profileMsg.type === 'ok' ? 'var(--success, #22c55e)' : 'var(--danger, #ef4444)', margin: 0 }}>
+                        {profileMsg.text}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button className="btn-primary" type="submit" disabled={profileSaving} style={{ fontSize: '0.88rem' }}>
+                        {profileSaving ? 'Saving...' : 'Save changes'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        style={{ fontSize: '0.88rem' }}
+                        onClick={() => { setProfileEdit(null); setProfileMsg(null); }}
+                        disabled={profileSaving}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="acct-profile-grid">
+                    <div><span>Full name</span><strong>{guestProfile?.full_name || authSession.user.full_name}</strong></div>
+                    <div><span>Phone</span><strong>{guestProfile ? `${guestProfile.phone_country_code || ''}${guestProfile.phone_number || ''}`.trim() || '—' : '—'}</strong></div>
+                    {profileMsg?.type === 'ok' && (
+                      <div style={{ gridColumn: '1/-1' }}>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--success, #22c55e)', margin: 0 }}>{profileMsg.text}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Preferences */}
