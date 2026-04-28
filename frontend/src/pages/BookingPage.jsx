@@ -41,11 +41,14 @@ export default function BookingPage() {
   const depositDue   = Math.round(subtotal * DEPOSIT_RATE);
   const balanceDue   = subtotal - depositDue;
 
+  // Pre-fill from profile; phone_number stored without country code in the single field
+  const profilePhone = authSession?.user?.phone_number || '';
+
   const [form, setForm] = useState({
     first_name:     authSession?.user?.first_name || '',
     last_name:      authSession?.user?.last_name  || '',
     email:          authSession?.user?.login_email || authSession?.user?.email || '',
-    phone:          '',
+    phone:          profilePhone,
     booking_email_otp: '',
     loyalty_redemption_code: '',
     special_requests: '',
@@ -199,6 +202,18 @@ export default function BookingPage() {
       setReservation({ ...res, deposit_amount: serverDepositAmt });
       setStep('done');
 
+      // Auto-save phone to profile if guest is logged in and had no phone before
+      if (isGuestUser && guestId && form.phone.trim() && !profilePhone) {
+        apiRequest(`/guests/${guestId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            first_name:   form.first_name,
+            last_name:    form.last_name,
+            phone_number: form.phone.trim(),
+          }),
+        }).catch(() => null); // best-effort, do not block
+      }
+
     } catch (err) {
       setError(err.message);
     } finally {
@@ -332,8 +347,13 @@ export default function BookingPage() {
                   </div>
                 )}
                 <label className="field-span-2">
-                  Phone (optional)
-                  <input type="tel" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
+                  Phone{isGuestUser ? (profilePhone ? ' — saved from your profile' : ' (optional — will save to your profile)') : ' (optional)'}
+                  <input
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setField('phone', e.target.value)}
+                    placeholder={profilePhone ? '' : 'e.g. 0912 345 678'}
+                  />
                 </label>
                 <label className="field-span-2">
                   Loyalty voucher code (optional)
