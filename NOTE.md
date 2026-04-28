@@ -610,3 +610,47 @@ The guest_profile field in POST /reservations is now treated as a read-only
 pre-fill hint. Profile changes must go through PUT /api/guests/:id only.
 
 - src/routes/reservations.js (lines 183-185): Replaced UPDATE Guest block with comment
+
+## 2026-04-29 - Session: Profile edit, booking pre-fill, VNPay fix, abandoned reservation cleanup
+
+### Bug fix: Guest profile b? overwrite khi booking
+- src/routes/reservations.js (lines 183-185): Xoa block UPDATE Guest tu booking form.
+  Guest profile chi duoc cap nhat qua PUT /api/guests/:id.
+
+### Feature: Guest tu chinh sua profile (name + phone)
+- src/routes/guests.js (lines 473-542): Them PUT /api/guests/:id endpoint.
+  Chi cho phep sua: first_name, last_name, phone_country_code, phone_number.
+  Email, guest_code, identity fields bi khoa.
+- frontend/src/pages/AccountPage.jsx (lines 917-1296): Tab Profile chuyen tu
+  read-only thanh editable form voi nut Edit/Save/Cancel.
+  Identity fields (email, guest_code, nationality, vip) van hien thi read-only.
+
+### Bug fix: Booking form khong tu dien First name / Last name
+- src/routes/auth.js (lines 163-173): Them first_name, last_name, phone_country_code,
+  phone_number, login_email vao loadGuestUser() SELECT query.
+  Truoc do chi co full_name nen authSession.user.first_name luon undefined.
+
+### Feature: Booking form tu dien phone + auto-save lan dau
+- frontend/src/pages/BookingPage.jsx:
+  - Pre-fill phone tu authSession.user.phone_number
+  - Label hint: 'saved from your profile' hoac 'will save to your profile'
+  - Sau khi booking thanh cong, neu guest chua co phone thi tu dong goi
+    PUT /guests/:id de luu vao DB (best-effort, non-blocking)
+
+### Bug fix: VNPay Error.html?code=70 khi bam thanh toan
+- src/services/vnpay.js: Sua cach ky va build URL theo dung spec VNPay.
+  Ap dung fix tu nhanh ducbranch cua coworker:
+  sortedQueryString dung encodeURIComponent + doi %20 -> + (form-encoding)
+  khi ky va dung chinh string do trong URL cuoi.
+- src/routes/vnpay.js: Don gian hoa normalize IPv6 -> IPv4.
+
+### Bug fix: Room bi lock BOOKED khi user bo ngang VNPay
+- src/routes/vnpay.js:
+  - GET /return: khi responseCode != '00' tu dong goi _cancelAbandonedReservation()
+    de cancel reservation va tra phong ve OPEN ngay lap tuc.
+  - Them helper _cancelAbandonedReservation(txnRef, reason).
+  - Them POST /api/vnpay/cleanup-abandoned de manual trigger.
+- src/app.js (lines 168-234): Them setInterval chay moi 5 phut, quet tat ca
+  reservation CONFIRMED khong co CAPTURED payment qua 30 phut va huy chung.
+  Xu ly truong hop user dong tab ma VNPay return URL khong bao gio duoc goi.
+- DB: Giai phong 4 reservation bi ket (id 19-22) thu cong bang SQL.
