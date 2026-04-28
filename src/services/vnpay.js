@@ -55,29 +55,42 @@ function createPaymentUrl({ amount, txnRef, orderInfo, locale = 'vn', ipAddr = '
     throw new Error('VNPay is not configured. Set VNPAY_TMN_CODE, VNPAY_HASH_SECRET, VNPAY_URL in .env');
   }
 
-  const now     = new Date();
-  const expire  = new Date(now.getTime() + expireMinutes * 60 * 1000);
+  const now    = new Date();
+  const expire = new Date(now.getTime() + expireMinutes * 60 * 1000);
+
+  // Sanitize orderInfo: ASCII only, max 255 chars
+  const safeOrderInfo = String(orderInfo || '')
+    .replace(/[^\x20-\x7E]/g, '')  // strip non-ASCII (diacritics, etc.)
+    .slice(0, 255);
 
   const params = {
-    vnp_Version:     '2.1.0',
-    vnp_Command:     'pay',
-    vnp_TmnCode:     VNPAY_TMN_CODE,
-    vnp_Amount:      Math.round(amount) * 100,   // VNPay uses amount * 100
-    vnp_CurrCode:    'VND',
-    vnp_TxnRef:      txnRef,
-    vnp_OrderInfo:   orderInfo.slice(0, 255),    // max 255 chars
-    vnp_OrderType:   'other',
-    vnp_Locale:      locale,
-    vnp_ReturnUrl:   VNPAY_RETURN_URL,
-    vnp_IpAddr:      ipAddr,
-    vnp_CreateDate:  vnpDate(now),
-    vnp_ExpireDate:  vnpDate(expire),
+    vnp_Version:    '2.1.0',
+    vnp_Command:    'pay',
+    vnp_TmnCode:    VNPAY_TMN_CODE,
+    vnp_Amount:     Math.round(amount) * 100,   // VNPay requires amount * 100
+    vnp_CurrCode:   'VND',
+    vnp_TxnRef:     txnRef,
+    vnp_OrderInfo:  safeOrderInfo,
+    vnp_OrderType:  'other',
+    vnp_Locale:     locale,
+    vnp_ReturnUrl:  VNPAY_RETURN_URL,
+    vnp_IpAddr:     ipAddr,
+    vnp_CreateDate: vnpDate(now),
+    vnp_ExpireDate: vnpDate(expire),
   };
 
-  const queryStr   = sortedQueryString(params);
-  const secureHash = sign(queryStr);
+  // Step 1: Sign using RAW (unencoded) sorted query string — per VNPay spec
+  const rawQueryStr = sortedQueryString(params);
+  const secureHash  = sign(rawQueryStr);
 
-  return `${VNPAY_URL}?${queryStr}&vnp_SecureHash=${secureHash}`;
+  // Step 2: Build final URL with each value URL-encoded — required for HTTP transport
+  const keys = Object.keys(params).sort();
+  const encodedParts = keys
+    .filter((k) => params[k] !== '' && params[k] !== null && params[k] !== undefined)
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`);
+  const encodedQuery = encodedParts.join('&');
+
+  return `${VNPAY_URL}?${encodedQuery}&vnp_SecureHash=${encodeURIComponent(secureHash)}`;
 }
 
 /**
