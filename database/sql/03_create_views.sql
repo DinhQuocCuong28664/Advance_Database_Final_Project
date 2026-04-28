@@ -178,7 +178,7 @@ SELECT
 FROM dbo.ReservationRoom rr
 JOIN dbo.Reservation     r  ON rr.reservation_id = r.reservation_id
 JOIN dbo.Hotel           h  ON r.hotel_id        = h.hotel_id
-JOIN dbo.HotelBrand      hb ON h.brand_id         = hb.brand_id
+JOIN dbo.Brand           hb ON h.brand_id        = hb.brand_id
 WHERE r.reservation_status NOT IN ('CANCELLED', 'NO_SHOW')
 GROUP BY
     h.hotel_id, h.hotel_name,
