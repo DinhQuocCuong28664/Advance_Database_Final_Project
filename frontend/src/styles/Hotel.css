@@ -83,6 +83,39 @@
   transform: translateY(-2px);
 }
 .room-card-unavail { opacity: 0.45; pointer-events: none; }
+.room-card-images {
+  position: relative;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+  border-bottom: 1px solid rgba(20,61,66,0.08);
+}
+.room-card-images::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+.room-card-image {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  display: block;
+  scroll-snap-align: start;
+}
+.room-card-images-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  opacity: 0.8;
+}
 .room-card-body {
   display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 22px;
 }

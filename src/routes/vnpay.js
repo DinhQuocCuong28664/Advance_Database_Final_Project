@@ -74,6 +74,9 @@ router.get('/return', async (req, res) => {
     const result = verifyReturn(req.query);
     const frontendUrl = process.env.APP_URL || 'http://localhost:5173';
 
+    const fs = require('fs');
+    fs.appendFileSync('vnpay_log.txt', JSON.stringify({time: new Date(), query: req.query, result}) + '\\n');
+
     if (!result.valid) {
       return res.redirect(
         `${frontendUrl}/booking/vnpay-return?status=invalid&txnRef=${encodeURIComponent(result.txnRef || '')}`
@@ -204,35 +207,34 @@ async function _recordVnpayPayment(result, source) {
       // Update existing record
       await pool.request()
         .input('id', sql.BigInt, existing.recordset[0].payment_id)
-        .input('status', sql.VarChar(20), payStatus)
-        .input('transNo', sql.VarChar(50), transNo)
-        .input('bankCode', sql.VarChar(20), bankCode)
+        .input('status', sql.VarChar(15), payStatus)
+        .input('gatewayTransId', sql.VarChar(120), transNo)
         .query(`
           UPDATE Payment
           SET payment_status = @status,
-              transaction_ref = @transNo,
-              payment_notes   = @bankCode,
-              updated_at      = GETDATE()
+              gateway_transaction_id = @gatewayTransId,
+              updated_at = GETDATE()
           WHERE payment_id = @id
         `);
     } else {
       // Insert new record
+      // Need a unique payment_reference. We can use the VNPay txnRef.
       await pool.request()
         .input('resvId', sql.BigInt, resvId)
+        .input('payRef', sql.VarChar(80), result.txnRef)
         .input('amount', sql.Decimal(18, 2), result.amount)
-        .input('method', sql.VarChar(30), 'VNPAY')
-        .input('currency', sql.VarChar(10), 'VND')
+        .input('method', sql.VarChar(20), 'WALLET') // Matches CHECK constraint
+        .input('currency', sql.VarChar(3), 'VND')
         .input('type', sql.VarChar(20), 'DEPOSIT')
-        .input('status', sql.VarChar(20), payStatus)
-        .input('transNo', sql.VarChar(50), transNo)
-        .input('bankCode', sql.VarChar(20), bankCode)
+        .input('status', sql.VarChar(15), payStatus)
+        .input('gatewayTransId', sql.VarChar(120), transNo)
         .query(`
           INSERT INTO Payment
-            (reservation_id, amount, payment_method, currency_code,
-             payment_type, payment_status, transaction_ref, payment_notes)
+            (reservation_id, payment_reference, amount, payment_method, currency_code,
+             payment_type, payment_status, gateway_transaction_id)
           VALUES
-            (@resvId, @amount, @method, @currency,
-             @type, @status, @transNo, @bankCode)
+            (@resvId, @payRef, @amount, @method, @currency,
+             @type, @status, @gatewayTransId)
         `);
     }
   } catch (err) {

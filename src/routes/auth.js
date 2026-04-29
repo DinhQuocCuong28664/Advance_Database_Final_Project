@@ -440,35 +440,65 @@ router.post('/guest/register', async (req, res) => {
           return res.status(400).json({ success: false, error: 'first_name and last_name are required for self-registration' });
         }
 
-        const guestCode = await generateGuestCode(pool);
-        const createdGuest = await new sql.Request(transaction)
-          .input('guestCode', sql.VarChar(50), guestCode)
-          .input('title', sql.NVarChar(20), title || null)
-          .input('firstName', sql.NVarChar(100), first_name)
-          .input('middleName', sql.NVarChar(100), middle_name || null)
-          .input('lastName', sql.NVarChar(100), last_name)
-          .input('gender', sql.VarChar(15), gender || null)
+        // [ACCOUNT CLAIMING] Check if an orphan Guest record exists with this email
+        const orphanGuest = await new sql.Request(transaction)
           .input('email', sql.VarChar(150), login_email)
-          .input('phoneCountryCode', sql.VarChar(10), phone_country_code || null)
-          .input('phoneNumber', sql.VarChar(30), phone_number || null)
-          .input('nationality', sql.Char(2), nationality_country_code || null)
-          .input('languageCode', sql.VarChar(10), preferred_language_code || null)
-          .input('marketingOptIn', sql.Bit, marketing_opt_in_flag ? 1 : 0)
           .query(`
-            INSERT INTO Guest (
-              guest_code, title, first_name, middle_name, last_name, gender,
-              email, phone_country_code, phone_number, nationality_country_code,
-              preferred_language_code, marketing_opt_in_flag
-            )
-            OUTPUT INSERTED.guest_id
-            VALUES (
-              @guestCode, @title, @firstName, @middleName, @lastName, @gender,
-              @email, @phoneCountryCode, @phoneNumber, @nationality,
-              @languageCode, @marketingOptIn
-            )
+            SELECT TOP 1 guest_id 
+            FROM Guest 
+            WHERE email = @email 
+              AND guest_id NOT IN (SELECT guest_id FROM GuestAuth)
+            ORDER BY created_at DESC
           `);
 
-        resolvedGuestId = createdGuest.recordset[0].guest_id;
+        if (orphanGuest.recordset.length > 0) {
+          // Link to existing orphan profile
+          resolvedGuestId = orphanGuest.recordset[0].guest_id;
+          
+          // Update the existing profile with the new registration details
+          await new sql.Request(transaction)
+            .input('guestId', sql.BigInt, resolvedGuestId)
+            .input('firstName', sql.NVarChar(100), first_name)
+            .input('lastName', sql.NVarChar(100), last_name)
+            .query(`
+              UPDATE Guest 
+              SET first_name = @firstName, 
+                  last_name = @lastName,
+                  updated_at = GETDATE()
+              WHERE guest_id = @guestId
+            `);
+        } else {
+          // No orphan found, create a brand new Guest
+          const guestCode = await generateGuestCode(pool);
+          const createdGuest = await new sql.Request(transaction)
+            .input('guestCode', sql.VarChar(50), guestCode)
+            .input('title', sql.NVarChar(20), title || null)
+            .input('firstName', sql.NVarChar(100), first_name)
+            .input('middleName', sql.NVarChar(100), middle_name || null)
+            .input('lastName', sql.NVarChar(100), last_name)
+            .input('gender', sql.VarChar(15), gender || null)
+            .input('email', sql.VarChar(150), login_email)
+            .input('phoneCountryCode', sql.VarChar(10), phone_country_code || null)
+            .input('phoneNumber', sql.VarChar(30), phone_number || null)
+            .input('nationality', sql.Char(2), nationality_country_code || null)
+            .input('languageCode', sql.VarChar(10), preferred_language_code || null)
+            .input('marketingOptIn', sql.Bit, marketing_opt_in_flag ? 1 : 0)
+            .query(`
+              INSERT INTO Guest (
+                guest_code, title, first_name, middle_name, last_name, gender,
+                email, phone_country_code, phone_number, nationality_country_code,
+                preferred_language_code, marketing_opt_in_flag
+              )
+              OUTPUT INSERTED.guest_id
+              VALUES (
+                @guestCode, @title, @firstName, @middleName, @lastName, @gender,
+                @email, @phoneCountryCode, @phoneNumber, @nationality,
+                @languageCode, @marketingOptIn
+              )
+            `);
+
+          resolvedGuestId = createdGuest.recordset[0].guest_id;
+        }
       }
 
       const createdAuth = await new sql.Request(transaction)

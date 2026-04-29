@@ -318,7 +318,7 @@ export default function SearchPage() {
       candidateHotels.map(async (hotel) => {
         try {
           const payload = await apiRequest(
-            `/rooms/availability?hotel_id=${hotel.hotel_id}&checkin=${activeQuery.checkin}&checkout=${activeQuery.checkout}`,
+            `/rooms/availability?hotel_id=${hotel.hotel_id}&checkin=${activeQuery.checkin}&checkout=${activeQuery.checkout}&guests=${activeQuery.guests}`,
           );
           const rooms = payload.data || payload.rooms || payload.availability || [];
           const minRate = rooms.reduce((lowest, room) => {
@@ -344,7 +344,7 @@ export default function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeQuery.checkin, activeQuery.checkout, candidateHotels]);
+  }, [activeQuery.checkin, activeQuery.checkout, activeQuery.guests, candidateHotels]);
 
   const hotels = useMemo(() => {
     let result = candidateHotels

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import '../styles/Hotel.css';
@@ -25,11 +25,67 @@ function StarRating({ stars }) {
   );
 }
 
+const ROOM_IMAGES = {
+  STANDARD: [
+    'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=800'
+  ],
+  SUPERIOR: [
+    'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1560067174-c5a3a8f37060?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1568495248636-6432b97bd949?auto=format&fit=crop&q=80&w=800'
+  ],
+  DELUXE: [
+    'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1598928636135-d146006ff4be?auto=format&fit=crop&q=80&w=800'
+  ],
+  EXECUTIVE: [
+    'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1598928506311-c55d43e590af?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&q=80&w=800'
+  ],
+  SUITE: [
+    'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1505693314120-0d443867891c?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1631049035182-249067d7618e?auto=format&fit=crop&q=80&w=800'
+  ],
+  VILLA: [
+    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800'
+  ],
+  DEFAULT: [
+    'https://images.unsplash.com/photo-1505691938895-1758d7def511?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1554995207-c18c203602cb?auto=format&fit=crop&q=80&w=800',
+    'https://images.unsplash.com/photo-1522771731478-44fb4cd48aed?auto=format&fit=crop&q=80&w=800'
+  ]
+};
+
 function RoomCard({ room, checkin, checkout, onSelect }) {
   const nights = nightsBetween(checkin, checkout);
   const nightlyRate = Number(room.min_nightly_rate || room.nightly_rate || 0);
   const total = nightlyRate * nights;
   const isOpen = room.availability_status === 'OPEN' || !room.availability_status;
+
+  const roomImg = ROOM_IMAGES[String(room.category).toUpperCase()] || ROOM_IMAGES.DEFAULT;
+  const carouselRef = useRef(null);
+
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el || roomImg.length <= 1) return;
+
+    const interval = setInterval(() => {
+      if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 10) {
+        el.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        el.scrollBy({ left: el.clientWidth, behavior: 'smooth' });
+      }
+    }, 3500); // auto-scroll every 3.5s
+
+    return () => clearInterval(interval);
+  }, [roomImg.length]);
 
   return (
     <div
@@ -44,6 +100,14 @@ function RoomCard({ room, checkin, checkout, onSelect }) {
         }
       } : undefined}
     >
+      <div className="room-card-images" ref={carouselRef}>
+        {roomImg.map((img, idx) => (
+          <img key={idx} src={img} alt={`${room.room_type_name} view ${idx + 1}`} className="room-card-image" />
+        ))}
+        {roomImg.length > 1 && (
+          <div className="room-card-images-hint">Swipe to see more photos</div>
+        )}
+      </div>
       <div className="room-card-body">
         <div>
           <h3 className="room-card-name">{room.room_type_name || room.room_type}</h3>

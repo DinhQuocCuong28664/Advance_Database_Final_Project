@@ -34,7 +34,7 @@ function sign(data) {
 //  Build sorted query string for signing 
 function sortedQueryString(params) {
   const keys = Object.keys(params)
-    .filter((k) => params[k] !== '' && params[k] !== null && params[k] !== undefined)
+    .filter((k) => k.startsWith('vnp_') && params[k] !== '' && params[k] !== null && params[k] !== undefined)
     .sort();
   
   const parts = keys.map((k) => {
