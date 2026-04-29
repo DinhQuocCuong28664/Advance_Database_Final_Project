@@ -832,7 +832,7 @@ router.get('/location-tree', requireAdminUser, async (req, res) => {
         lt.depth AS tree_depth, lt.iso_code,
         COUNT(h.hotel_id) AS hotel_count
       FROM LocationTree lt
-      LEFT JOIN Hotel h ON h.city_location_id = lt.location_id
+      LEFT JOIN Hotel h ON h.location_id = lt.location_id
       GROUP BY lt.location_id, lt.parent_location_id, lt.location_code,
                lt.location_name, lt.location_type, lt.level, lt.iso_code, lt.depth
       ORDER BY lt.depth, lt.location_name
