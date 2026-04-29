@@ -3,7 +3,7 @@ import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/useFlash';
 
 const STATUS_CONFIG = {
-  PENDING:     { color: 'var(--timeline-pending)', bg: 'var(--timeline-pending-bg)', icon: '⏳', label: 'Pending' },
+  PENDING:     { color: 'var(--timeline-pending)', bg: 'var(--timeline-pending-bg)', icon: '', label: 'Pending' },
   CONFIRMED:   { color: 'var(--timeline-confirmed)', bg: 'var(--timeline-confirmed-bg)', icon: '', label: 'Confirmed' },
   CHECKED_IN:  { color: 'var(--timeline-checkedin)', bg: 'var(--timeline-checkedin-bg)', icon: '', label: 'Checked In' },
   CHECKED_OUT: { color: 'var(--timeline-checkedout)', bg: 'var(--timeline-checkedout-bg)', icon: '', label: 'Checked Out' },
