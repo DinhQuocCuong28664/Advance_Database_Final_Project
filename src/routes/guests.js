@@ -16,7 +16,7 @@ function ensureGuestAccess(req, res, guestId) {
     return true;
   }
 
-  res.status(403).json({ success: false, error: 'You are not authorised to access this guest resource' });
+  res.status(403).json({ success: false, message: 'You are not authorised to access this guest resource' });
   return false;
 }
 
@@ -48,7 +48,7 @@ async function generateRedemptionCode(requestFactory) {
   throw new Error('Unable to generate unique loyalty voucher code');
 }
 
-// GET /api/guests
+// GET /api/v1/guests
 router.get('/', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -59,17 +59,17 @@ router.get('/', requireSystemUser, async (req, res) => {
     `);
     res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/guests/:id  Full profile
+// GET /api/v1/guests/:id  Full profile
 router.get('/:id', requireAuth, async (req, res) => {
   try {
     const pool = getSqlPool();
     const guestId = parseInt(req.params.id);
     if (isNaN(guestId)) {
-      return res.status(400).json({ success: false, error: 'Invalid guest ID' });
+      return res.status(400).json({ success: false, message: 'Invalid guest ID' });
     }
     if (!ensureGuestAccess(req, res, guestId)) {
       return;
@@ -80,7 +80,7 @@ router.get('/:id', requireAuth, async (req, res) => {
       .query('SELECT * FROM Guest WHERE guest_id = @id');
 
     if (guest.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Guest not found' });
+      return res.status(404).json({ success: false, message: 'Guest not found' });
     }
 
     const preferences = await pool.request()
@@ -110,17 +110,17 @@ router.get('/:id', requireAuth, async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/guests/:id/loyalty-rewards
+// GET /api/v1/guests/:id/loyalty-rewards
 router.get('/:id/loyalty-rewards', requireAuth, async (req, res) => {
   try {
     const pool = getSqlPool();
     const guestId = parseInt(req.params.id, 10);
     if (isNaN(guestId)) {
-      return res.status(400).json({ success: false, error: 'Invalid guest ID' });
+      return res.status(400).json({ success: false, message: 'Invalid guest ID' });
     }
     if (!ensureGuestAccess(req, res, guestId)) {
       return;
@@ -221,17 +221,17 @@ router.get('/:id/loyalty-rewards', requireAuth, async (req, res) => {
 
     res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/guests/:id/loyalty-redemptions
+// GET /api/v1/guests/:id/loyalty-redemptions
 router.get('/:id/loyalty-redemptions', requireAuth, async (req, res) => {
   try {
     const pool = getSqlPool();
     const guestId = parseInt(req.params.id, 10);
     if (isNaN(guestId)) {
-      return res.status(400).json({ success: false, error: 'Invalid guest ID' });
+      return res.status(400).json({ success: false, message: 'Invalid guest ID' });
     }
     if (!ensureGuestAccess(req, res, guestId)) {
       return;
@@ -268,11 +268,11 @@ router.get('/:id/loyalty-redemptions', requireAuth, async (req, res) => {
 
     res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// POST /api/guests/:id/loyalty-rewards/:promotionId/redeem
+// POST /api/v1/guests/:id/loyalty-rewards/:promotionId/redeem
 router.post('/:id/loyalty-rewards/:promotionId/redeem', requireAuth, async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -280,7 +280,7 @@ router.post('/:id/loyalty-rewards/:promotionId/redeem', requireAuth, async (req,
     const promotionId = parseInt(req.params.promotionId, 10);
 
     if (isNaN(guestId) || isNaN(promotionId)) {
-      return res.status(400).json({ success: false, error: 'Invalid guest or promotion ID' });
+      return res.status(400).json({ success: false, message: 'Invalid guest or promotion ID' });
     }
     if (!ensureGuestAccess(req, res, guestId)) {
       return;
@@ -337,7 +337,7 @@ router.post('/:id/loyalty-rewards/:promotionId/redeem', requireAuth, async (req,
 
       if (rewardResult.recordset.length === 0) {
         await transaction.rollback();
-        return res.status(404).json({ success: false, error: 'Reward promotion not found or not redeemable' });
+        return res.status(404).json({ success: false, message: 'Reward promotion not found or not redeemable' });
       }
 
       const reward = rewardResult.recordset[0];
@@ -355,7 +355,7 @@ router.post('/:id/loyalty-rewards/:promotionId/redeem', requireAuth, async (req,
 
       if (loyaltyResult.recordset.length === 0) {
         await transaction.rollback();
-        return res.status(403).json({ success: false, error: 'No active loyalty account is eligible for this reward' });
+        return res.status(403).json({ success: false, message: 'No active loyalty account is eligible for this reward' });
       }
 
       const loyalty = loyaltyResult.recordset[0];
@@ -384,7 +384,7 @@ router.post('/:id/loyalty-rewards/:promotionId/redeem', requireAuth, async (req,
 
       if (Number(loyalty.points_balance) < Number(reward.redeemable_points_cost)) {
         await transaction.rollback();
-        return res.status(409).json({ success: false, error: 'Not enough loyalty points to redeem this reward' });
+        return res.status(409).json({ success: false, message: 'Not enough loyalty points to redeem this reward' });
       }
 
       const issuedPromoCode = await generateRedemptionCode(() => new sql.Request(transaction));
@@ -435,17 +435,17 @@ router.post('/:id/loyalty-rewards/:promotionId/redeem', requireAuth, async (req,
       throw innerErr;
     }
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// POST /api/guests  Create guest
+// POST /api/v1/guests  Create guest
 router.post('/', requireSystemUser, async (req, res) => {
   try {
     const { guest_code, title, first_name, middle_name, last_name, gender, email, phone_country_code, phone_number, nationality_country_code } = req.body;
 
     if (!guest_code || !first_name || !last_name) {
-      return res.status(400).json({ success: false, error: 'guest_code, first_name, last_name are required' });
+      return res.status(400).json({ success: false, message: 'guest_code, first_name, last_name are required' });
     }
 
     const pool = getSqlPool();
@@ -468,11 +468,11 @@ router.post('/', requireSystemUser, async (req, res) => {
 
     res.status(201).json({ success: true, data: result.recordset[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// PUT /api/guests/:id  Update own profile (name + phone only)
+// PUT /api/v1/guests/:id  Update own profile (name + phone only)
 // Email, guest_code, and identity fields are locked - cannot be changed here.
 router.put('/:id', requireAuth, async (req, res) => {
   try {
@@ -480,7 +480,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     const guestId = parseInt(req.params.id, 10);
 
     if (isNaN(guestId)) {
-      return res.status(400).json({ success: false, error: 'Invalid guest ID' });
+      return res.status(400).json({ success: false, message: 'Invalid guest ID' });
     }
     if (!ensureGuestAccess(req, res, guestId)) {
       return;
@@ -492,16 +492,16 @@ router.put('/:id', requireAuth, async (req, res) => {
     const cleanFirst = String(first_name || '').trim();
     const cleanLast  = String(last_name  || '').trim();
     if (!cleanFirst || !cleanLast) {
-      return res.status(400).json({ success: false, error: 'first_name and last_name are required' });
+      return res.status(400).json({ success: false, message: 'first_name and last_name are required' });
     }
     if (cleanFirst.length > 100 || cleanLast.length > 100) {
-      return res.status(400).json({ success: false, error: 'first_name and last_name must be 100 characters or fewer' });
+      return res.status(400).json({ success: false, message: 'first_name and last_name must be 100 characters or fewer' });
     }
 
     const cleanPhoneCC  = String(phone_country_code || '').trim() || null;
     const cleanPhone    = String(phone_number        || '').trim() || null;
     if (cleanPhone && cleanPhone.length > 30) {
-      return res.status(400).json({ success: false, error: 'phone_number must be 30 characters or fewer' });
+      return res.status(400).json({ success: false, message: 'phone_number must be 30 characters or fewer' });
     }
 
     const result = await pool.request()
@@ -529,23 +529,23 @@ router.put('/:id', requireAuth, async (req, res) => {
       `);
 
     if (result.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Guest not found' });
+      return res.status(404).json({ success: false, message: 'Guest not found' });
     }
 
     res.json({ success: true, data: result.recordset[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 
-// GET /api/guests/:id/stays  Stay history with hotel + room detail
+// GET /api/v1/guests/:id/stays  Stay history with hotel + room detail
 router.get('/:id/stays', requireAuth, async (req, res) => {
   try {
     const pool    = getSqlPool();
     const guestId = parseInt(req.params.id);
     if (isNaN(guestId)) {
-      return res.status(400).json({ success: false, error: 'Invalid guest ID' });
+      return res.status(400).json({ success: false, message: 'Invalid guest ID' });
     }
     if (!ensureGuestAccess(req, res, guestId)) {
       return;
@@ -575,17 +575,17 @@ router.get('/:id/stays', requireAuth, async (req, res) => {
 
     res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/guests/:id/reviews  Guest review history
+// GET /api/v1/guests/:id/reviews  Guest review history
 router.get('/:id/reviews', requireAuth, async (req, res) => {
   try {
     const pool = getSqlPool();
     const guestId = parseInt(req.params.id, 10);
     if (isNaN(guestId)) {
-      return res.status(400).json({ success: false, error: 'Invalid guest ID' });
+      return res.status(400).json({ success: false, message: 'Invalid guest ID' });
     }
     if (!ensureGuestAccess(req, res, guestId)) {
       return;
@@ -617,7 +617,7 @@ router.get('/:id/reviews', requireAuth, async (req, res) => {
 
     res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

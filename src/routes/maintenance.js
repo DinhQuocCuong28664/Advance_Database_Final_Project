@@ -9,7 +9,7 @@ const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 
 // 
-// GET /api/maintenance?hotel_id=1&status=OPEN
+// GET /api/v1/maintenance?hotel_id=1&status=OPEN
 // List maintenance tickets
 // 
 router.get('/', async (req, res) => {
@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
     const { hotel_id, room_id, status, severity } = req.query;
 
     if (!hotel_id) {
-      return res.status(400).json({ success: false, error: 'hotel_id is required' });
+      return res.status(400).json({ success: false, message: 'hotel_id is required' });
     }
 
     const request = pool.request().input('hotelId', sql.BigInt, parseInt(hotel_id));
@@ -59,12 +59,12 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// POST /api/maintenance
+// POST /api/v1/maintenance
 // Create maintenance ticket  auto-update Room.maintenance_status
 // 
 router.post('/', async (req, res) => {
@@ -117,12 +117,12 @@ router.post('/', async (req, res) => {
       throw innerErr;
     }
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// PUT /api/maintenance/:id
+// PUT /api/v1/maintenance/:id
 // Update ticket: assign, resolve, close
 // 
 router.put('/:id', async (req, res) => {
@@ -131,10 +131,10 @@ router.put('/:id', async (req, res) => {
     const { status, assigned_to, resolution_note } = req.body;
 
     if (isNaN(ticketId)) {
-      return res.status(400).json({ success: false, error: 'Invalid ticket ID' });
+      return res.status(400).json({ success: false, message: 'Invalid ticket ID' });
     }
     if (!status) {
-      return res.status(400).json({ success: false, error: 'status is required' });
+      return res.status(400).json({ success: false, message: 'status is required' });
     }
 
     const pool = getSqlPool();
@@ -150,7 +150,7 @@ router.put('/:id', async (req, res) => {
 
       if (ticketCheck.recordset.length === 0) {
         await transaction.rollback();
-        return res.status(404).json({ success: false, error: 'Ticket not found' });
+        return res.status(404).json({ success: false, message: 'Ticket not found' });
       }
 
       const ticket = ticketCheck.recordset[0];
@@ -203,7 +203,7 @@ router.put('/:id', async (req, res) => {
       throw innerErr;
     }
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

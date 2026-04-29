@@ -77,7 +77,7 @@ function RoomCard({ room, checkin, checkout, onSelect }) {
           </div>
           <p className="room-card-status-text">
             Status:{' '}
-            <strong style={{ color: room.availability_status === 'OPEN' ? '#2d6a4f' : '#9e3825' }}>
+            <strong style={{ color: room.availability_status === 'OPEN' ? 'var(--room-available)' : 'var(--room-unavailable)' }}>
               {room.availability_status || 'OPEN'}
             </strong>
           </p>

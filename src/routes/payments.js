@@ -20,17 +20,17 @@ function normalizePaymentMethod(paymentMethod) {
   return method;
 }
 
-// POST /api/payments  Create payment
+// POST /api/v1/payments  Create payment
 router.post('/', async (req, res) => {
   try {
     const { reservation_id, payment_type, payment_method, amount, currency_code } = req.body;
 
     if (!reservation_id || !amount) {
-      return res.status(400).json({ success: false, error: 'reservation_id and amount required' });
+      return res.status(400).json({ success: false, message: 'reservation_id and amount required' });
     }
 
     if (amount <= 0) {
-      return res.status(400).json({ success: false, error: 'Amount must be greater than 0' });
+      return res.status(400).json({ success: false, message: 'Amount must be greater than 0' });
     }
 
     const pool = getSqlPool();
@@ -44,7 +44,7 @@ router.post('/', async (req, res) => {
                    , currency_code
               FROM Reservation WHERE reservation_id = @resvId`);
     if (resvCheck.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Reservation not found' });
+      return res.status(404).json({ success: false, message: 'Reservation not found' });
     }
 
     const reservation = resvCheck.recordset[0];
@@ -79,14 +79,14 @@ router.post('/', async (req, res) => {
       // allowed
     } else if (req.auth?.user_type === 'GUEST') {
       if (Number(req.auth.sub) !== Number(reservation.guest_id)) {
-        return res.status(403).json({ success: false, error: 'You are not authorised to create payments for this reservation' });
+        return res.status(403).json({ success: false, message: 'You are not authorised to create payments for this reservation' });
       }
     } else {
       if (resolvedType !== 'DEPOSIT') {
-        return res.status(401).json({ success: false, error: 'Authentication required for non-deposit payments' });
+        return res.status(401).json({ success: false, message: 'Authentication required for non-deposit payments' });
       }
       if (!(depositRequired > 0)) {
-        return res.status(409).json({ success: false, error: 'This reservation does not require a deposit payment' });
+        return res.status(409).json({ success: false, message: 'This reservation does not require a deposit payment' });
       }
       if (newAmount !== depositRequired) {
         return res.status(400).json({
@@ -148,11 +148,11 @@ router.post('/', async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/payments
+// GET /api/v1/payments
 // Supports: reservation_id, hotel_id, date_from, date_to,
 //           payment_type, payment_method, payment_status, limit
 router.get('/', requireSystemUser, async (req, res) => {
@@ -177,11 +177,11 @@ router.get('/', requireSystemUser, async (req, res) => {
       conditions.push('h.hotel_id = @hotelId');
     }
     if (date_from) {
-      request.input('dateFrom', sql.Date, new Date(date_from));
+      request.input('dateFrom', sql.VarChar(10), date_from);
       conditions.push('CAST(p.paid_at AS DATE) >= @dateFrom');
     }
     if (date_to) {
-      request.input('dateTo', sql.Date, new Date(date_to));
+      request.input('dateTo', sql.VarChar(10), date_to);
       conditions.push('CAST(p.paid_at AS DATE) <= @dateTo');
     }
     if (payment_type) {
@@ -200,6 +200,7 @@ router.get('/', requireSystemUser, async (req, res) => {
     request.input('limit', sql.Int, parseInt(limit));
     const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
+    // [Rule 14] Main query with SQL-level aggregation
     const result = await request.query(`
       SELECT TOP (@limit)
         p.payment_id, p.reservation_id, p.payment_reference,
@@ -221,13 +222,34 @@ router.get('/', requireSystemUser, async (req, res) => {
     `);
 
     const payments = result.recordset;
-    const totalAmount = payments
-      .filter(p => p.payment_status === 'CAPTURED' && p.payment_type !== 'REFUND')
-      .reduce((s, p) => s + parseFloat(p.amount || 0), 0);
-    const byType = payments.reduce((acc, p) => {
-      acc[p.payment_type] = (acc[p.payment_type] || 0) + 1;
-      return acc;
-    }, {});
+
+    // [Rule 14] Compute total_captured via SQL SUM instead of JS .reduce()
+    const summaryReq = pool.request();
+    if (reservation_id) summaryReq.input('resvId', sql.BigInt, parseInt(reservation_id));
+    if (hotel_id) summaryReq.input('hotelId', sql.BigInt, parseInt(hotel_id));
+    if (date_from) summaryReq.input('dateFrom', sql.VarChar(10), date_from);
+    if (date_to) summaryReq.input('dateTo', sql.VarChar(10), date_to);
+    if (payment_type) summaryReq.input('payType', sql.VarChar(20), payment_type.toUpperCase());
+    if (payment_method) summaryReq.input('payMethod', sql.VarChar(20), payment_method.toUpperCase());
+    if (payment_status) summaryReq.input('payStatus', sql.VarChar(15), payment_status.toUpperCase());
+
+    const summaryResult = await summaryReq.query(`
+      SELECT
+        ISNULL(SUM(CASE WHEN p.payment_status = 'CAPTURED' AND p.payment_type <> 'REFUND' THEN p.amount ELSE 0 END), 0) AS total_captured
+      FROM Payment p
+      JOIN Reservation r ON p.reservation_id = r.reservation_id
+      LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+      LEFT JOIN Room rm ON rr.room_id = rm.room_id
+      LEFT JOIN Hotel h ON rm.hotel_id = h.hotel_id
+      ${whereClause}
+    `);
+    const totalAmount = parseFloat(summaryResult.recordset[0]?.total_captured || 0);
+
+    // by_type count: small cardinality, loop is acceptable
+    const byType = {};
+    for (const p of payments) {
+      byType[p.payment_type] = (byType[p.payment_type] || 0) + 1;
+    }
 
     res.json({
       success: true,
@@ -236,7 +258,7 @@ router.get('/', requireSystemUser, async (req, res) => {
       data: payments,
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

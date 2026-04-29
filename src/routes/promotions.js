@@ -1,3 +1,8 @@
+/**
+ * LuxeReserve - Promotion Routes
+ * Manage promotions, rate plans, vouchers
+ */
+
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
@@ -100,11 +105,11 @@ router.get('/', async (req, res) => {
       data: result.recordset,
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// POST /api/promotions  Create promotion
+// POST /api/v1/promotions  Create promotion
 router.post('/', requireAdminUser, async (req, res) => {
   try {
     const {
@@ -115,7 +120,7 @@ router.post('/', requireAdminUser, async (req, res) => {
     } = req.body;
 
     if (!promotion_code || !promotion_name || !promotion_type || !booking_start_date || !booking_end_date) {
-      return res.status(400).json({ success: false, error: 'promotion_code, promotion_name, promotion_type, booking_start_date, booking_end_date are required' });
+      return res.status(400).json({ success: false, message: 'promotion_code, promotion_name, promotion_type, booking_start_date, booking_end_date are required' });
     }
 
     const pool = getSqlPool();
@@ -128,10 +133,10 @@ router.post('/', requireAdminUser, async (req, res) => {
       .input('discount',   sql.Decimal(18,2),discount_value  || null)
       .input('currency',   sql.Char(3),      currency_code   || 'USD')
       .input('appliesTo',  sql.VarChar(20),  applies_to      || 'ROOM')
-      .input('bkStart',    sql.Date,         new Date(booking_start_date))
-      .input('bkEnd',      sql.Date,         new Date(booking_end_date))
-      .input('stStart',    sql.Date,         stay_start_date ? new Date(stay_start_date) : null)
-      .input('stEnd',      sql.Date,         stay_end_date   ? new Date(stay_end_date)   : null)
+      .input('bkStart',    sql.VarChar(10),         booking_start_date)
+      .input('bkEnd',      sql.VarChar(10),         booking_end_date)
+      .input('stStart',    sql.VarChar(10),         stay_start_date || null)
+      .input('stEnd',      sql.VarChar(10),         stay_end_date   || null)
       .input('memberOnly', sql.Bit,          member_only_flag ? 1 : 0)
       .input('minNights',  sql.SmallInt,     min_nights || null)
       .input('pointsCost', sql.Decimal(18,2), redeemable_points_cost != null ? redeemable_points_cost : null)
@@ -155,15 +160,15 @@ router.post('/', requireAdminUser, async (req, res) => {
 
     res.status(201).json({ success: true, data: result.recordset[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// PUT /api/promotions/:id  Update promotion
+// PUT /api/v1/promotions/:id  Update promotion
 router.put('/:id', requireAdminUser, async (req, res) => {
   try {
     const promoId = parseInt(req.params.id, 10);
-    if (isNaN(promoId)) return res.status(400).json({ success: false, error: 'Invalid ID' });
+    if (isNaN(promoId)) return res.status(400).json({ success: false, message: 'Invalid ID' });
 
     const {
       promotion_name, discount_value, booking_start_date, booking_end_date,
@@ -176,10 +181,10 @@ router.put('/:id', requireAdminUser, async (req, res) => {
       .input('id',         sql.BigInt,    promoId)
       .input('name',       sql.NVarChar(150), promotion_name || null)
       .input('discount',   sql.Decimal(18,2), discount_value != null ? discount_value : null)
-      .input('bkStart',    sql.Date,          booking_start_date ? new Date(booking_start_date) : null)
-      .input('bkEnd',      sql.Date,          booking_end_date   ? new Date(booking_end_date)   : null)
-      .input('stStart',    sql.Date,          stay_start_date    ? new Date(stay_start_date)    : null)
-      .input('stEnd',      sql.Date,          stay_end_date      ? new Date(stay_end_date)      : null)
+      .input('bkStart',    sql.VarChar(10),          booking_start_date || null)
+      .input('bkEnd',      sql.VarChar(10),          booking_end_date   || null)
+      .input('stStart',    sql.VarChar(10),          stay_start_date    || null)
+      .input('stEnd',      sql.VarChar(10),          stay_end_date      || null)
       .input('memberOnly', sql.Bit,           member_only_flag != null ? (member_only_flag ? 1 : 0) : null)
       .input('minNights',  sql.SmallInt,      min_nights || null)
       .input('pointsCost', sql.Decimal(18,2), redeemable_points_cost != null ? redeemable_points_cost : null)
@@ -203,18 +208,18 @@ router.put('/:id', requireAdminUser, async (req, res) => {
         WHERE promotion_id = @id
       `);
 
-    if (result.recordset.length === 0) return res.status(404).json({ success: false, error: 'Promotion not found' });
+    if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Promotion not found' });
     res.json({ success: true, data: result.recordset[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// DELETE /api/promotions/:id  Deactivate (soft delete)
+// DELETE /api/v1/promotions/:id  Deactivate (soft delete)
 router.delete('/:id', requireAdminUser, async (req, res) => {
   try {
     const promoId = parseInt(req.params.id, 10);
-    if (isNaN(promoId)) return res.status(400).json({ success: false, error: 'Invalid ID' });
+    if (isNaN(promoId)) return res.status(400).json({ success: false, message: 'Invalid ID' });
 
     const pool = getSqlPool();
     const result = await pool.request()
@@ -225,10 +230,10 @@ router.delete('/:id', requireAdminUser, async (req, res) => {
         WHERE promotion_id = @id AND status = 'ACTIVE'
       `);
 
-    if (result.recordset.length === 0) return res.status(404).json({ success: false, error: 'Promotion not found or already inactive' });
+    if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Promotion not found or already inactive' });
     res.json({ success: true, message: 'Promotion deactivated', data: result.recordset[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

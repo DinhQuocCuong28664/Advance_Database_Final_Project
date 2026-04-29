@@ -17,7 +17,7 @@ function ensureReservationAccess(req, res, guestId) {
     return true;
   }
 
-  res.status(403).json({ success: false, error: 'You are not authorised to access this reservation service data' });
+  res.status(403).json({ success: false, message: 'You are not authorised to access this reservation service data' });
   return false;
 }
 
@@ -43,7 +43,7 @@ function normalizeSqlDateTime(value) {
 }
 
 // 
-// GET /api/services?hotel_id=1
+// GET /api/v1/services?hotel_id=1
 // List available services for a hotel
 // 
 router.get('/', async (req, res) => {
@@ -52,7 +52,7 @@ router.get('/', async (req, res) => {
     const { hotel_id } = req.query;
 
     if (!hotel_id) {
-      return res.status(400).json({ success: false, error: 'hotel_id query parameter is required' });
+      return res.status(400).json({ success: false, message: 'hotel_id query parameter is required' });
     }
 
     const result = await pool.request()
@@ -70,12 +70,12 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// POST /api/services/order
+// POST /api/v1/services/order
 // Order a service (incidental charge) for a reservation
 // 
 router.post('/order', requireAuth, async (req, res) => {
@@ -103,7 +103,7 @@ router.post('/order', requireAuth, async (req, res) => {
       `);
 
     if (resvCheck.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Reservation not found' });
+      return res.status(404).json({ success: false, message: 'Reservation not found' });
     }
 
     const reservation = resvCheck.recordset[0];
@@ -138,12 +138,12 @@ router.post('/order', requireAuth, async (req, res) => {
     const service = svcCheck.recordset[0];
 
     if (!service.is_active) {
-      return res.status(400).json({ success: false, error: 'This service is currently unavailable' });
+      return res.status(400).json({ success: false, message: 'This service is currently unavailable' });
     }
 
     const scheduledAtSql = normalizeSqlDateTime(scheduled_at);
     if (scheduled_at && !scheduledAtSql) {
-      return res.status(400).json({ success: false, error: 'scheduled_at must be a valid date/time' });
+      return res.status(400).json({ success: false, message: 'scheduled_at must be a valid date/time' });
     }
 
     // Calculate amounts
@@ -179,13 +179,13 @@ router.post('/order', requireAuth, async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// GET /api/services/orders?reservation_id=1
-//   or /api/services/orders?hotel_id=1&status=REQUESTED
+// GET /api/v1/services/orders?reservation_id=1
+//   or /api/v1/services/orders?hotel_id=1&status=REQUESTED
 // List service orders (guest view or staff hotel-wide view)
 // 
 router.get('/orders', requireAuth, async (req, res) => {
@@ -194,7 +194,7 @@ router.get('/orders', requireAuth, async (req, res) => {
     const { reservation_id, hotel_id, status } = req.query;
 
     if (!reservation_id && !hotel_id) {
-      return res.status(400).json({ success: false, error: 'Provide reservation_id or hotel_id' });
+      return res.status(400).json({ success: false, message: 'Provide reservation_id or hotel_id' });
     }
 
     // Guest view: single reservation
@@ -204,7 +204,7 @@ router.get('/orders', requireAuth, async (req, res) => {
         .query('SELECT reservation_id, guest_id FROM Reservation WHERE reservation_id = @resvId');
 
       if (accessCheck.recordset.length === 0) {
-        return res.status(404).json({ success: false, error: 'Reservation not found' });
+        return res.status(404).json({ success: false, message: 'Reservation not found' });
       }
       if (!ensureReservationAccess(req, res, accessCheck.recordset[0].guest_id)) {
         return;
@@ -217,7 +217,11 @@ router.get('/orders', requireAuth, async (req, res) => {
                  rs.service_id, sc.service_name, sc.service_category, sc.pricing_model,
                  rs.scheduled_at, rs.quantity, rs.unit_price, rs.discount_amount,
                  rs.final_amount, rs.service_status, rs.special_instruction,
-                 rs.created_at
+                 rs.created_at,
+                 -- [Rule 14] SQL-level aggregation via window functions
+                 SUM(rs.final_amount) OVER () AS _total_amount,
+                 SUM(CASE WHEN rs.service_status <> 'CANCELLED' THEN rs.final_amount ELSE 0 END) OVER () AS _active_amount,
+                 SUM(CASE WHEN rs.service_status <> 'CANCELLED' THEN 1 ELSE 0 END) OVER () AS _active_count
           FROM ReservationService rs
           JOIN ServiceCatalog sc ON rs.service_id = sc.service_id
           WHERE rs.reservation_id = @resvId
@@ -225,21 +229,21 @@ router.get('/orders', requireAuth, async (req, res) => {
         `);
 
       const orders = result.recordset;
-      const totalAmount   = orders.reduce((s, o) => s + parseFloat(o.final_amount), 0);
-      const activeOrders  = orders.filter(o => o.service_status !== 'CANCELLED');
-      const activeTotal   = activeOrders.reduce((s, o) => s + parseFloat(o.final_amount), 0);
+      const totalAmount  = parseFloat(orders[0]?._total_amount || 0);
+      const activeTotal  = parseFloat(orders[0]?._active_amount || 0);
+      const activeCount  = parseInt(orders[0]?._active_count || 0);
 
       return res.json({
         success: true,
         count: orders.length,
-        summary: { total_orders: orders.length, active_orders: activeOrders.length, total_amount: totalAmount, active_amount: activeTotal },
+        summary: { total_orders: orders.length, active_orders: activeCount, total_amount: totalAmount, active_amount: activeTotal },
         data: orders,
       });
     }
 
     // Staff view: all orders for a hotel (optional status filter)
     if (req.auth?.user_type !== 'SYSTEM_USER') {
-      return res.status(403).json({ success: false, error: 'System user access required for hotel-wide service orders' });
+      return res.status(403).json({ success: false, message: 'System user access required for hotel-wide service orders' });
     }
     const request = pool.request().input('hotelId', sql.BigInt, parseInt(hotel_id));
     let statusClause = '';
@@ -285,13 +289,13 @@ router.get('/orders', requireAuth, async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 
 // 
-// PUT /api/services/orders/:id/status
+// PUT /api/v1/services/orders/:id/status
 // Update service order status (CONFIRMED, DELIVERED, CANCELLED)
 // 
 router.put('/orders/:id/status', requireSystemUser, async (req, res) => {
@@ -300,7 +304,7 @@ router.put('/orders/:id/status', requireSystemUser, async (req, res) => {
     const { status } = req.body;
 
     if (isNaN(orderId)) {
-      return res.status(400).json({ success: false, error: 'Invalid order ID' });
+      return res.status(400).json({ success: false, message: 'Invalid order ID' });
     }
 
     const validStatuses = ['CONFIRMED', 'DELIVERED', 'CANCELLED'];
@@ -326,7 +330,7 @@ router.put('/orders/:id/status', requireSystemUser, async (req, res) => {
       `);
 
     if (orderCheck.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Service order not found' });
+      return res.status(404).json({ success: false, message: 'Service order not found' });
     }
 
     const orderRow = orderCheck.recordset[0];
@@ -350,17 +354,17 @@ router.put('/orders/:id/status', requireSystemUser, async (req, res) => {
       `);
 
     if (result.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Service order not found' });
+      return res.status(404).json({ success: false, message: 'Service order not found' });
     }
 
     res.json({ success: true, data: result.recordset[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// POST /api/services/orders/:id/pay
+// POST /api/v1/services/orders/:id/pay
 // Pay for a specific incidental service order
 // 
 router.post('/orders/:id/pay', requireSystemUser, async (req, res) => {
@@ -369,7 +373,7 @@ router.post('/orders/:id/pay', requireSystemUser, async (req, res) => {
     const { payment_method } = req.body;
 
     if (isNaN(orderId)) {
-      return res.status(400).json({ success: false, error: 'Invalid order ID' });
+      return res.status(400).json({ success: false, message: 'Invalid order ID' });
     }
 
     const pool = getSqlPool();
@@ -387,7 +391,7 @@ router.post('/orders/:id/pay', requireSystemUser, async (req, res) => {
       `);
 
     if (orderCheck.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Service order not found' });
+      return res.status(404).json({ success: false, message: 'Service order not found' });
     }
 
     const order = orderCheck.recordset[0];
@@ -462,7 +466,7 @@ router.post('/orders/:id/pay', requireSystemUser, async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

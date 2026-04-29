@@ -6,12 +6,12 @@ const PROMO_TYPES = ['PERCENTAGE', 'FIXED_AMOUNT', 'FREE_NIGHT', 'EARLY_BIRD', '
 const APPLIES_TO  = ['ROOM', 'PACKAGE', 'SERVICE', 'ALL'];
 
 const TYPE_BADGE = {
-  PERCENTAGE:   { bg: '#dbeafe', color: '#1e40af' },
-  FIXED_AMOUNT: { bg: '#dcfce7', color: '#14532d' },
-  FREE_NIGHT:   { bg: '#ede9fe', color: '#4c1d95' },
-  EARLY_BIRD:   { bg: '#fef3c7', color: '#78350f' },
-  LAST_MINUTE:  { bg: '#fee2e2', color: '#7f1d1d' },
-  PACKAGE:      { bg: '#f0fdf4', color: '#166534' },
+  PERCENTAGE:   { bg: 'var(--promo-percentage-bg)', color: 'var(--promo-percentage-color)' },
+  FIXED_AMOUNT: { bg: 'var(--promo-fixed-bg)', color: 'var(--promo-fixed-color)' },
+  FREE_NIGHT:   { bg: 'var(--promo-freenight-bg)', color: 'var(--promo-freenight-color)' },
+  EARLY_BIRD:   { bg: 'var(--promo-earlybird-bg)', color: 'var(--promo-earlybird-color)' },
+  LAST_MINUTE:  { bg: 'var(--promo-lastminute-bg)', color: 'var(--promo-lastminute-color)' },
+  PACKAGE:      { bg: 'var(--promo-package-bg)', color: 'var(--promo-package-color)' },
 };
 
 const EMPTY = {

@@ -38,7 +38,7 @@ app.use(morgan('dev'));
 // ============================================================
 // Routes
 // ============================================================
-app.get('/api', (req, res) => {
+app.get('/api/v1', (req, res) => {
   res.json({
     name: 'LuxeReserve API',
     version: '1.0.0',
@@ -49,100 +49,100 @@ app.get('/api', (req, res) => {
     },
     endpoints: {
       hotels: {
-        'GET /api/hotels': 'List all hotels (Hybrid SQL + MongoDB merge)',
-        'GET /api/hotels/:id': 'Get hotel detail with room types, amenities, images',
+        'GET /api/v1/hotels': 'List all hotels (Hybrid SQL + MongoDB merge)',
+        'GET /api/v1/hotels/:id': 'Get hotel detail with room types, amenities, images',
       },
       rooms: {
-        'GET /api/rooms/availability?hotel_id&checkin&checkout': 'Check room availability by date range, including availability_records for optimistic locking',
+        'GET /api/v1/rooms/availability?hotel_id&checkin&checkout': 'Check room availability by date range, including availability_records for optimistic locking',
       },
       guests: {
-        'GET /api/guests': 'List all guests',
-        'GET /api/guests/:id': 'Get guest profile with preferences, loyalty, addresses',
-        'POST /api/guests': 'Create new guest (body: guest_code, first_name, last_name, ...)',
+        'GET /api/v1/guests': 'List all guests',
+        'GET /api/v1/guests/:id': 'Get guest profile with preferences, loyalty, addresses',
+        'POST /api/v1/guests': 'Create new guest (body: guest_code, first_name, last_name, ...)',
       },
       auth: {
-        'POST /api/auth/login': 'Unified login that auto-detects system user vs guest account',
-        'POST /api/auth/admin/login': 'System user login with username/password',
-        'POST /api/auth/guest/register': 'Create a new guest account, or attach login credentials to an existing guest profile',
-        'POST /api/auth/guest/login': 'Guest login with login_email or guest_code',
-        'GET /api/auth/me': 'Resolve the currently authenticated user from bearer token',
+        'POST /api/v1/auth/login': 'Unified login that auto-detects system user vs guest account',
+        'POST /api/v1/auth/admin/login': 'System user login with username/password',
+        'POST /api/v1/auth/guest/register': 'Create a new guest account, or attach login credentials to an existing guest profile',
+        'POST /api/v1/auth/guest/login': 'Guest login with login_email or guest_code',
+        'GET /api/v1/auth/me': 'Resolve the currently authenticated user from bearer token',
       },
       promotions: {
-        'GET /api/promotions?hotel_id=&guest_id=': 'List active promotions, with guest eligibility when a guest context is present',
+        'GET /api/v1/promotions?hotel_id=&guest_id=': 'List active promotions, with guest eligibility when a guest context is present',
       },
       reservations: {
-        'GET /api/reservations': 'List reservations - filter by guest_id, email, status, limit',
-        'GET /api/reservations/by-guest/:guestCode': 'List all reservations for a guest code (e.g. G-DQC)',
-        'GET /api/reservations/:code': 'Get reservation by confirmation code',
-        'POST /api/reservations': 'Create reservation with direct pessimistic locking on RoomAvailability (body: hotel_id, guest_id, room_id, checkin_date, checkout_date, nightly_rate, ...)',
-        'POST /api/reservations/:id/checkin': 'Check-in process (body: agent_id)',
-        'POST /api/reservations/:id/checkout': 'Check-out process (body: agent_id)',
-        'POST /api/reservations/:id/guest-cancel': 'Guest cancellation - forfeit deposit, no refund (body: reason)',
-        'POST /api/reservations/:id/hotel-cancel': 'Hotel cancellation - full refund issued (body: reason, agent_id)',
-        'POST /api/reservations/:id/transfer': 'Room transfer via sp_TransferRoom with Pessimistic Locking (body: new_room_id, reason, agent_id)',
+        'GET /api/v1/reservations': 'List reservations - filter by guest_id, email, status, limit',
+        'GET /api/v1/reservations/by-guest/:guestCode': 'List all reservations for a guest code (e.g. G-DQC)',
+        'GET /api/v1/reservations/:code': 'Get reservation by confirmation code',
+        'POST /api/v1/reservations': 'Create reservation with direct pessimistic locking on RoomAvailability (body: hotel_id, guest_id, room_id, checkin_date, checkout_date, nightly_rate, ...)',
+        'POST /api/v1/reservations/:id/checkin': 'Check-in process (body: agent_id)',
+        'POST /api/v1/reservations/:id/checkout': 'Check-out process (body: agent_id)',
+        'POST /api/v1/reservations/:id/guest-cancel': 'Guest cancellation - forfeit deposit, no refund (body: reason)',
+        'POST /api/v1/reservations/:id/hotel-cancel': 'Hotel cancellation - full refund issued (body: reason, agent_id)',
+        'POST /api/v1/reservations/:id/transfer': 'Room transfer via sp_TransferRoom with Pessimistic Locking (body: new_room_id, reason, agent_id)',
       },
       payments: {
-        'POST /api/payments': 'Create payment with reservation-state and balance validation (body: reservation_id, amount, payment_type, payment_method, ...)',
-        'GET /api/payments?reservation_id=': 'List payments, optionally filter by reservation',
+        'POST /api/v1/payments': 'Create payment with reservation-state and balance validation (body: reservation_id, amount, payment_type, payment_method, ...)',
+        'GET /api/v1/payments?reservation_id=': 'List payments, optionally filter by reservation',
       },
       services: {
-        'GET /api/services?hotel_id=': 'List available services for a hotel',
-        'POST /api/services/order': 'Order a service (body: reservation_id, service_id, quantity, ...)',
-        'GET /api/services/orders?reservation_id=': 'List service orders for a reservation',
-        'PUT /api/services/orders/:id/status': 'Update service order status (body: status)',
-        'POST /api/services/orders/:id/pay': 'Pay for incidental service (body: payment_method)',
+        'GET /api/v1/services?hotel_id=': 'List available services for a hotel',
+        'POST /api/v1/services/order': 'Order a service (body: reservation_id, service_id, quantity, ...)',
+        'GET /api/v1/services/orders?reservation_id=': 'List service orders for a reservation',
+        'PUT /api/v1/services/orders/:id/status': 'Update service order status (body: status)',
+        'POST /api/v1/services/orders/:id/pay': 'Pay for incidental service (body: payment_method)',
       },
       admin: {
-        'PUT /api/admin/rates/:id': 'Update room rate - triggers Price Guard if change > 50% (body: final_rate)',
-        'GET /api/admin/rates/alerts': 'View Price Integrity Guard alerts',
-        'GET /api/admin/reports/revenue': 'Revenue analytics with Window Functions (per hotel)',
-        'GET /api/admin/reports/revenue-by-brand': 'Revenue analytics by Brand & Chain hierarchy (Window Functions)',
-        'PUT /api/admin/availability/:id': 'Update room availability with Optimistic Locking using expected_version from GET /api/rooms/availability',
+        'PUT /api/v1/admin/rates/:id': 'Update room rate - triggers Price Guard if change > 50% (body: final_rate)',
+        'GET /api/v1/admin/rates/alerts': 'View Price Integrity Guard alerts',
+        'GET /api/v1/admin/reports/revenue': 'Revenue analytics with Window Functions (per hotel)',
+        'GET /api/v1/admin/reports/revenue-by-brand': 'Revenue analytics by Brand & Chain hierarchy (Window Functions)',
+        'PUT /api/v1/admin/availability/:id': 'Update room availability with Optimistic Locking using expected_version from GET /api/rooms/availability',
       },
       housekeeping: {
-        'GET /api/housekeeping?hotel_id=&status=': 'List housekeeping tasks with priority sorting',
-        'POST /api/housekeeping': 'Create housekeeping task (body: hotel_id, room_id, task_type)',
-        'PUT /api/housekeeping/:id/assign': 'Assign staff to task (body: staff_id)',
-        'PUT /api/housekeeping/:id/status': 'Update status with Room sync (body: status)',
+        'GET /api/v1/housekeeping?hotel_id=&status=': 'List housekeeping tasks with priority sorting',
+        'POST /api/v1/housekeeping': 'Create housekeeping task (body: hotel_id, room_id, task_type)',
+        'PUT /api/v1/housekeeping/:id/assign': 'Assign staff to task (body: staff_id)',
+        'PUT /api/v1/housekeeping/:id/status': 'Update status with Room sync (body: status)',
       },
       maintenance: {
-        'GET /api/maintenance?hotel_id=&status=': 'List maintenance tickets',
-        'POST /api/maintenance': 'Create ticket - auto Room.maintenance_status (body: hotel_id, room_id, issue_category, issue_description)',
-        'PUT /api/maintenance/:id': 'Update ticket - resolve restores Room status (body: status, resolution_note)',
+        'GET /api/v1/maintenance?hotel_id=&status=': 'List maintenance tickets',
+        'POST /api/v1/maintenance': 'Create ticket - auto Room.maintenance_status (body: hotel_id, room_id, issue_category, issue_description)',
+        'PUT /api/v1/maintenance/:id': 'Update ticket - resolve restores Room status (body: status, resolution_note)',
       },
       invoices: {
-        'GET /api/invoices?reservation_id=': 'List invoices, optionally filtered by reservation',
-        'POST /api/invoices': 'Generate invoice from vw_ReservationTotal (body: reservation_id)',
-        'GET /api/invoices/:id': 'Get invoice with line items (rooms + services + payments)',
-        'POST /api/invoices/:id/issue': 'Issue invoice: DRAFT -> ISSUED',
+        'GET /api/v1/invoices?reservation_id=': 'List invoices, optionally filtered by reservation',
+        'POST /api/v1/invoices': 'Generate invoice from vw_ReservationTotal (body: reservation_id)',
+        'GET /api/v1/invoices/:id': 'Get invoice with line items (rooms + services + payments)',
+        'POST /api/v1/invoices/:id/issue': 'Issue invoice: DRAFT -> ISSUED',
       },
       vnpay: {
-        'POST /api/vnpay/create-payment': 'Create VNPay payment URL (body: reservation_id, amount, order_info)',
-        'GET /api/vnpay/return': 'VNPay return URL - verifies signature and redirects to frontend',
-        'GET /api/vnpay/ipn': 'VNPay IPN server callback - records payment status',
+        'POST /api/v1/vnpay/create-payment': 'Create VNPay payment URL (body: reservation_id, amount, order_info)',
+        'GET /api/v1/vnpay/return': 'VNPay return URL - verifies signature and redirects to frontend',
+        'GET /api/v1/vnpay/ipn': 'VNPay IPN server callback - records payment status',
       },
       locations: {
-        'GET /api/locations': 'List all locations (flat)',
-        'GET /api/locations/tree?root=&root_id=': 'Location hierarchy tree (Recursive CTE)',
+        'GET /api/v1/locations': 'List all locations (flat)',
+        'GET /api/v1/locations/tree?root=&root_id=': 'Location hierarchy tree (Recursive CTE)',
       },
     },
   });
 });
 
-app.use('/api/hotels', hotelRoutes);
-app.use('/api/rooms', roomRoutes);
-app.use('/api/guests', guestRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/promotions', promotionRoutes);
-app.use('/api/reservations', reservationRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/locations', locationRoutes);
-app.use('/api/services', serviceRoutes);
-app.use('/api/housekeeping', housekeepingRoutes);
-app.use('/api/maintenance', maintenanceRoutes);
-app.use('/api/invoices', invoiceRoutes);
-app.use('/api/vnpay',   vnpayRoutes);
+app.use('/api/v1/hotels', hotelRoutes);
+app.use('/api/v1/rooms', roomRoutes);
+app.use('/api/v1/guests', guestRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/promotions', promotionRoutes);
+app.use('/api/v1/reservations', reservationRoutes);
+app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/locations', locationRoutes);
+app.use('/api/v1/services', serviceRoutes);
+app.use('/api/v1/housekeeping', housekeepingRoutes);
+app.use('/api/v1/maintenance', maintenanceRoutes);
+app.use('/api/v1/invoices', invoiceRoutes);
+app.use('/api/v1/vnpay',   vnpayRoutes);
 
 // ============================================================
 // Error Handler
@@ -151,7 +151,7 @@ app.use((err, req, res, next) => {
   console.error('[ERROR] Unhandled Error:', err);
   res.status(500).json({
     success: false,
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
   });
 });
 

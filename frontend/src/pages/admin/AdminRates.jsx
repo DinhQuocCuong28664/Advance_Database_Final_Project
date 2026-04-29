@@ -218,25 +218,25 @@ function ConfirmModal({ pending, onConfirm, onCancel, saving }) {
     <div className="pm-overlay" onClick={onCancel}>
       <div className="pm-dialog pm-dialog--light" onClick={(event) => event.stopPropagation()} style={{ maxWidth: 420 }}>
         <div style={{ fontSize: '2rem', textAlign: 'center', marginBottom: 8 }}>!</div>
-        <h3 className="pm-title" style={{ color: '#92400e', textAlign: 'center' }}>Price Guard warning</h3>
-        <p style={{ color: '#555', margin: '12px 0', textAlign: 'center', lineHeight: 1.5 }}>
+        <h3 className="pm-title" style={{ color: 'var(--admin-rate-heading)', textAlign: 'center' }}>Price Guard warning</h3>
+        <p style={{ color: 'var(--channel-walkin-color)', margin: '12px 0', textAlign: 'center', lineHeight: 1.5 }}>
           This rate change is <strong>{changePercent}%</strong> and exceeds the 50% threshold.
           <br />
-          <span style={{ fontSize: '0.85rem', color: '#888' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--channel-default-color)' }}>
             {pending.roomTypeName} | {fmtDate(pending.rateDate)}
           </span>
         </p>
-        <div style={{ display: 'flex', justifyContent: 'space-between', background: '#fef9c3', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
-          <span style={{ color: '#713f12' }}>Old rate</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--admin-rate-old-bg)', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+          <span style={{ color: 'var(--admin-rate-old-color)' }}>Old rate</span>
           <strong>{fmtCurrency(pending.oldRate, pending.currency)}</strong>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', background: '#dcfce7', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
-          <span style={{ color: '#14532d' }}>New rate</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--admin-rate-new-bg)', borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
+          <span style={{ color: 'var(--admin-rate-new-color)' }}>New rate</span>
           <strong>{fmtCurrency(pending.newRate, pending.currency)}</strong>
         </div>
         <div className="pm-actions">
           <button className="ghost-button" type="button" onClick={onCancel}>Cancel</button>
-          <button className="primary-button" type="button" onClick={onConfirm} disabled={saving} style={{ background: '#d97706' }}>
+          <button className="primary-button" type="button" onClick={onConfirm} disabled={saving} style={{ background: 'var(--pay-incidental)' }}>
             {saving ? 'Saving...' : 'Override anyway'}
           </button>
         </div>

@@ -434,8 +434,8 @@ export default function AdminFrontDesk({ hotels }) {
         <td>${fmtDate(p.paid_at)}</td>
       </tr>`).join('');
 
-    const statusColor = { DRAFT:'#92400e', ISSUED:'#065f46', PAID:'#1e40af', CANCELLED:'#991b1b' }[inv.status] || '#333';
-    const statusBg   = { DRAFT:'#fef3c7', ISSUED:'#d1fae5', PAID:'#dbeafe', CANCELLED:'#fee2e2' }[inv.status] || '#f3f4f6';
+    const statusColor = { DRAFT:'var(--inv-draft-color)', ISSUED:'var(--hk-verified-color)', PAID:'var(--inv-issued-color)', CANCELLED:'var(--pay-refunded-color)' }[inv.status] || 'var(--hk-open-color)';
+    const statusBg   = { DRAFT:'var(--priority-high-bg)', ISSUED:'var(--hk-verified-bg)', PAID:'var(--inv-issued-bg)', CANCELLED:'var(--inv-cancelled-bg)' }[inv.status] || 'var(--hk-open-bg)';
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -464,7 +464,7 @@ export default function AdminFrontDesk({ hotels }) {
     th { text-align: left; border-bottom: 1px solid #ddd; padding: 5px 8px;
          font-family: sans-serif; font-size: 10px; text-transform: uppercase;
          letter-spacing: 0.4px; color: #777; }
-    td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; font-size: 12px; color: #222; }
+    td { padding: 6px 8px; border-bottom: 1px solid var(--admin-table-border); font-size: 12px; color: #222; }
     code { font-size: 11px; color: #555; }
     .totals { margin-left: auto; width: 240px; border-top: 1px solid #ddd;
               padding-top: 12px; margin-top: 20px; }

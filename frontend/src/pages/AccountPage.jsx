@@ -7,58 +7,58 @@ import '../styles/Account.css';
 
 //  Category icon map 
 const CATEGORY_ICONS = {
-  SPA: '💆',
-  AIRPORT_TRANSFER: '✈️',
-  DINING: '🍽️',
-  BUTLER: '🛎️',
-  YACHT: '🛥️',
-  TOUR: '🧭',
-  BABYSITTING: '👶',
-  EVENT: '🎉',
-  WELLNESS: '🧘',
-  OTHER: '✨',
+  SPA: 'đŸ’†',
+  AIRPORT_TRANSFER: 'âœˆï¸',
+  DINING: 'đŸ½ï¸',
+  BUTLER: 'đŸ›ï¸',
+  YACHT: 'đŸ›¥ï¸',
+  TOUR: 'đŸ§­',
+  BABYSITTING: 'đŸ‘¶',
+  EVENT: 'đŸ‰',
+  WELLNESS: 'đŸ§˜',
+  OTHER: 'âœ¨',
 };
 
 //  Issue categories guests can report 
 const ISSUE_CATEGORIES = [
-  { key: 'PLUMBING',   label: 'Plumbing',           icon: '🚿', example: 'Tap/pipe/shower issue' },
-  { key: 'ELECTRICAL', label: 'Electrical',         icon: '💡', example: 'Light, socket, or power' },
-  { key: 'HVAC',       label: 'Air conditioning',   icon: '❄️', example: 'AC not cooling / too cold' },
-  { key: 'APPLIANCE',  label: 'Appliance',          icon: '📺', example: 'TV, fridge, kettle' },
-  { key: 'FURNITURE',  label: 'Furniture / fixtures', icon: '🪑', example: 'Bed, chair, wardrobe' },
-  { key: 'CLEANING',   label: 'Housekeeping',       icon: '🧹', example: 'Extra towels, cleaning' },
-  { key: 'OTHER',      label: 'Other',              icon: '⚠️', example: 'Anything else' },
+  { key: 'PLUMBING',   label: 'Plumbing',           icon: 'đŸ¿', example: 'Tap/pipe/shower issue' },
+  { key: 'ELECTRICAL', label: 'Electrical',         icon: 'đŸ’¡', example: 'Light, socket, or power' },
+  { key: 'HVAC',       label: 'Air conditioning',   icon: 'â„ï¸', example: 'AC not cooling / too cold' },
+  { key: 'APPLIANCE',  label: 'Appliance',          icon: 'đŸ“º', example: 'TV, fridge, kettle' },
+  { key: 'FURNITURE',  label: 'Furniture / fixtures', icon: 'đŸª‘', example: 'Bed, chair, wardrobe' },
+  { key: 'CLEANING',   label: 'Housekeeping',       icon: 'đŸ§¹', example: 'Extra towels, cleaning' },
+  { key: 'OTHER',      label: 'Other',              icon: 'â ï¸', example: 'Anything else' },
 ];
 
 const EMPTY_ISSUE = { issue_category: 'PLUMBING', issue_description: '' };
 
 Object.assign(CATEGORY_ICONS, {
-  SPA: '💆',
-  AIRPORT_TRANSFER: '✈️',
-  DINING: '🍽️',
-  BUTLER: '🛎️',
-  YACHT: '🛥️',
-  TOUR: '🧭',
-  BABYSITTING: '👶',
-  EVENT: '🎉',
-  WELLNESS: '🧘',
-  OTHER: '✨',
+  SPA: 'đŸ’†',
+  AIRPORT_TRANSFER: 'âœˆï¸',
+  DINING: 'đŸ½ï¸',
+  BUTLER: 'đŸ›ï¸',
+  YACHT: 'đŸ›¥ï¸',
+  TOUR: 'đŸ§­',
+  BABYSITTING: 'đŸ‘¶',
+  EVENT: 'đŸ‰',
+  WELLNESS: 'đŸ§˜',
+  OTHER: 'âœ¨',
 });
 
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'PLUMBING'), { icon: '🚿' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'ELECTRICAL'), { icon: '💡' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'HVAC'), { icon: '❄️' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'APPLIANCE'), { icon: '📺' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'FURNITURE'), { icon: '🪑' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'CLEANING'), { icon: '🧹' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'OTHER'), { icon: '⚠️' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'PLUMBING'), { icon: 'đŸ¿' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'ELECTRICAL'), { icon: 'đŸ’¡' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'HVAC'), { icon: 'â„ï¸' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'APPLIANCE'), { icon: 'đŸ“º' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'FURNITURE'), { icon: 'đŸª‘' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'CLEANING'), { icon: 'đŸ§¹' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'OTHER'), { icon: 'â ï¸' });
 
 function normalizeIssueTicket(ticket) {
   const category = ISSUE_CATEGORIES.find((item) => item.key === ticket.issue_category);
   return {
     id: ticket.maintenance_ticket_id,
     category: category?.label || String(ticket.issue_category || '').replace(/_/g, ' '),
-    icon: category?.icon || '⚠️',
+    icon: category?.icon || 'â ï¸',
     desc: ticket.issue_description,
     status: ticket.status,
     at: ticket.reported_at
@@ -68,10 +68,10 @@ function normalizeIssueTicket(ticket) {
 }
 
 const STATUS_COLORS = {
-  REQUESTED: { bg: 'rgba(240,160,30,0.13)',  color: '#7a5500' },
-  CONFIRMED: { bg: 'rgba(72,160,120,0.13)',  color: '#1a5c3a' },
-  DELIVERED: { bg: 'rgba(45,93,166,0.13)',   color: '#1a3d80' },
-  CANCELLED: { bg: 'rgba(200,80,60,0.13)',   color: '#8b2012' },
+  REQUESTED: { bg: 'var(--svc-requested-bg)',  color: 'var(--svc-requested)' },
+  CONFIRMED: { bg: 'var(--svc-confirmed-bg)',  color: 'var(--svc-confirmed)' },
+  DELIVERED: { bg: 'var(--svc-delivered-bg)',   color: 'var(--svc-delivered)' },
+  CANCELLED: { bg: 'var(--svc-cancelled-bg)',   color: 'var(--svc-cancelled)' },
 };
 
 function formatMoney(value, currency = 'VND') {
@@ -245,7 +245,7 @@ function GuestServices({ guestId }) {
   if (!activeReservation) {
     return (
       <div className="guest-svc-empty-box">
-        <span>🏨</span>
+        <span>đŸ¨</span>
         <p>You are not currently checked in.</p>
         <small>In-house services are only available during an active stay.</small>
       </div>
@@ -544,7 +544,7 @@ function LoyaltyRewardsPanel({ guestId, onProfileRefresh }) {
         </div>
         {rewards.length === 0 ? (
           <div className="svc-orders-empty">
-            <span>🎁</span>
+            <span>đŸ</span>
             <p>No loyalty rewards are configured yet.</p>
             <small>Ask the hotel team to publish member-only reward promotions with a points cost.</small>
           </div>
@@ -603,7 +603,7 @@ function LoyaltyRewardsPanel({ guestId, onProfileRefresh }) {
         </div>
         {redemptions.length === 0 ? (
           <div className="svc-orders-empty">
-            <span>🎫</span>
+            <span>đŸ«</span>
             <p>No vouchers issued yet.</p>
             <small>Redeemed vouchers will appear here and can be applied during booking.</small>
           </div>
@@ -718,7 +718,7 @@ function BookingReviewsPanel({ guestId }) {
   if (reservations.length === 0) {
     return (
       <div className="svc-orders-empty" style={{ padding: '36px 0' }}>
-        <span>📭</span>
+        <span>đŸ“­</span>
         <p>No reservations found for this account yet.</p>
       </div>
     );
@@ -1088,7 +1088,7 @@ export default function AccountPage() {
                     {stays.slice(0, 5).map(s => (
                       <div key={s.stay_id} className="acct-stay-row">
                         <div className="acct-stay-icon">
-                          {s.stay_status === 'IN_HOUSE' ? '🏨' : '🧳'}
+                          {s.stay_status === 'IN_HOUSE' ? 'đŸ¨' : 'đŸ§³'}
                         </div>
                         <div className="acct-stay-info">
                           <strong>{s.hotel_name}</strong>
@@ -1185,18 +1185,18 @@ export default function AccountPage() {
               </div>
               {loyaltyAccounts.length === 0 && (
                 <div className="svc-orders-empty" style={{ padding: '40px 0' }}>
-                  <span>💎</span>
+                  <span>đŸ’</span>
                   <p>No loyalty account linked yet.</p>
                   <small>Your points and tier benefits will appear here once enrolled.</small>
                 </div>
               )}
               {loyaltyAccounts.map(acc => {
                 const tierColor = {
-                  BLACK:    { bg: '#1a1a2e', color: '#d4af37' },
-                  PLATINUM: { bg: '#e8e8f0', color: '#5a5a7a' },
-                  GOLD:     { bg: '#fef3c7', color: '#92400e' },
-                  SILVER:   { bg: '#f1f5f9', color: '#475569' },
-                }[acc.tier_code] || { bg: '#f3f4f6', color: '#374151' };
+                  BLACK:    { bg: 'var(--tier-black-bg)', color: 'var(--tier-black-color)' },
+                  PLATINUM: { bg: 'var(--tier-platinum-bg)', color: 'var(--tier-platinum-color)' },
+                  GOLD:     { bg: 'var(--tier-gold-bg)', color: 'var(--tier-gold-color)' },
+                  SILVER:   { bg: 'var(--tier-silver-bg)', color: 'var(--tier-silver-color)' },
+                }[acc.tier_code] || { bg: 'var(--tier-default-bg)', color: 'var(--tier-default-color)' };
                 return (
                   <div key={acc.loyalty_account_id} className="acct-loyalty-card">
                     <div className="acct-loyalty-tier" style={{ background: tierColor.bg, color: tierColor.color }}>
@@ -1300,7 +1300,7 @@ export default function AccountPage() {
                       </label>
                     </div>
                     {profileMsg && (
-                      <p style={{ fontSize: '0.85rem', color: profileMsg.type === 'ok' ? 'var(--success, #22c55e)' : 'var(--danger, #ef4444)', margin: 0 }}>
+                      <p style={{ fontSize: '0.85rem', color: profileMsg.type === 'ok' ? 'var(--success)' : 'var(--error)', margin: 0 }}>
                         {profileMsg.text}
                       </p>
                     )}
@@ -1322,10 +1322,10 @@ export default function AccountPage() {
                 ) : (
                   <div className="acct-profile-grid">
                     <div><span>Full name</span><strong>{guestProfile?.full_name || authSession.user.full_name}</strong></div>
-                    <div><span>Phone</span><strong>{guestProfile ? `${guestProfile.phone_country_code || ''}${guestProfile.phone_number || ''}`.trim() || '—' : '—'}</strong></div>
+                    <div><span>Phone</span><strong>{guestProfile ? `${guestProfile.phone_country_code || ''}${guestProfile.phone_number || ''}`.trim() || 'â€”' : 'â€”'}</strong></div>
                     {profileMsg?.type === 'ok' && (
                       <div style={{ gridColumn: '1/-1' }}>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--success, #22c55e)', margin: 0 }}>{profileMsg.text}</p>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--success)', margin: 0 }}>{profileMsg.text}</p>
                       </div>
                     )}
                   </div>

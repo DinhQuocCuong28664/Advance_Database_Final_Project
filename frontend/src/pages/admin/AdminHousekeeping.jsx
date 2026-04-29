@@ -7,17 +7,17 @@ const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const STATUSES   = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'DONE', 'VERIFIED'];
 
 const PRIORITY_STYLE = {
-  CRITICAL: { bg: '#fee2e2', color: '#7f1d1d', border: '#dc2626' },
-  HIGH:     { bg: '#fef3c7', color: '#78350f', border: '#d97706' },
-  MEDIUM:   { bg: '#dbeafe', color: '#1e3a8a', border: '#3b82f6' },
-  LOW:      { bg: '#dcfce7', color: '#14532d', border: '#22c55e' },
+  CRITICAL: { bg: 'var(--priority-critical-bg)', color: 'var(--priority-critical-color)', border: 'var(--priority-critical-border)' },
+  HIGH:     { bg: 'var(--priority-high-bg)', color: 'var(--priority-high-color)', border: 'var(--priority-high-border)' },
+  MEDIUM:   { bg: 'var(--priority-medium-bg)', color: 'var(--priority-medium-color)', border: 'var(--priority-medium-border)' },
+  LOW:      { bg: 'var(--priority-low-bg)', color: 'var(--priority-low-color)', border: 'var(--priority-low-border)' },
 };
 const STATUS_STYLE = {
-  OPEN:        { bg: '#f3f4f6', color: '#374151' },
-  ASSIGNED:    { bg: '#ede9fe', color: '#4c1d95' },
-  IN_PROGRESS: { bg: '#dbeafe', color: '#1e40af' },
-  DONE:        { bg: '#dcfce7', color: '#14532d' },
-  VERIFIED:    { bg: '#d1fae5', color: '#065f46' },
+  OPEN:        { bg: 'var(--hk-open-bg)', color: 'var(--hk-open-color)' },
+  ASSIGNED:    { bg: 'var(--hk-assigned-bg)', color: 'var(--hk-assigned-color)' },
+  IN_PROGRESS: { bg: 'var(--hk-inprogress-bg)', color: 'var(--hk-inprogress-color)' },
+  DONE:        { bg: 'var(--hk-done-bg)', color: 'var(--hk-done-color)' },
+  VERIFIED:    { bg: 'var(--hk-verified-bg)', color: 'var(--hk-verified-color)' },
 };
 const TASK_ICON = {
   CLEANING:     '🧹', DEEP_CLEAN: '🧼', TURNDOWN: '🛏️',
@@ -330,7 +330,7 @@ export default function AdminHousekeeping({ hotels }) {
             return (
               <article key={task.hk_task_id}
                 className={`maint-card${done ? ' maint-card--done' : ''}`}
-                style={{ borderLeftColor: pri.border || '#ccc' }}>
+                style={{ borderLeftColor: pri.border || 'var(--admin-table-border)' }}>
 
                 <div className="maint-card-top">
                   <div className="maint-card-badges">
@@ -353,7 +353,7 @@ export default function AdminHousekeeping({ hotels }) {
                   <span> Room {task.room_number}  Floor {task.floor_number}  {task.room_type_name}</span>
                   {task.assigned_staff_name
                     ? <span> Assigned: {task.assigned_staff_name}</span>
-                    : <span style={{ color:'#d97706' }}> Unassigned</span>}
+                    : <span style={{ color:'var(--hk-unassigned)' }}> Unassigned</span>}
                   {task.scheduled_for && <span> Scheduled: {fmt(task.scheduled_for)}</span>}
                   {task.started_at    && <span> Started: {fmt(task.started_at)}</span>}
                   {task.completed_at  && <span> Done: {fmt(task.completed_at)}</span>}

@@ -6,6 +6,174 @@
   --text-soft: #607172;
   --text-on-dark: #f7f1e7;
   --accent: #b5793f;
+
+  /* Reservation status colors */
+  --status-confirmed: #2d6a4f;
+  --status-confirmed-bg: rgba(45, 106, 79, 0.12);
+  --status-checkedin: #1a6a9a;
+  --status-checkedin-bg: rgba(26, 106, 154, 0.12);
+  --status-checkedout: #6b6b6b;
+  --status-checkedout-bg: rgba(107, 107, 107, 0.12);
+  --status-cancelled: #c0392b;
+  --status-cancelled-bg: rgba(192, 57, 43, 0.1);
+  --status-noshow: #d35400;
+  --status-noshow-bg: rgba(211, 84, 0, 0.1);
+
+  /* Service status colors */
+  --svc-requested: #7a5500;
+  --svc-requested-bg: rgba(240, 160, 30, 0.13);
+  --svc-confirmed: #1a5c3a;
+  --svc-confirmed-bg: rgba(72, 160, 120, 0.13);
+  --svc-delivered: #1a3d80;
+  --svc-delivered-bg: rgba(45, 93, 166, 0.13);
+  --svc-cancelled: #8b2012;
+  --svc-cancelled-bg: rgba(200, 80, 60, 0.13);
+
+  /* Loyalty tier colors */
+  --tier-black-bg: #1a1a2e;
+  --tier-black-color: #d4af37;
+  --tier-platinum-bg: #e8e8f0;
+  --tier-platinum-color: #5a5a7a;
+  --tier-gold-bg: #fef3c7;
+  --tier-gold-color: #92400e;
+  --tier-silver-bg: #f1f5f9;
+  --tier-silver-color: #475569;
+  --tier-default-bg: #f3f4f6;
+  --tier-default-color: #374151;
+
+  /* Utility colors */
+  --success: #22c55e;
+  --error: #c0392b;
+  --room-available: #2d6a4f;
+  --room-unavailable: #9e3838;
+
+  /* Priority levels (shared by housekeeping + maintenance) */
+  --priority-critical-bg: #fee2e2;
+  --priority-critical-color: #7f1d1d;
+  --priority-critical-border: #dc2626;
+  --priority-high-bg: #fef3c7;
+  --priority-high-color: #78350f;
+  --priority-high-border: #d97706;
+  --priority-medium-bg: #dbeafe;
+  --priority-medium-color: #1e3a8a;
+  --priority-medium-border: #3b82f6;
+  --priority-low-bg: #dcfce7;
+  --priority-low-color: #14532d;
+  --priority-low-border: #22c55e;
+
+  /* Housekeeping task status */
+  --hk-open-bg: #f3f4f6;
+  --hk-open-color: #374151;
+  --hk-assigned-bg: #ede9fe;
+  --hk-assigned-color: #4c1d95;
+  --hk-inprogress-bg: #dbeafe;
+  --hk-inprogress-color: #1e40af;
+  --hk-done-bg: #dcfce7;
+  --hk-done-color: #14532d;
+  --hk-verified-bg: #d1fae5;
+  --hk-verified-color: #065f46;
+  --hk-unassigned: #d97706;
+
+  /* Maintenance status */
+  --maint-open-bg: #fef3c7;
+  --maint-open-color: #92400e;
+  --maint-assigned-bg: #ede9fe;
+  --maint-assigned-color: #4c1d95;
+  --maint-inprogress-bg: #dbeafe;
+  --maint-inprogress-color: #1e3a8a;
+  --maint-resolved-bg: #dcfce7;
+  --maint-resolved-color: #14532d;
+  --maint-closed-bg: #f3f4f6;
+  --maint-closed-color: #374151;
+
+  /* Payment types */
+  --pay-full: #0e7a53;
+  --pay-deposit: #1a7a8a;
+  --pay-prepayment: #5a4fcf;
+  --pay-incidental: #d97706;
+  --pay-refund: #dc2626;
+
+  /* Payment statuses */
+  --pay-captured-bg: #dcfce7;
+  --pay-captured-color: #14532d;
+  --pay-authorized-bg: #fef9c3;
+  --pay-authorized-color: #713f12;
+  --pay-refunded-bg: #fee2e2;
+  --pay-refunded-color: #991b1b;
+  --pay-failed-bg: #f3f4f6;
+  --pay-failed-color: #6b7280;
+
+  /* Invoice status */
+  --inv-draft-bg: #f3f4f6;
+  --inv-draft-color: #374151;
+  --inv-issued-bg: #dbeafe;
+  --inv-issued-color: #1e40af;
+  --inv-paid-bg: #dcfce7;
+  --inv-paid-color: #14532d;
+  --inv-cancelled-bg: #fee2e2;
+  --inv-cancelled-color: #7f1d1d;
+
+  /* Booking channel types */
+  --channel-ota-bg: #dbeafe;
+  --channel-ota-color: #1e40af;
+  --channel-direct-bg: #dcfce7;
+  --channel-direct-color: #166534;
+  --channel-gds-bg: #fef3c7;
+  --channel-gds-color: #92400e;
+  --channel-agent-bg: #ede9fe;
+  --channel-agent-color: #5b21b6;
+  --channel-walkin-bg: #f1f5f9;
+  --channel-walkin-color: #475569;
+  --channel-default-bg: #f5f5f5;
+  --channel-default-color: #888;
+  --channel-active-bg: #dcfce7;
+  --channel-active-color: #166534;
+  --channel-inactive-bg: #fee2e2;
+  --channel-inactive-color: #dc2626;
+
+  /* Promotion types */
+  --promo-percentage-bg: #dbeafe;
+  --promo-percentage-color: #1e40af;
+  --promo-fixed-bg: #dcfce7;
+  --promo-fixed-color: #14532d;
+  --promo-freenight-bg: #ede9fe;
+  --promo-freenight-color: #4c1d95;
+  --promo-earlybird-bg: #fef3c7;
+  --promo-earlybird-color: #78350f;
+  --promo-lastminute-bg: #fee2e2;
+  --promo-lastminute-color: #7f1d1d;
+  --promo-package-bg: #f0fdf4;
+  --promo-package-color: #166534;
+
+  /* Admin timeline / operations */
+  --timeline-pending: #d97706;
+  --timeline-pending-bg: #fef3c7;
+  --timeline-confirmed: #1a7a8a;
+  --timeline-confirmed-bg: #e0f2fe;
+  --timeline-checkedin: #0e7a53;
+  --timeline-checkedin-bg: #dcfce7;
+  --timeline-checkedout: #5a4fcf;
+  --timeline-checkedout-bg: #ede9fe;
+  --timeline-cancelled: #dc2626;
+  --timeline-cancelled-bg: #fee2e2;
+  --timeline-noshow: #6b7280;
+  --timeline-noshow-bg: #f3f4f6;
+  --timeline-transferred: #0f2830;
+  --timeline-transferred-bg: #e8f0f2;
+  --timeline-booked: #1a7a8a;
+  --timeline-booked-bg: #e0f2fe;
+
+  /* Admin KPI / misc */
+  --kpi-active: #166534;
+  --kpi-locked: #92400e;
+  --kpi-disabled: #991b1b;
+  --admin-info: #1a7a8a;
+  --admin-rate-old-bg: #fef3c7;
+  --admin-rate-old-color: #713f12;
+  --admin-rate-new-bg: #dcfce7;
+  --admin-rate-new-color: #14532d;
+  --admin-rate-heading: #92400e;
+  --admin-table-border: #f0f0f0;
   --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
   --font-body: "Aptos", "Trebuchet MS", "Segoe UI", sans-serif;
   font-family: var(--font-body);

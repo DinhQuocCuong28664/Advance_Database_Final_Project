@@ -7,12 +7,12 @@ const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 
-// GET /api/rooms/availability?hotel_id=1&checkin=2026-04-05&checkout=2026-04-08
+// GET /api/v1/rooms/availability?hotel_id=1&checkin=2026-04-05&checkout=2026-04-08
 router.get('/availability', async (req, res) => {
   try {
     const { hotel_id, checkin, checkout } = req.query;
     if (!hotel_id || !checkin || !checkout) {
-      return res.status(400).json({ success: false, error: 'Missing hotel_id, checkin, or checkout' });
+      return res.status(400).json({ success: false, message: 'Missing hotel_id, checkin, or checkout' });
     }
 
     const pool = getSqlPool();
@@ -81,18 +81,18 @@ router.get('/availability', async (req, res) => {
 
     res.json({ success: true, count: rooms.length, data: rooms });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/rooms?hotel_id=1&limit=300
+// GET /api/v1/rooms?hotel_id=1&limit=300
 // Simple room list for dropdowns (housekeeping, maintenance, etc.)
 // Returns basic room info without date-based availability calculation
 router.get('/', async (req, res) => {
   try {
     const { hotel_id, limit } = req.query;
     if (!hotel_id) {
-      return res.status(400).json({ success: false, error: 'hotel_id query parameter is required' });
+      return res.status(400).json({ success: false, message: 'hotel_id query parameter is required' });
     }
 
     const pool = getSqlPool();
@@ -114,7 +114,7 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

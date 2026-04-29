@@ -4,10 +4,10 @@ import { useFlash } from '../../context/useFlash';
 import '../../styles/AdminInvoice.css';
 
 const STATUS_STYLE = {
-  DRAFT:     { bg: '#f3f4f6', color: '#374151' },
-  ISSUED:    { bg: '#dbeafe', color: '#1e40af' },
-  PAID:      { bg: '#dcfce7', color: '#14532d' },
-  CANCELLED: { bg: '#fee2e2', color: '#7f1d1d' },
+  DRAFT:     { bg: 'var(--inv-draft-bg)', color: 'var(--inv-draft-color)' },
+  ISSUED:    { bg: 'var(--inv-issued-bg)', color: 'var(--inv-issued-color)' },
+  PAID:      { bg: 'var(--inv-paid-bg)', color: 'var(--inv-paid-color)' },
+  CANCELLED: { bg: 'var(--inv-cancelled-bg)', color: 'var(--inv-cancelled-color)' },
 };
 
 function fmt(dt) {

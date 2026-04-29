@@ -15,13 +15,13 @@ const LOCATION_ICONS = {
 };
 
 const CHANNEL_TYPE_COLORS = {
-  OTA:    { bg: '#dbeafe', color: '#1e40af' },
-  DIRECT: { bg: '#dcfce7', color: '#166534' },
-  GDS:    { bg: '#fef3c7', color: '#92400e' },
-  AGENT:  { bg: '#ede9fe', color: '#5b21b6' },
-  WALK_IN:{ bg: '#f1f5f9', color: '#475569' },
+  OTA:    { bg: 'var(--channel-ota-bg)', color: 'var(--channel-ota-color)' },
+  DIRECT: { bg: 'var(--channel-direct-bg)', color: 'var(--channel-direct-color)' },
+  GDS:    { bg: 'var(--channel-gds-bg)', color: 'var(--channel-gds-color)' },
+  AGENT:  { bg: 'var(--channel-agent-bg)', color: 'var(--channel-agent-color)' },
+  WALK_IN:{ bg: 'var(--channel-walkin-bg)', color: 'var(--channel-walkin-color)' },
 };
-const channelStyle = (t) => CHANNEL_TYPE_COLORS[t] || { bg: '#f5f5f5', color: '#555' };
+const channelStyle = (t) => CHANNEL_TYPE_COLORS[t] || { bg: 'var(--channel-default-bg)', color: 'var(--channel-default-color)' };
 
 //  Location Tree Node 
 function TreeNode({ node, depth = 0 }) {
@@ -92,7 +92,7 @@ function ChannelTable({ channels }) {
                 </td>
                 <td style={{ fontWeight: 600 }}>{ch.commission_percent}%</td>
                 <td style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{ch.total_reservations ?? 0}</td>
-                <td style={{ color: '#0e7a53', fontWeight: 600 }}>{ch.active_reservations ?? 0}</td>
+                <td style={{ color: 'var(--pay-full)', fontWeight: 600 }}>{ch.active_reservations ?? 0}</td>
                 <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmtCurrency(ch.total_revenue)}</td>
                 <td>
                   <div className="chan-share-wrap">
@@ -103,8 +103,8 @@ function ChannelTable({ channels }) {
                 <td>{fmtCurrency(ch.avg_nightly_rate)}</td>
                 <td>
                   <span className="pay-hist-status" style={{
-                    background: ch.status === 'ACTIVE' ? '#dcfce7' : '#fee2e2',
-                    color: ch.status === 'ACTIVE' ? '#166534' : '#dc2626',
+                    background: ch.status === 'ACTIVE' ? 'var(--channel-active-bg)' : 'var(--channel-inactive-bg)',
+                    color: ch.status === 'ACTIVE' ? 'var(--channel-active-color)' : 'var(--channel-inactive-color)',
                   }}>
                     {ch.status}
                   </span>
@@ -221,7 +221,7 @@ export default function AdminLocationChannels() {
                 return s + 1 + (n.children || []).reduce(count, 0);
               }, 0)} locations
             </span>
-            <span style={{ fontSize: '0.82rem', color: '#1a7a8a' }}>Click rows to expand/collapse</span>
+            <span style={{ fontSize: '0.82rem', color: 'var(--admin-info)' }}>Click rows to expand/collapse</span>
           </div>
 
           <div className="loc-tree-wrap">

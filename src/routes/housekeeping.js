@@ -31,7 +31,7 @@ function normalizeSqlDateTime(value) {
 }
 
 // 
-// GET /api/housekeeping?hotel_id=1&status=OPEN
+// GET /api/v1/housekeeping?hotel_id=1&status=OPEN
 // List housekeeping tasks with filters
 // 
 router.get('/', async (req, res) => {
@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
     const { hotel_id, status, priority } = req.query;
 
     if (!hotel_id) {
-      return res.status(400).json({ success: false, error: 'hotel_id is required' });
+      return res.status(400).json({ success: false, message: 'hotel_id is required' });
     }
 
     const request = pool.request().input('hotelId', sql.BigInt, parseInt(hotel_id));
@@ -86,16 +86,17 @@ router.get('/', async (req, res) => {
     res.json({
       success: true,
       count: result.recordset.length,
+      // [Rule 14] Aggregation done in SQL (GROUP BY task_status); pivot to key-value is acceptable
       summary: stats.recordset.reduce((acc, r) => { acc[r.task_status] = r.cnt; return acc; }, {}),
       data: result.recordset
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// POST /api/housekeeping
+// POST /api/v1/housekeeping
 // Create housekeeping task manually
 // 
 router.post('/', async (req, res) => {
@@ -103,12 +104,12 @@ router.post('/', async (req, res) => {
     const { hotel_id, room_id, task_type, priority_level, note, scheduled_for, assigned_staff_id } = req.body;
 
     if (!hotel_id || !room_id || !task_type) {
-      return res.status(400).json({ success: false, error: 'hotel_id, room_id, task_type required' });
+      return res.status(400).json({ success: false, message: 'hotel_id, room_id, task_type required' });
     }
 
     const scheduledSql = normalizeSqlDateTime(scheduled_for);
     if (scheduled_for && !scheduledSql) {
-      return res.status(400).json({ success: false, error: 'scheduled_for must be a valid date/time' });
+      return res.status(400).json({ success: false, message: 'scheduled_for must be a valid date/time' });
     }
 
     const pool = getSqlPool();
@@ -128,12 +129,12 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ success: true, data: result.recordset[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// PUT /api/housekeeping/:id/assign
+// PUT /api/v1/housekeeping/:id/assign
 // Assign staff to task
 // 
 router.put('/:id/assign', async (req, res) => {
@@ -142,12 +143,12 @@ router.put('/:id/assign', async (req, res) => {
     const { staff_id, scheduled_for } = req.body;
 
     if (isNaN(taskId) || !staff_id) {
-      return res.status(400).json({ success: false, error: 'Valid task ID and staff_id required' });
+      return res.status(400).json({ success: false, message: 'Valid task ID and staff_id required' });
     }
 
     const scheduledSql = normalizeSqlDateTime(scheduled_for);
     if (scheduled_for && !scheduledSql) {
-      return res.status(400).json({ success: false, error: 'scheduled_for must be a valid date/time' });
+      return res.status(400).json({ success: false, message: 'scheduled_for must be a valid date/time' });
     }
 
     const pool = getSqlPool();
@@ -166,17 +167,17 @@ router.put('/:id/assign', async (req, res) => {
       `);
 
     if (result.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Task not found or already in progress/completed' });
+      return res.status(404).json({ success: false, message: 'Task not found or already in progress/completed' });
     }
 
     res.json({ success: true, data: result.recordset[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// PUT /api/housekeeping/:id/status
+// PUT /api/v1/housekeeping/:id/status
 // Update task status with Room sync
 // ASSIGNED  IN_PROGRESS  DONE  VERIFIED
 // 
@@ -186,7 +187,7 @@ router.put('/:id/status', async (req, res) => {
     const { status, note } = req.body;
 
     if (isNaN(taskId)) {
-      return res.status(400).json({ success: false, error: 'Invalid task ID' });
+      return res.status(400).json({ success: false, message: 'Invalid task ID' });
     }
 
     const validFlow = {
@@ -265,7 +266,7 @@ router.put('/:id/status', async (req, res) => {
       throw innerErr;
     }
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

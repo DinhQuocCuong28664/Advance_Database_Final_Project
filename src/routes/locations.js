@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 
-// GET /api/locations/tree?root=Asia (or root_id=1)
+// GET /api/v1/locations/tree?root=Asia (or root_id=1)
 router.get('/tree', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -57,11 +57,11 @@ router.get('/tree', async (req, res) => {
 
     res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/locations - Flat list
+// GET /api/v1/locations - Flat list
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -70,7 +70,7 @@ router.get('/', async (req, res) => {
     `);
     res.json({ success: true, count: result.recordset.length, data: result.recordset });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

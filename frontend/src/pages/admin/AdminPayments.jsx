@@ -10,11 +10,11 @@ const fmtDate = (d) =>
   d ? new Date(d).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '';
 
 const TYPE_LABELS = {
-  FULL_PAYMENT:    { label: 'Full Payment',   color: '#0e7a53' },
-  DEPOSIT:         { label: 'Deposit',         color: '#1a7a8a' },
-  PREPAYMENT:      { label: 'Prepayment',      color: '#5a4fcf' },
-  INCIDENTAL_HOLD: { label: 'Incidental',      color: '#d97706' },
-  REFUND:          { label: 'Refund',           color: '#dc2626' },
+  FULL_PAYMENT:    { label: 'Full Payment',   color: 'var(--pay-full)' },
+  DEPOSIT:         { label: 'Deposit',         color: 'var(--pay-deposit)' },
+  PREPAYMENT:      { label: 'Prepayment',      color: 'var(--pay-prepayment)' },
+  INCIDENTAL_HOLD: { label: 'Incidental',      color: 'var(--pay-incidental)' },
+  REFUND:          { label: 'Refund',           color: 'var(--pay-refund)' },
 };
 const METHOD_LABELS = {
   CASH:          '💵 Cash',
@@ -23,10 +23,10 @@ const METHOD_LABELS = {
   VNPAY:         '🌐 VNPay',
 };
 const STATUS_COLORS = {
-  CAPTURED:   { bg: '#dcfce7', color: '#14532d' },
-  AUTHORIZED: { bg: '#fef9c3', color: '#713f12' },
-  REFUNDED:   { bg: '#fee2e2', color: '#991b1b' },
-  FAILED:     { bg: '#f3f4f6', color: '#6b7280' },
+  CAPTURED:   { bg: 'var(--pay-captured-bg)', color: 'var(--pay-captured-color)' },
+  AUTHORIZED: { bg: 'var(--pay-authorized-bg)', color: 'var(--pay-authorized-color)' },
+  REFUNDED:   { bg: 'var(--pay-refunded-bg)', color: 'var(--pay-refunded-color)' },
+  FAILED:     { bg: 'var(--pay-failed-bg)', color: 'var(--pay-failed-color)' },
 };
 
 //  Component 
@@ -157,7 +157,7 @@ export default function AdminPayments({ hotels = [] }) {
             <span className="pay-hist-kpi-value">{payments.length}</span>
           </div>
           {Object.entries(countByType).map(([type, count]) => {
-            const t = TYPE_LABELS[type] || { label: type, color: '#888' };
+            const t = TYPE_LABELS[type] || { label: type, color: 'var(--channel-default-color)' };
             return (
               <div key={type} className="pay-hist-kpi">
                 <span className="pay-hist-kpi-label" style={{ color: t.color }}>{t.label}</span>
@@ -203,8 +203,8 @@ export default function AdminPayments({ hotels = [] }) {
             </thead>
             <tbody>
               {payments.map(p => {
-                const typeInfo   = TYPE_LABELS[p.payment_type]   || { label: p.payment_type,   color: '#888' };
-                const statusInfo = STATUS_COLORS[p.payment_status] || { bg: '#f3f4f6', color: '#555' };
+                const typeInfo   = TYPE_LABELS[p.payment_type]   || { label: p.payment_type,   color: 'var(--channel-default-color)' };
+                const statusInfo = STATUS_COLORS[p.payment_status] || { bg: 'var(--hk-open-bg)', color: 'var(--channel-walkin-color)' };
                 return (
                   <tr key={p.payment_id} className="pay-hist-row">
                     <td className="pay-hist-id">#{p.payment_id}</td>

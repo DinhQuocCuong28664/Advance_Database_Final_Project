@@ -4,16 +4,16 @@ import { useFlash } from '../../context/useFlash';
 
 //  Constants 
 const STATUS_CONFIG = {
-  ACTIVE:   { label: 'Active',   icon: '✅', bg: '#dcfce7', color: '#166534', btn: 'Activate' },
-  LOCKED:   { label: 'Locked',   icon: '🔒', bg: '#fef3c7', color: '#92400e', btn: 'Lock' },
-  DISABLED: { label: 'Disabled', icon: '⛔', bg: '#fee2e2', color: '#991b1b', btn: 'Disable' },
+  ACTIVE:   { label: 'Active',   icon: '✅', bg: 'var(--pay-captured-bg)', color: 'var(--kpi-active)', btn: 'Activate' },
+  LOCKED:   { label: 'Locked',   icon: '🔒', bg: 'var(--priority-high-bg)', color: 'var(--kpi-locked)', btn: 'Lock' },
+  DISABLED: { label: 'Disabled', icon: '⛔', bg: 'var(--priority-critical-bg)', color: 'var(--kpi-disabled)', btn: 'Disable' },
 };
 
 const TIER_CONFIG = {
-  BLACK:    { bg: '#111', color: '#fff' },
-  PLATINUM: { bg: '#e2e8f0', color: '#334155' },
-  GOLD:     { bg: '#fef3c7', color: '#92400e' },
-  SILVER:   { bg: '#f1f5f9', color: '#475569' },
+  BLACK:    { bg: 'var(--tier-black-bg)', color: 'var(--tier-black-color)' },
+  PLATINUM: { bg: 'var(--tier-platinum-bg)', color: 'var(--tier-platinum-color)' },
+  GOLD:     { bg: 'var(--priority-high-bg)', color: 'var(--kpi-locked)' },
+  SILVER:   { bg: 'var(--tier-silver-bg)', color: 'var(--tier-silver-color)' },
 };
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : 'Never';
@@ -31,7 +31,7 @@ function StatusPill({ status }) {
 //  TierBadge 
 function TierBadge({ tier }) {
   if (!tier) return null;
-  const cfg = TIER_CONFIG[tier] || { bg: '#e2e8f0', color: '#475569' };
+  const cfg = TIER_CONFIG[tier] || { bg: 'var(--tier-default-bg)', color: 'var(--tier-default-color)' };
   return (
     <span className="acct-tier-badge" style={{ background: cfg.bg, color: cfg.color }}>
       {tier}
@@ -238,26 +238,26 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
           <span className="acct-kpi-label">Staff Accounts</span>
         </div>
         <div className="acct-kpi">
-          <span className="acct-kpi-num" style={{ color: '#166534' }}>{activeSys}</span>
+          <span className="acct-kpi-num" style={{ color: 'var(--kpi-active)' }}>{activeSys}</span>
           <span className="acct-kpi-label">Staff Active</span>
         </div>
-        <div className="acct-kpi" style={{ borderLeft: '1px solid #e8e3dc', paddingLeft: 24 }}>
+        <div className="acct-kpi" style={{ borderLeft: '1px solid var(--admin-table-border)', paddingLeft: 24 }}>
           <span className="acct-kpi-num">{totalGuest}</span>
           <span className="acct-kpi-label">Guest Accounts</span>
         </div>
         <div className="acct-kpi">
-          <span className="acct-kpi-num" style={{ color: '#166534' }}>{activeGuest}</span>
+          <span className="acct-kpi-num" style={{ color: 'var(--kpi-active)' }}>{activeGuest}</span>
           <span className="acct-kpi-label">Guests Active</span>
         </div>
         {lockedAll > 0 && (
           <div className="acct-kpi">
-            <span className="acct-kpi-num" style={{ color: '#92400e' }}>{lockedAll}</span>
+            <span className="acct-kpi-num" style={{ color: 'var(--kpi-locked)' }}>{lockedAll}</span>
             <span className="acct-kpi-label">Locked</span>
           </div>
         )}
         {disabledAll > 0 && (
           <div className="acct-kpi">
-            <span className="acct-kpi-num" style={{ color: '#991b1b' }}>{disabledAll}</span>
+            <span className="acct-kpi-num" style={{ color: 'var(--kpi-disabled)' }}>{disabledAll}</span>
             <span className="acct-kpi-label">Disabled</span>
           </div>
         )}

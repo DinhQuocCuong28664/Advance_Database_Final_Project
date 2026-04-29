@@ -11,17 +11,17 @@ const SEVERITY_LEVELS  = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const TICKET_STATUSES  = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 
 const SEVERITY_STYLE = {
-  CRITICAL: { bg: '#fee2e2', color: '#7f1d1d', border: '#dc2626' },
-  HIGH:     { bg: '#fef3c7', color: '#78350f', border: '#d97706' },
-  MEDIUM:   { bg: '#dbeafe', color: '#1e3a8a', border: '#3b82f6' },
-  LOW:      { bg: '#dcfce7', color: '#14532d', border: '#22c55e' },
+  CRITICAL: { bg: 'var(--priority-critical-bg)', color: 'var(--priority-critical-color)', border: 'var(--priority-critical-border)' },
+  HIGH:     { bg: 'var(--priority-high-bg)', color: 'var(--priority-high-color)', border: 'var(--priority-high-border)' },
+  MEDIUM:   { bg: 'var(--priority-medium-bg)', color: 'var(--priority-medium-color)', border: 'var(--priority-medium-border)' },
+  LOW:      { bg: 'var(--priority-low-bg)', color: 'var(--priority-low-color)', border: 'var(--priority-low-border)' },
 };
 const STATUS_STYLE = {
-  OPEN:        { bg: '#fef3c7', color: '#92400e' },
-  ASSIGNED:    { bg: '#ede9fe', color: '#4c1d95' },
-  IN_PROGRESS: { bg: '#dbeafe', color: '#1e3a8a' },
-  RESOLVED:    { bg: '#dcfce7', color: '#14532d' },
-  CLOSED:      { bg: '#f3f4f6', color: '#374151' },
+  OPEN:        { bg: 'var(--maint-open-bg)', color: 'var(--maint-open-color)' },
+  ASSIGNED:    { bg: 'var(--maint-assigned-bg)', color: 'var(--maint-assigned-color)' },
+  IN_PROGRESS: { bg: 'var(--maint-inprogress-bg)', color: 'var(--maint-inprogress-color)' },
+  RESOLVED:    { bg: 'var(--maint-resolved-bg)', color: 'var(--maint-resolved-color)' },
+  CLOSED:      { bg: 'var(--maint-closed-bg)', color: 'var(--maint-closed-color)' },
 };
 
 const CATEGORY_ICON = {
@@ -350,7 +350,7 @@ export default function AdminMaintenance({ hotels }) {
             return (
               <article key={ticket.maintenance_ticket_id}
                 className={`maint-card${done ? ' maint-card--done' : ''}`}
-                style={{ borderLeftColor: sevStyle.border || '#ccc' }}>
+                style={{ borderLeftColor: sevStyle.border || 'var(--admin-table-border)' }}>
 
                 <div className="maint-card-top">
                   <div className="maint-card-badges">

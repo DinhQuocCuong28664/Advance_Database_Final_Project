@@ -7,13 +7,13 @@ function resolveBaseUrl() {
 
   if (typeof window !== 'undefined') {
     if (window.location.port === '3000') {
-      return `${window.location.origin}/api`;
+      return `${window.location.origin}/api/v1`;
     }
 
-    return '/api';
+    return '/api/v1';
   }
 
-  return 'http://localhost:3000/api';
+  return 'http://localhost:3000/api/v1';
 }
 
 export const API_BASE_URL = resolveBaseUrl();

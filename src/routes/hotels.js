@@ -8,7 +8,7 @@ const router = express.Router();
 const { getSqlPool, sql, getMongoDb } = require('../config/database');
 const { requireAdminUser, requireAuth } = require('../middleware/auth');
 
-// GET /api/hotels  List all hotels (Hybrid merge)
+// GET /api/v1/hotels  List all hotels (Hybrid merge)
 router.get('/', async (req, res) => {
   try {
     const pool = getSqlPool();
@@ -85,16 +85,16 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, count: hotels.length, data: hotels });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/hotels/:id  Hotel detail (Full hybrid)
+// GET /api/v1/hotels/:id  Hotel detail (Full hybrid)
 router.get('/:id', async (req, res) => {
   try {
     const hotelId = parseInt(req.params.id);
     if (isNaN(hotelId)) {
-      return res.status(400).json({ success: false, error: 'Invalid hotel ID' });
+      return res.status(400).json({ success: false, message: 'Invalid hotel ID' });
     }
     const pool = getSqlPool();
     const mongo = getMongoDb();
@@ -152,7 +152,7 @@ router.get('/:id', async (req, res) => {
       `);
 
     if (sqlHotel.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Hotel not found' });
+      return res.status(404).json({ success: false, message: 'Hotel not found' });
     }
 
     // SQL: room types with rates
@@ -289,17 +289,17 @@ router.get('/:id', async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/hotels/:id/reviews  Public hotel reviews
+// GET /api/v1/hotels/:id/reviews  Public hotel reviews
 router.get('/:id/reviews', async (req, res) => {
   try {
     const hotelId = parseInt(req.params.id, 10);
     const limit = Math.min(parseInt(req.query.limit, 10) || 12, 50);
     if (isNaN(hotelId)) {
-      return res.status(400).json({ success: false, error: 'Invalid hotel ID' });
+      return res.status(400).json({ success: false, message: 'Invalid hotel ID' });
     }
 
     const pool = getSqlPool();
@@ -348,15 +348,15 @@ router.get('/:id/reviews', async (req, res) => {
       data: reviewsResult.recordset,
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// POST /api/hotels/:id/reviews  Guest review after completed stay
+// POST /api/v1/hotels/:id/reviews  Guest review after completed stay
 router.post('/:id/reviews', requireAuth, async (req, res) => {
   try {
     if (req.auth?.user_type !== 'GUEST') {
-      return res.status(403).json({ success: false, error: 'Guest account required to submit a hotel review' });
+      return res.status(403).json({ success: false, message: 'Guest account required to submit a hotel review' });
     }
 
     const hotelId = parseInt(req.params.id, 10);
@@ -367,13 +367,13 @@ router.post('/:id/reviews', requireAuth, async (req, res) => {
     const guestId = Number(req.auth.sub);
 
     if (isNaN(hotelId) || isNaN(reservationId)) {
-      return res.status(400).json({ success: false, error: 'Valid hotel_id and reservation_id are required' });
+      return res.status(400).json({ success: false, message: 'Valid hotel_id and reservation_id are required' });
     }
     if (!Number.isInteger(ratingScore) || ratingScore < 1 || ratingScore > 5) {
-      return res.status(400).json({ success: false, error: 'rating_score must be an integer between 1 and 5' });
+      return res.status(400).json({ success: false, message: 'rating_score must be an integer between 1 and 5' });
     }
     if (!reviewText) {
-      return res.status(400).json({ success: false, error: 'review_text is required' });
+      return res.status(400).json({ success: false, message: 'review_text is required' });
     }
 
     const pool = getSqlPool();
@@ -412,7 +412,7 @@ router.post('/:id/reviews', requireAuth, async (req, res) => {
       `);
 
     if (existingReview.recordset.length > 0) {
-      return res.status(409).json({ success: false, error: 'A review has already been submitted for this reservation' });
+      return res.status(409).json({ success: false, message: 'A review has already been submitted for this reservation' });
     }
 
     const insertResult = await pool.request()
@@ -440,18 +440,18 @@ router.post('/:id/reviews', requireAuth, async (req, res) => {
       data: insertResult.recordset[0],
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// GET /api/hotels/:id/features  List all RoomFeatures for a hotel
+// GET /api/v1/hotels/:id/features  List all RoomFeatures for a hotel
 // 
 router.get('/:id/features', requireAdminUser, async (req, res) => {
   try {
     const hotelId = parseInt(req.params.id, 10);
     if (isNaN(hotelId)) {
-      return res.status(400).json({ success: false, error: 'Invalid hotel ID' });
+      return res.status(400).json({ success: false, message: 'Invalid hotel ID' });
     }
     const pool = getSqlPool();
 
@@ -460,7 +460,7 @@ router.get('/:id/features', requireAdminUser, async (req, res) => {
       .input('hid', sql.BigInt, hotelId)
       .query('SELECT hotel_id FROM Hotel WHERE hotel_id = @hid');
     if (hotelCheck.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Hotel not found' });
+      return res.status(404).json({ success: false, message: 'Hotel not found' });
     }
 
     const result = await pool.request()
@@ -485,12 +485,12 @@ router.get('/:id/features', requireAdminUser, async (req, res) => {
       data: result.recordset,
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// POST /api/hotels/:id/features  Add a RoomFeature
+// POST /api/v1/hotels/:id/features  Add a RoomFeature
 // 
 const VALID_FEATURE_CATEGORIES = ['VIEW', 'BED', 'BATH', 'TECH', 'AMENITY', 'SPACE'];
 
@@ -498,17 +498,17 @@ router.post('/:id/features', requireAdminUser, async (req, res) => {
   try {
     const hotelId = parseInt(req.params.id, 10);
     if (isNaN(hotelId)) {
-      return res.status(400).json({ success: false, error: 'Invalid hotel ID' });
+      return res.status(400).json({ success: false, message: 'Invalid hotel ID' });
     }
 
     const { room_type_id, room_id, feature_code, feature_name, feature_category, feature_value, is_premium } = req.body;
 
     // Validate required fields
     if (!feature_code || !feature_name) {
-      return res.status(400).json({ success: false, error: 'feature_code and feature_name are required' });
+      return res.status(400).json({ success: false, message: 'feature_code and feature_name are required' });
     }
     if (!room_type_id && !room_id) {
-      return res.status(400).json({ success: false, error: 'room_type_id or room_id is required' });
+      return res.status(400).json({ success: false, message: 'room_type_id or room_id is required' });
     }
     if (feature_category && !VALID_FEATURE_CATEGORIES.includes(feature_category)) {
       return res.status(400).json({
@@ -524,7 +524,7 @@ router.post('/:id/features', requireAdminUser, async (req, res) => {
       .input('hid', sql.BigInt, hotelId)
       .query('SELECT hotel_id FROM Hotel WHERE hotel_id = @hid');
     if (hotelCheck.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Hotel not found' });
+      return res.status(404).json({ success: false, message: 'Hotel not found' });
     }
 
     // Verify room_type belongs to this hotel if provided
@@ -534,7 +534,7 @@ router.post('/:id/features', requireAdminUser, async (req, res) => {
         .input('hid', sql.BigInt, hotelId)
         .query('SELECT room_type_id FROM RoomType WHERE room_type_id = @rtid AND hotel_id = @hid');
       if (rtCheck.recordset.length === 0) {
-        return res.status(404).json({ success: false, error: 'RoomType not found for this hotel' });
+        return res.status(404).json({ success: false, message: 'RoomType not found for this hotel' });
       }
     }
 
@@ -559,12 +559,12 @@ router.post('/:id/features', requireAdminUser, async (req, res) => {
       data: insertResult.recordset[0],
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // 
-// DELETE /api/hotels/:id/features/:fid  Remove a RoomFeature
+// DELETE /api/v1/hotels/:id/features/:fid  Remove a RoomFeature
 // 
 router.delete('/:id/features/:fid', requireAdminUser, async (req, res) => {
   try {
@@ -572,7 +572,7 @@ router.delete('/:id/features/:fid', requireAdminUser, async (req, res) => {
     const featureId = parseInt(req.params.fid, 10);
 
     if (isNaN(hotelId) || isNaN(featureId)) {
-      return res.status(400).json({ success: false, error: 'Invalid hotel or feature ID' });
+      return res.status(400).json({ success: false, message: 'Invalid hotel or feature ID' });
     }
 
     const pool = getSqlPool();
@@ -591,7 +591,7 @@ router.delete('/:id/features/:fid', requireAdminUser, async (req, res) => {
       `);
 
     if (check.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Room feature not found for this hotel' });
+      return res.status(404).json({ success: false, message: 'Room feature not found for this hotel' });
     }
 
     await pool.request()
@@ -600,7 +600,7 @@ router.delete('/:id/features/:fid', requireAdminUser, async (req, res) => {
 
     res.json({ success: true, message: 'Room feature deleted', room_feature_id: featureId });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

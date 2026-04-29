@@ -5,15 +5,15 @@ import '../styles/Account.css';
 import { apiRequest } from '../lib/api';
 
 const STATUS_META = {
-  CONFIRMED:    { label: 'Confirmed',    color: '#2d6a4f', bg: 'rgba(45,106,79,0.1)'  },
-  CHECKED_IN:   { label: 'Checked in',  color: '#1a6a9a', bg: 'rgba(26,106,154,0.1)' },
-  CHECKED_OUT:  { label: 'Checked out', color: '#6b6b6b', bg: 'rgba(107,107,107,0.1)'},
-  CANCELLED:    { label: 'Cancelled',   color: '#c0392b', bg: 'rgba(192,57,43,0.1)'  },
-  NO_SHOW:      { label: 'No-show',     color: '#d35400', bg: 'rgba(211,84,0,0.1)'   },
+  CONFIRMED:    { label: 'Confirmed',    color: 'var(--status-confirmed)',   bg: 'var(--status-confirmed-bg)'  },
+  CHECKED_IN:   { label: 'Checked in',  color: 'var(--status-checkedin)',   bg: 'var(--status-checkedin-bg)' },
+  CHECKED_OUT:  { label: 'Checked out', color: 'var(--status-checkedout)',  bg: 'var(--status-checkedout-bg)'},
+  CANCELLED:    { label: 'Cancelled',   color: 'var(--status-cancelled)',   bg: 'var(--status-cancelled-bg)' },
+  NO_SHOW:      { label: 'No-show',     color: 'var(--status-noshow)',      bg: 'var(--status-noshow-bg)'    },
 };
 
 function StatusBadge({ status }) {
-  const m = STATUS_META[status] || { label: status, color: '#555', bg: '#eee' };
+  const m = STATUS_META[status] || { label: status, color: 'var(--text-soft)', bg: 'var(--bg-deep)' };
   return (
     <span style={{
       display: 'inline-block',
@@ -75,7 +75,7 @@ function ReservationCard({ r, onCancel }) {
           <button
             className="ghost-button"
             type="button"
-            style={{ color: '#c0392b', borderColor: 'rgba(192,57,43,0.3)' }}
+            style={{ color: 'var(--status-cancelled)', borderColor: 'var(--status-cancelled-bg)' }}
             onClick={() => onCancel(r)}
           >
             Cancel reservation
@@ -182,7 +182,7 @@ export default function ReservationPage() {
             {lookupBusy ? 'Searching...' : 'Look up'}
           </button>
         </form>
-        {lookupError && <p style={{ color: '#c0392b', marginTop: 8 }}>{lookupError}</p>}
+        {lookupError && <p style={{ color: 'var(--error)', marginTop: 8 }}>{lookupError}</p>}
         {lookupResult && (
           <div className="resv-lookup-result">
             {/* No cancel button for anonymous lookup  must be logged in */}
@@ -209,7 +209,7 @@ export default function ReservationPage() {
         <section className="resv-list-section">
           <h2 className="resv-section-title">My bookings</h2>
           {loading && <p style={{ color: 'var(--text-soft)' }}>Loading your reservations...</p>}
-          {error && <p style={{ color: '#c0392b' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--error)' }}>{error}</p>}
           {!loading && !error && reservations.length === 0 && (
             <div className="resv-empty">
               <p>No reservations found on your account yet.</p>

@@ -1,3 +1,8 @@
+/**
+ * LuxeReserve - Auth Routes
+ * Guest registration, login, password reset, email verification, admin login
+ */
+
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
@@ -322,7 +327,7 @@ router.post('/login', async (req, res) => {
     const { login, password } = req.body;
 
     if (!login || !password) {
-      return res.status(400).json({ success: false, error: 'login and password are required' });
+      return res.status(400).json({ success: false, message: 'login and password are required' });
     }
 
     const pool = getSqlPool();
@@ -333,7 +338,7 @@ router.post('/login', async (req, res) => {
         return res.json(systemAuth);
       }
     } catch (error) {
-      return res.status(error.message.startsWith('Account is') ? 403 : 401).json({ success: false, error: error.message });
+      return res.status(error.message.startsWith('Account is') ? 403 : 401).json({ success: false, message: error.message });
     }
 
     try {
@@ -342,12 +347,12 @@ router.post('/login', async (req, res) => {
         return res.json(guestAuth);
       }
     } catch (error) {
-      return res.status(error.message.startsWith('Guest account is') ? 403 : 401).json({ success: false, error: error.message });
+      return res.status(error.message.startsWith('Guest account is') ? 403 : 401).json({ success: false, message: error.message });
     }
 
-    return res.status(401).json({ success: false, error: 'Invalid login or password' });
+    return res.status(401).json({ success: false, message: 'Invalid login or password' });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -356,18 +361,18 @@ router.post('/admin/login', async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ success: false, error: 'username and password are required' });
+      return res.status(400).json({ success: false, message: 'username and password are required' });
     }
 
     const pool = getSqlPool();
     const auth = await authenticateSystemUser(pool, username, password);
     if (!auth) {
-      return res.status(401).json({ success: false, error: 'Invalid username or password' });
+      return res.status(401).json({ success: false, message: 'Invalid username or password' });
     }
 
     res.json(auth);
   } catch (err) {
-    res.status(err.message.startsWith('Account is') ? 403 : 401).json({ success: false, error: err.message });
+    res.status(err.message.startsWith('Account is') ? 403 : 401).json({ success: false, message: err.message });
   }
 });
 
@@ -390,11 +395,11 @@ router.post('/guest/register', async (req, res) => {
     } = req.body;
 
     if (!login_email || !password) {
-      return res.status(400).json({ success: false, error: 'login_email and password are required' });
+      return res.status(400).json({ success: false, message: 'login_email and password are required' });
     }
 
     if (String(password).length < 8) {
-      return res.status(400).json({ success: false, error: 'password must be at least 8 characters' });
+      return res.status(400).json({ success: false, message: 'password must be at least 8 characters' });
     }
 
     const pool = getSqlPool();
@@ -409,11 +414,11 @@ router.post('/guest/register', async (req, res) => {
       `);
 
     if (guest_id && existingAuth.recordset.some((row) => row.guest_id === guest_id)) {
-      return res.status(409).json({ success: false, error: 'Guest already has login credentials' });
+      return res.status(409).json({ success: false, message: 'Guest already has login credentials' });
     }
 
     if (existingAuth.recordset.some((row) => row.login_email === login_email)) {
-      return res.status(409).json({ success: false, error: 'login_email is already in use' });
+      return res.status(409).json({ success: false, message: 'login_email is already in use' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -434,12 +439,12 @@ router.post('/guest/register', async (req, res) => {
 
         if (guestResult.recordset.length === 0) {
           await transaction.rollback();
-          return res.status(404).json({ success: false, error: 'Guest not found' });
+          return res.status(404).json({ success: false, message: 'Guest not found' });
         }
       } else {
         if (!first_name || !last_name) {
           await transaction.rollback();
-          return res.status(400).json({ success: false, error: 'first_name and last_name are required for self-registration' });
+          return res.status(400).json({ success: false, message: 'first_name and last_name are required for self-registration' });
         }
 
         const guestCode = await generateGuestCode(pool);
@@ -507,7 +512,7 @@ router.post('/guest/register', async (req, res) => {
       throw innerErr;
     }
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -515,7 +520,7 @@ router.post('/guest/booking-email-status', async (req, res) => {
   try {
     const loginEmail = String(req.body?.login_email || '').trim();
     if (!loginEmail) {
-      return res.status(400).json({ success: false, error: 'login_email is required' });
+      return res.status(400).json({ success: false, message: 'login_email is required' });
     }
 
     const pool = getSqlPool();
@@ -538,7 +543,7 @@ router.post('/guest/booking-email-status', async (req, res) => {
       },
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -546,7 +551,7 @@ router.post('/guest/booking-email-otp', async (req, res) => {
   try {
     const loginEmail = String(req.body?.login_email || '').trim();
     if (!loginEmail) {
-      return res.status(400).json({ success: false, error: 'login_email is required' });
+      return res.status(400).json({ success: false, message: 'login_email is required' });
     }
 
     const pool = getSqlPool();
@@ -559,7 +564,7 @@ router.post('/guest/booking-email-otp', async (req, res) => {
       `);
 
     if (result.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'No existing guest account found for this email' });
+      return res.status(404).json({ success: false, message: 'No existing guest account found for this email' });
     }
 
     await sendBookingOtpForGuestAuth(pool, result.recordset[0].guest_auth_id);
@@ -568,7 +573,7 @@ router.post('/guest/booking-email-otp', async (req, res) => {
       message: 'A booking verification code has been sent to the email address.',
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -576,7 +581,7 @@ router.post('/guest/forgot-password', async (req, res) => {
   try {
     const loginEmail = String(req.body?.login_email || '').trim();
     if (!loginEmail) {
-      return res.status(400).json({ success: false, error: 'login_email is required' });
+      return res.status(400).json({ success: false, message: 'login_email is required' });
     }
 
     const pool = getSqlPool();
@@ -601,7 +606,7 @@ router.post('/guest/forgot-password', async (req, res) => {
       message: 'If the email exists in our system, a password reset code has been sent.',
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -612,10 +617,10 @@ router.post('/guest/reset-password', async (req, res) => {
     const newPassword = String(req.body?.new_password || '');
 
     if (!loginEmail || !otpCode || !newPassword) {
-      return res.status(400).json({ success: false, error: 'login_email, otp_code and new_password are required' });
+      return res.status(400).json({ success: false, message: 'login_email, otp_code and new_password are required' });
     }
     if (newPassword.length < 8) {
-      return res.status(400).json({ success: false, error: 'new_password must be at least 8 characters' });
+      return res.status(400).json({ success: false, message: 'new_password must be at least 8 characters' });
     }
 
     const pool = getSqlPool();
@@ -636,7 +641,7 @@ router.post('/guest/reset-password', async (req, res) => {
       `);
 
     if (result.recordset.length === 0) {
-      return res.status(400).json({ success: false, error: 'Invalid or expired reset code' });
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset code' });
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
@@ -669,7 +674,7 @@ router.post('/guest/reset-password', async (req, res) => {
       throw innerErr;
     }
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -677,7 +682,7 @@ router.post('/guest/resend-verification', async (req, res) => {
   try {
     const { login_email } = req.body;
     if (!login_email) {
-      return res.status(400).json({ success: false, error: 'login_email is required' });
+      return res.status(400).json({ success: false, message: 'login_email is required' });
     }
 
     const pool = getSqlPool();
@@ -690,12 +695,12 @@ router.post('/guest/resend-verification', async (req, res) => {
       `);
 
     if (result.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Guest account not found' });
+      return res.status(404).json({ success: false, message: 'Guest account not found' });
     }
 
     const account = result.recordset[0];
     if (account.email_verified_at) {
-      return res.status(400).json({ success: false, error: 'Email is already verified' });
+      return res.status(400).json({ success: false, message: 'Email is already verified' });
     }
 
     await sendVerificationForGuestAuth(pool, account.guest_auth_id);
@@ -705,7 +710,7 @@ router.post('/guest/resend-verification', async (req, res) => {
       message: 'A new verification code has been sent.',
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -714,7 +719,7 @@ router.post('/guest/verify-email', async (req, res) => {
     const { login_email, otp_code } = req.body;
 
     if (!login_email || !otp_code) {
-      return res.status(400).json({ success: false, error: 'login_email and otp_code are required' });
+      return res.status(400).json({ success: false, message: 'login_email and otp_code are required' });
     }
 
     const pool = getSqlPool();
@@ -735,7 +740,7 @@ router.post('/guest/verify-email', async (req, res) => {
       `);
 
     if (result.recordset.length === 0) {
-      return res.status(400).json({ success: false, error: 'Invalid or expired verification code' });
+      return res.status(400).json({ success: false, message: 'Invalid or expired verification code' });
     }
 
     const account = result.recordset[0];
@@ -777,7 +782,7 @@ router.post('/guest/verify-email', async (req, res) => {
 
     res.json(buildAuthResponse(token, guestUser));
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -786,18 +791,18 @@ router.post('/guest/login', async (req, res) => {
     const { login, password } = req.body;
 
     if (!login || !password) {
-      return res.status(400).json({ success: false, error: 'login and password are required' });
+      return res.status(400).json({ success: false, message: 'login and password are required' });
     }
 
     const pool = getSqlPool();
     const auth = await authenticateGuest(pool, login, password);
     if (!auth) {
-      return res.status(401).json({ success: false, error: 'Invalid login or password' });
+      return res.status(401).json({ success: false, message: 'Invalid login or password' });
     }
 
     res.json(auth);
   } catch (err) {
-    res.status(err.message.startsWith('Guest account is') ? 403 : 401).json({ success: false, error: err.message });
+    res.status(err.message.startsWith('Guest account is') ? 403 : 401).json({ success: false, message: err.message });
   }
 });
 
@@ -807,10 +812,10 @@ router.post('/guest/change-password', requireAuth, async (req, res) => {
     const newPassword = String(req.body?.new_password || '');
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ success: false, error: 'current_password and new_password are required' });
+      return res.status(400).json({ success: false, message: 'current_password and new_password are required' });
     }
     if (newPassword.length < 8) {
-      return res.status(400).json({ success: false, error: 'new_password must be at least 8 characters' });
+      return res.status(400).json({ success: false, message: 'new_password must be at least 8 characters' });
     }
 
     const pool = getSqlPool();
@@ -825,13 +830,13 @@ router.post('/guest/change-password', requireAuth, async (req, res) => {
         `);
 
       if (result.recordset.length === 0) {
-        return res.status(404).json({ success: false, error: 'Guest account not found' });
+        return res.status(404).json({ success: false, message: 'Guest account not found' });
       }
 
       const account = result.recordset[0];
       const validPassword = await bcrypt.compare(currentPassword, account.password_hash);
       if (!validPassword) {
-        return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+        return res.status(400).json({ success: false, message: 'Current password is incorrect' });
       }
 
       const passwordHash = await bcrypt.hash(newPassword, 10);
@@ -858,13 +863,13 @@ router.post('/guest/change-password', requireAuth, async (req, res) => {
         `);
 
       if (result.recordset.length === 0) {
-        return res.status(404).json({ success: false, error: 'System user not found' });
+        return res.status(404).json({ success: false, message: 'System user not found' });
       }
 
       const account = result.recordset[0];
       const validPassword = await bcrypt.compare(currentPassword, account.password_hash);
       if (!validPassword) {
-        return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+        return res.status(400).json({ success: false, message: 'Current password is incorrect' });
       }
 
       const passwordHash = await bcrypt.hash(newPassword, 10);
@@ -881,9 +886,9 @@ router.post('/guest/change-password', requireAuth, async (req, res) => {
       return res.json({ success: true, message: 'Password updated successfully.' });
     }
 
-    return res.status(403).json({ success: false, error: 'Unsupported user type for password change' });
+    return res.status(403).json({ success: false, message: 'Unsupported user type for password change' });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -899,12 +904,12 @@ router.get('/me', requireAuth, async (req, res) => {
     }
 
     if (!user) {
-      return res.status(404).json({ success: false, error: 'Authenticated user not found' });
+      return res.status(404).json({ success: false, message: 'Authenticated user not found' });
     }
 
     res.json({ success: true, user });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

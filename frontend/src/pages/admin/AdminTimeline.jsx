@@ -3,24 +3,24 @@ import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/useFlash';
 
 const STATUS_CONFIG = {
-  PENDING:     { color: '#d97706', bg: '#fef3c7', icon: '⏳', label: 'Pending' },
-  CONFIRMED:   { color: '#1a7a8a', bg: '#e0f2fe', icon: '✅', label: 'Confirmed' },
-  CHECKED_IN:  { color: '#0e7a53', bg: '#dcfce7', icon: '🏨', label: 'Checked In' },
-  CHECKED_OUT: { color: '#5a4fcf', bg: '#ede9fe', icon: '👋', label: 'Checked Out' },
-  CANCELLED:   { color: '#dc2626', bg: '#fee2e2', icon: '❌', label: 'Cancelled' },
-  NO_SHOW:     { color: '#6b7280', bg: '#f3f4f6', icon: '👻', label: 'No Show' },
-  TRANSFERRED: { color: '#0f2830', bg: '#e8f0f2', icon: '🔄', label: 'Transferred' },
+  PENDING:     { color: 'var(--timeline-pending)', bg: 'var(--timeline-pending-bg)', icon: '⏳', label: 'Pending' },
+  CONFIRMED:   { color: 'var(--timeline-confirmed)', bg: 'var(--timeline-confirmed-bg)', icon: '✅', label: 'Confirmed' },
+  CHECKED_IN:  { color: 'var(--timeline-checkedin)', bg: 'var(--timeline-checkedin-bg)', icon: '🏨', label: 'Checked In' },
+  CHECKED_OUT: { color: 'var(--timeline-checkedout)', bg: 'var(--timeline-checkedout-bg)', icon: '👋', label: 'Checked Out' },
+  CANCELLED:   { color: 'var(--timeline-cancelled)', bg: 'var(--timeline-cancelled-bg)', icon: '❌', label: 'Cancelled' },
+  NO_SHOW:     { color: 'var(--timeline-noshow)', bg: 'var(--timeline-noshow-bg)', icon: '👻', label: 'No Show' },
+  TRANSFERRED: { color: 'var(--timeline-transferred)', bg: 'var(--timeline-transferred-bg)', icon: '🔄', label: 'Transferred' },
 };
 
 const EVENT_CONFIG = {
-  BOOKED:      { label: 'Booked',      icon: '✅', color: '#1a7a8a', bg: '#e0f2fe' },
-  CANCELLED:   { label: 'Cancelled',   icon: '❌', color: '#dc2626', bg: '#fee2e2' },
-  CHECKED_IN:  { label: 'Checked in',  icon: '🏨', color: '#0e7a53', bg: '#dcfce7' },
-  CHECKED_OUT: { label: 'Checked out', icon: '👋', color: '#5a4fcf', bg: '#ede9fe' },
+  BOOKED:      { label: 'Booked',      icon: '✅', color: 'var(--timeline-booked)', bg: 'var(--timeline-booked-bg)' },
+  CANCELLED:   { label: 'Cancelled',   icon: '❌', color: 'var(--timeline-cancelled)', bg: 'var(--timeline-cancelled-bg)' },
+  CHECKED_IN:  { label: 'Checked in',  icon: '🏨', color: 'var(--timeline-checkedin)', bg: 'var(--timeline-checkedin-bg)' },
+  CHECKED_OUT: { label: 'Checked out', icon: '👋', color: 'var(--timeline-checkedout)', bg: 'var(--timeline-checkedout-bg)' },
 };
 
-const getStatusCfg = (status) => STATUS_CONFIG[status] || { color: '#888', bg: '#f5f5f5', icon: '•', label: status };
-const getEventCfg = (type) => EVENT_CONFIG[type] || { color: '#888', bg: '#f5f5f5', icon: '•', label: type };
+const getStatusCfg = (status) => STATUS_CONFIG[status] || { color: 'var(--channel-default-color)', bg: 'var(--channel-default-bg)', icon: '•', label: status };
+const getEventCfg = (type) => EVENT_CONFIG[type] || { color: 'var(--channel-default-color)', bg: 'var(--channel-default-bg)', icon: '•', label: type };
 
 const fmtDateTime = (value) =>
   value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '';
@@ -49,7 +49,7 @@ function TimelineItem({ row, isLast }) {
                 <span className="tl-arrow">→</span>
               </>
             ) : (
-              <span className="tl-status-pill" style={{ background: '#f1f5f9', color: '#64748b' }}>
+              <span className="tl-status-pill" style={{ background: 'var(--channel-walkin-bg)', color: 'var(--pay-failed-color)' }}>
                 Created
               </span>
             )}

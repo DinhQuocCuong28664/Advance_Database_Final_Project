@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 
-// GET /api/invoices?reservation_id=1
+// GET /api/v1/invoices?reservation_id=1
 // List invoices, optionally scoped to a reservation
 router.get('/', async (req, res) => {
   try {
@@ -34,18 +34,18 @@ router.get('/', async (req, res) => {
       data: result.recordset,
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// POST /api/invoices
+// POST /api/v1/invoices
 // Generate invoice from reservation using vw_ReservationTotal
 router.post('/', async (req, res) => {
   try {
     const { reservation_id, invoice_type, billing_name, billing_tax_no, billing_address } = req.body;
 
     if (!reservation_id) {
-      return res.status(400).json({ success: false, error: 'reservation_id is required' });
+      return res.status(400).json({ success: false, message: 'reservation_id is required' });
     }
 
     const pool = getSqlPool();
@@ -61,7 +61,7 @@ router.post('/', async (req, res) => {
       `);
 
     if (resvData.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Reservation not found' });
+      return res.status(404).json({ success: false, message: 'Reservation not found' });
     }
 
     const resv = resvData.recordset[0];
@@ -126,17 +126,17 @@ router.post('/', async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/invoices/:id
+// GET /api/v1/invoices/:id
 // Get invoice detail
 router.get('/:id', async (req, res) => {
   try {
     const invoiceId = parseInt(req.params.id, 10);
     if (Number.isNaN(invoiceId)) {
-      return res.status(400).json({ success: false, error: 'Invalid invoice ID' });
+      return res.status(400).json({ success: false, message: 'Invalid invoice ID' });
     }
 
     const pool = getSqlPool();
@@ -154,7 +154,7 @@ router.get('/:id', async (req, res) => {
       `);
 
     if (result.recordset.length === 0) {
-      return res.status(404).json({ success: false, error: 'Invoice not found' });
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
     const invoice = result.recordset[0];
@@ -201,17 +201,17 @@ router.get('/:id', async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// POST /api/invoices/:id/issue
+// POST /api/v1/invoices/:id/issue
 // Issue invoice: DRAFT ? ISSUED
 router.post('/:id/issue', async (req, res) => {
   try {
     const invoiceId = parseInt(req.params.id, 10);
     if (Number.isNaN(invoiceId)) {
-      return res.status(400).json({ success: false, error: 'Invalid invoice ID' });
+      return res.status(400).json({ success: false, message: 'Invalid invoice ID' });
     }
 
     const pool = getSqlPool();
@@ -237,7 +237,7 @@ router.post('/:id/issue', async (req, res) => {
       data: result.recordset[0],
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
