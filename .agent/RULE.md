@@ -231,54 +231,54 @@ d:\HCSDLNC\
 
 ---
 
-## Rule 14: Advanced Database-First — xu ly o DB, khong phai BE/FE
+## Rule 14: Advanced Database-First — process at DB layer, not BE/FE
 
-Day la mon Advance Database. Moi logic co the xu ly o DB phai duoc xu ly o DB.
-Khong duoc de BE hay FE xu ly nhung gi ma DB da co kha nang lam tot hon.
+This is an Advanced Database course. Any logic that can be handled at the DB layer MUST be handled at the DB layer.
+Do NOT let BE or FE handle what the DB can do better.
 
-### 14.1 - Uu tien cac ky thuat Advanced DB
+### 14.1 - Prioritize Advanced DB Techniques
 
-| Tinh huong | Ky thuat DB can dung | Khong duoc dung |
+| Scenario | DB technique to use | Do NOT use |
 |---|---|---|
-| Giu toan ven du lieu khi nhieu user dong thoi | `SELECT ... WITH (UPDLOCK, ROWLOCK)` hoac Serializable transaction | Application-level flag |
-| Tinh toan tong, trung binh, xep hang | Window functions: `ROW_NUMBER()`, `RANK()`, `SUM() OVER()`, `AVG() OVER()` | Tinh trong JS array |
-| Truy van phan cap / de quy | CTE (`WITH ... AS`) hoac recursive CTE | Nhieu round-trip SQL |
-| Kiem tra business rules phuc tap | CHECK constraint, trigger, stored procedure | Validation trong route handler |
-| Cap nhat/ghi lich su tu dong | Trigger (AFTER INSERT/UPDATE) | setInterval trong app.js |
-| Phan trang ket qua lon | `OFFSET ... FETCH NEXT` (SQL Server) | Lay toan bo roi filter JS |
-| Upsert | `MERGE` statement hoac `INSERT ... ON CONFLICT` | SELECT kiem tra roi INSERT/UPDATE rieng |
-| Bao cao / thong ke theo nhieu chieu | CTE + Window function + GROUP BY ket hop | Nhieu query nho roi gop JS |
-| Giu lock trong suot transaction | `BEGIN TRANSACTION ... WITH (UPDLOCK)` + `COMMIT` | Truong check roi insert sau |
+| Data integrity with concurrent users | `SELECT ... WITH (UPDLOCK, ROWLOCK)` or Serializable transaction | Application-level flag |
+| Totals, averages, rankings | Window functions: `ROW_NUMBER()`, `RANK()`, `SUM() OVER()`, `AVG() OVER()` | Compute in JS array |
+| Hierarchical / recursive queries | CTE (`WITH ... AS`) or recursive CTE | Multiple SQL round-trips |
+| Complex business rule validation | CHECK constraint, trigger, stored procedure | Validation in route handler |
+| Auto-logging history on change | Trigger (AFTER INSERT/UPDATE) | `setInterval` in app.js |
+| Paginating large result sets | `OFFSET ... FETCH NEXT` (SQL Server) | Fetch all then filter in JS |
+| Upsert | `MERGE` statement or `INSERT ... ON CONFLICT` | Separate SELECT-check then INSERT/UPDATE |
+| Multi-dimensional reports/stats | CTE + Window function + GROUP BY combined | Many small queries merged in JS |
+| Hold lock through transaction | `BEGIN TRANSACTION ... WITH (UPDLOCK)` + `COMMIT` | Check a flag then insert later |
 
-### 14.2 - Quy tac bat buoc
+### 14.2 - Mandatory Rules
 
-1. **Concurrency**: Moi thao tac doc-ghi co the xay ra dong thoi BAT BUOC dung
-   lock hint hoac isolation level phu hop. Vi du: dat phong phai dung
-   `SELECT ... WITH (UPDLOCK, HOLDLOCK)` de chong double-booking.
+1. **Concurrency**: Any read-write operation that can occur simultaneously MUST use
+   the appropriate lock hint or isolation level. Example: room booking must use
+   `SELECT ... WITH (UPDLOCK, HOLDLOCK)` to prevent double-booking.
 
-2. **Aggregation**: Moi tinh toan tren tap du lieu (tong doanh thu, xep hang phong,
-   diem trung binh review...) phai dung SQL Window function hoac GROUP BY,
-   KHONG duoc lay raw data ve JS roi tinh.
+2. **Aggregation**: Any computation over a dataset (total revenue, room ranking,
+   average review score...) MUST use SQL Window functions or GROUP BY.
+   Do NOT fetch raw data into JS and compute there.
 
-3. **CTE thay vi subquery long nhau**: Khi query phuc tap (tren 2 level join hoac
-   co dieu kien phu thuoc vong lap), dung CTE de code ro rang va DB optimizer
-   co the cache.
+3. **CTE instead of nested subqueries**: When a query is complex (more than 2 join
+   levels or has loop-dependent conditions), use CTE for clarity and to allow
+   the DB optimizer to cache the plan.
 
-4. **Trigger cho audit log**: Moi thay doi tren bang nhay cam (Reservation, Payment,
-   Guest, GuestAuth) phai duoc ghi AuditLog bang trigger, khong phai bang tay
-   trong route handler.
+4. **Trigger for audit log**: Every change on a sensitive table (Reservation, Payment,
+   Guest, GuestAuth) MUST be written to AuditLog via a trigger, not manually
+   inside a route handler.
 
-5. **Stored Procedure cho business logic phuc tap**: Logic co tren 3 buoc SQL
-   lien quan (vi du: check-in flow, cancel flow) nen chuyen vao Stored Procedure
-   de dam bao atomicity va tranh BE viet lai.
+5. **Stored Procedure for complex business logic**: Logic with more than 3 related
+   SQL steps (e.g. check-in flow, cancel flow) should be moved into a Stored
+   Procedure to guarantee atomicity and avoid BE re-implementing it.
 
-### 14.3 - Kiem tra truoc khi code
+### 14.3 - Pre-coding Checklist
 
-Truoc khi viet bat ky logic nao lien quan den du lieu, tu hoi:
-- Co the viet nay trong 1 SQL statement khong? -> Neu co, dung SQL.
-- Co race condition khong? -> Neu co, dung lock/transaction ngay tai DB.
-- Co can tinh toan tren nhieu row khong? -> Neu co, dung Window function.
-- Co lap lai logic nay o nhieu cho khong? -> Neu co, tao Stored Procedure hoac View.
+Before writing any data-related logic, ask yourself:
+- Can this be written in a single SQL statement? -> If yes, use SQL.
+- Is there a race condition risk? -> If yes, apply lock/transaction at the DB level.
+- Does this compute over multiple rows? -> If yes, use a Window function.
+- Is this logic repeated in multiple places? -> If yes, create a Stored Procedure or View.
 
 
 ---
