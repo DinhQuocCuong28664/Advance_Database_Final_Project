@@ -10,16 +10,19 @@ const { getSqlPool, sql } = require('../config/database');
 // GET /api/rooms/availability?hotel_id=1&checkin=2026-04-05&checkout=2026-04-08
 router.get('/availability', async (req, res) => {
   try {
-    const { hotel_id, checkin, checkout } = req.query;
+    const { hotel_id, checkin, checkout, guests } = req.query;
     if (!hotel_id || !checkin || !checkout) {
       return res.status(400).json({ success: false, error: 'Missing hotel_id, checkin, or checkout' });
     }
+
+    const minGuests = parseInt(guests) || 1;
 
     const pool = getSqlPool();
     const result = await pool.request()
       .input('hotelId', sql.BigInt, parseInt(hotel_id))
       .input('checkin', sql.VarChar(10), checkin)
       .input('checkout', sql.VarChar(10), checkout)
+      .input('guests', sql.Int, minGuests)
       .query(`
         SELECT r.room_id, r.room_number, r.floor_number,
                rt.room_type_name, rt.category, rt.bed_type,
@@ -32,6 +35,7 @@ router.get('/availability', async (req, res) => {
           AND rr.rate_date >= @checkin AND rr.rate_date < @checkout
         WHERE r.hotel_id = @hotelId
           AND r.room_status = 'AVAILABLE'
+          AND rt.max_adults >= @guests
           AND NOT EXISTS (
             SELECT 1 FROM RoomAvailability ra
             WHERE ra.room_id = r.room_id

@@ -136,7 +136,7 @@ export default function HotelPage() {
       try {
         const [hotelRes, roomsRes, promosRes] = await Promise.all([
           apiRequest(`/hotels/${id}`),
-          apiRequest(`/rooms/availability?hotel_id=${id}&checkin=${checkin}&checkout=${checkout}`),
+          apiRequest(`/rooms/availability?hotel_id=${id}&checkin=${checkin}&checkout=${checkout}&guests=${guests}`),
           apiRequest('/promotions').catch(() => ({ data: [], promotions: [] })),
         ]);
         if (cancelled) return;

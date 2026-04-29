@@ -3,7 +3,7 @@
  * Run: node tests/test_reservation_payment_flow.js
  */
 
-const BASE_URL = 'http://localhost:3000/api';
+const BASE_URL = 'http://localhost:3000/api/v1';
 
 async function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
@@ -39,7 +39,7 @@ async function runTest() {
     });
     
     let responseBody = await res.json();
-    if(!responseBody.success) throw new Error(responseBody.error);
+    if(!responseBody.success) throw new Error(responseBody.error || responseBody.message || JSON.stringify(responseBody));
     
     const reservation = responseBody.data;
     const TOTAL_AMOUNT = nightly_rate_thb * nights; // 17000

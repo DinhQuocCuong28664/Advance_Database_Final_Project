@@ -10,18 +10,23 @@ const { MongoClient } = require('mongodb');
 // 
 // SQL Server Configuration
 // ============================================================
+const sqlServer = process.env.SQL_SERVER || 'localhost';
+const sqlInstance = process.env.SQL_INSTANCE || '';
+const isDefaultInstance = !sqlInstance || sqlInstance.toUpperCase() === 'MSSQLSERVER';
+const serverStr = isDefaultInstance ? sqlServer : `${sqlServer}\\${sqlInstance}`;
+
 const sqlConfig = {
-  server: process.env.SQL_SERVER || 'localhost',
+  server: sqlServer,
   database: process.env.SQL_DATABASE || 'LuxeReserve',
   options: {
     encrypt: false,
     trustServerCertificate: true,
     enableArithAbort: true,
-    instanceName: process.env.SQL_INSTANCE || 'SQLEXPRESS',
+    instanceName: isDefaultInstance ? undefined : sqlInstance,
   },
   ...(process.env.SQL_TRUSTED_CONNECTION === 'true'
-    ? { connectionString: `Driver={SQL Server};Server=${process.env.SQL_SERVER || 'localhost'}\\${process.env.SQL_INSTANCE || 'SQLEXPRESS'};Database=${process.env.SQL_DATABASE || 'LuxeReserve'};Trusted_Connection=yes;`, driver: 'msnodesqlv8' }
-    : { user: process.env.SQL_USER, password: process.env.SQL_PASSWORD, options: { instanceName: process.env.SQL_INSTANCE || 'SQLEXPRESS', encrypt: false, trustServerCertificate: true, enableArithAbort: true } }
+    ? { connectionString: `Driver={ODBC Driver 17 for SQL Server};Server=${serverStr};Database=${process.env.SQL_DATABASE || 'LuxeReserve'};Trusted_Connection=yes;`, driver: 'msnodesqlv8' }
+    : { user: process.env.SQL_USER, password: process.env.SQL_PASSWORD }
   ),
   pool: {
     max: 10,
