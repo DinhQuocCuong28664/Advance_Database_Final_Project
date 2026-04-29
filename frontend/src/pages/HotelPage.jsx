@@ -69,7 +69,7 @@ function RoomCard({ room, checkin, checkout, onSelect }) {
         <div>
           <h3 className="room-card-name">{room.room_type_name || room.room_type}</h3>
           <div className="room-card-meta">
-            <span>️ {room.bed_type || 'Standard'}</span>
+            <span> {room.bed_type || 'Standard'}</span>
             <span> Max {room.max_adults} adults</span>
             {room.floor_number && <span>Floor {room.floor_number}</span>}
             {room.view_type && <span> {room.view_type}</span>}
@@ -89,7 +89,7 @@ function RoomCard({ room, checkin, checkout, onSelect }) {
                   className={`room-feature-pill ${feature.is_premium ? 'room-feature-pill--premium' : ''}`}
                   title={feature.value || feature.name}
                 >
-                  {feature.is_premium && '⭐ '}
+                  {feature.is_premium && ' '}
                   {feature.name}
                 </span>
               ))}

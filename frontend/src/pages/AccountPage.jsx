@@ -7,58 +7,58 @@ import '../styles/Account.css';
 
 //  Category icon map 
 const CATEGORY_ICONS = {
-  SPA: 'đŸ’†',
-  AIRPORT_TRANSFER: 'âœˆï¸',
-  DINING: 'đŸ½ï¸',
-  BUTLER: 'đŸ›ï¸',
-  YACHT: 'đŸ›¥ï¸',
-  TOUR: 'đŸ§­',
-  BABYSITTING: 'đŸ‘¶',
-  EVENT: 'đŸ‰',
-  WELLNESS: 'đŸ§˜',
-  OTHER: 'âœ¨',
+  SPA: '',
+  AIRPORT_TRANSFER: '',
+  DINING: '',
+  BUTLER: '',
+  YACHT: '',
+  TOUR: '',
+  BABYSITTING: '',
+  EVENT: '',
+  WELLNESS: '',
+  OTHER: '',
 };
 
 //  Issue categories guests can report 
 const ISSUE_CATEGORIES = [
-  { key: 'PLUMBING',   label: 'Plumbing',           icon: 'đŸ¿', example: 'Tap/pipe/shower issue' },
-  { key: 'ELECTRICAL', label: 'Electrical',         icon: 'đŸ’¡', example: 'Light, socket, or power' },
-  { key: 'HVAC',       label: 'Air conditioning',   icon: 'â„ï¸', example: 'AC not cooling / too cold' },
-  { key: 'APPLIANCE',  label: 'Appliance',          icon: 'đŸ“º', example: 'TV, fridge, kettle' },
-  { key: 'FURNITURE',  label: 'Furniture / fixtures', icon: 'đŸª‘', example: 'Bed, chair, wardrobe' },
-  { key: 'CLEANING',   label: 'Housekeeping',       icon: 'đŸ§¹', example: 'Extra towels, cleaning' },
-  { key: 'OTHER',      label: 'Other',              icon: 'â ï¸', example: 'Anything else' },
+  { key: 'PLUMBING',   label: 'Plumbing',           icon: '', example: 'Tap/pipe/shower issue' },
+  { key: 'ELECTRICAL', label: 'Electrical',         icon: '', example: 'Light, socket, or power' },
+  { key: 'HVAC',       label: 'Air conditioning',   icon: '', example: 'AC not cooling / too cold' },
+  { key: 'APPLIANCE',  label: 'Appliance',          icon: '', example: 'TV, fridge, kettle' },
+  { key: 'FURNITURE',  label: 'Furniture / fixtures', icon: '', example: 'Bed, chair, wardrobe' },
+  { key: 'CLEANING',   label: 'Housekeeping',       icon: '', example: 'Extra towels, cleaning' },
+  { key: 'OTHER',      label: 'Other',              icon: '', example: 'Anything else' },
 ];
 
 const EMPTY_ISSUE = { issue_category: 'PLUMBING', issue_description: '' };
 
 Object.assign(CATEGORY_ICONS, {
-  SPA: 'đŸ’†',
-  AIRPORT_TRANSFER: 'âœˆï¸',
-  DINING: 'đŸ½ï¸',
-  BUTLER: 'đŸ›ï¸',
-  YACHT: 'đŸ›¥ï¸',
-  TOUR: 'đŸ§­',
-  BABYSITTING: 'đŸ‘¶',
-  EVENT: 'đŸ‰',
-  WELLNESS: 'đŸ§˜',
-  OTHER: 'âœ¨',
+  SPA: '',
+  AIRPORT_TRANSFER: '',
+  DINING: '',
+  BUTLER: '',
+  YACHT: '',
+  TOUR: '',
+  BABYSITTING: '',
+  EVENT: '',
+  WELLNESS: '',
+  OTHER: '',
 });
 
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'PLUMBING'), { icon: 'đŸ¿' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'ELECTRICAL'), { icon: 'đŸ’¡' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'HVAC'), { icon: 'â„ï¸' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'APPLIANCE'), { icon: 'đŸ“º' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'FURNITURE'), { icon: 'đŸª‘' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'CLEANING'), { icon: 'đŸ§¹' });
-Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'OTHER'), { icon: 'â ï¸' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'PLUMBING'), { icon: '' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'ELECTRICAL'), { icon: '' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'HVAC'), { icon: '' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'APPLIANCE'), { icon: '' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'FURNITURE'), { icon: '' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'CLEANING'), { icon: '' });
+Object.assign(ISSUE_CATEGORIES.find((item) => item.key === 'OTHER'), { icon: '' });
 
 function normalizeIssueTicket(ticket) {
   const category = ISSUE_CATEGORIES.find((item) => item.key === ticket.issue_category);
   return {
     id: ticket.maintenance_ticket_id,
     category: category?.label || String(ticket.issue_category || '').replace(/_/g, ' '),
-    icon: category?.icon || 'â ï¸',
+    icon: category?.icon || 'âï',
     desc: ticket.issue_description,
     status: ticket.status,
     at: ticket.reported_at
@@ -544,7 +544,7 @@ function LoyaltyRewardsPanel({ guestId, onProfileRefresh }) {
         </div>
         {rewards.length === 0 ? (
           <div className="svc-orders-empty">
-            <span>đŸ</span>
+            <span>đŸ</span>
             <p>No loyalty rewards are configured yet.</p>
             <small>Ask the hotel team to publish member-only reward promotions with a points cost.</small>
           </div>
@@ -603,7 +603,7 @@ function LoyaltyRewardsPanel({ guestId, onProfileRefresh }) {
         </div>
         {redemptions.length === 0 ? (
           <div className="svc-orders-empty">
-            <span>đŸ«</span>
+            <span>đŸ</span>
             <p>No vouchers issued yet.</p>
             <small>Redeemed vouchers will appear here and can be applied during booking.</small>
           </div>
@@ -718,7 +718,7 @@ function BookingReviewsPanel({ guestId }) {
   if (reservations.length === 0) {
     return (
       <div className="svc-orders-empty" style={{ padding: '36px 0' }}>
-        <span>đŸ“­</span>
+        <span>đŸ“</span>
         <p>No reservations found for this account yet.</p>
       </div>
     );
@@ -1185,7 +1185,7 @@ export default function AccountPage() {
               </div>
               {loyaltyAccounts.length === 0 && (
                 <div className="svc-orders-empty" style={{ padding: '40px 0' }}>
-                  <span>đŸ’</span>
+                  <span>đŸ’</span>
                   <p>No loyalty account linked yet.</p>
                   <small>Your points and tier benefits will appear here once enrolled.</small>
                 </div>
@@ -1322,7 +1322,7 @@ export default function AccountPage() {
                 ) : (
                   <div className="acct-profile-grid">
                     <div><span>Full name</span><strong>{guestProfile?.full_name || authSession.user.full_name}</strong></div>
-                    <div><span>Phone</span><strong>{guestProfile ? `${guestProfile.phone_country_code || ''}${guestProfile.phone_number || ''}`.trim() || 'â€”' : 'â€”'}</strong></div>
+                    <div><span>Phone</span><strong>{guestProfile ? `${guestProfile.phone_country_code || ''}${guestProfile.phone_number || ''}`.trim() || 'â”' : 'â”'}</strong></div>
                     {profileMsg?.type === 'ok' && (
                       <div style={{ gridColumn: '1/-1' }}>
                         <p style={{ fontSize: '0.85rem', color: 'var(--success)', margin: 0 }}>{profileMsg.text}</p>

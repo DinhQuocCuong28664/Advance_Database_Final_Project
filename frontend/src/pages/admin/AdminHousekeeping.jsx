@@ -20,7 +20,7 @@ const STATUS_STYLE = {
   VERIFIED:    { bg: 'var(--hk-verified-bg)', color: 'var(--hk-verified-color)' },
 };
 const TASK_ICON = {
-  CLEANING:     '', DEEP_CLEAN: '', TURNDOWN: '️',
+  CLEANING:     '', DEEP_CLEAN: '', TURNDOWN: '',
   INSPECTION:   '', LINEN_CHANGE: '', OTHER: '',
 };
 

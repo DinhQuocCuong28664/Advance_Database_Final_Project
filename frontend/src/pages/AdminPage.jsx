@@ -21,7 +21,7 @@ import ToastContainer from '../components/layout/ToastContainer';
 
 const ADMIN_TABS = [
   { key: 'frontdesk', label: ' Front Desk', note: 'Arrivals, departures, transfers, and stay actions' },
-  { key: 'inventory', label: '️ Inventory', note: 'Room availability and status control' },
+  { key: 'inventory', label: ' Inventory', note: 'Room availability and status control' },
   { key: 'housekeeping', label: ' Housekeeping', note: 'Cleaning tasks, assignments, and room status' },
   { key: 'maintenance', label: ' Maintenance', note: 'Issue tracking, repairs, and room status' },
   { key: 'invoice', label: ' Invoices', note: 'Generate and issue guest invoices' },

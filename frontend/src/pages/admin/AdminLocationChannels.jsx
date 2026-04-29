@@ -8,9 +8,9 @@ const fmtCurrency = (v) =>
 
 const LOCATION_ICONS = {
   CONTINENT: '',
-  COUNTRY:   '️',
-  REGION:    '️',
-  CITY:      '️',
+  COUNTRY:   '',
+  REGION:    '',
+  CITY:      '',
   DISTRICT:  '',
 };
 

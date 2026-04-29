@@ -1061,7 +1061,7 @@ export default function AdminFrontDesk({ hotels }) {
 
           {!svcOrdersLoading && svcOrders.length === 0 && (
             <div className="svc-orders-empty">
-              <span>️</span>
+              <span></span>
               <p>No service orders found.</p>
               <small>Service orders refresh automatically when hotel or status changes.</small>
             </div>
