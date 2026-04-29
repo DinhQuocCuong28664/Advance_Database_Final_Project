@@ -12,7 +12,7 @@
 - Applies to ALL file types: `.js`, `.jsx`, `.ts`, `.groovy`, `.sql`, `.json`,
   `.yaml`, `.md` (code blocks inside markdown).
 - Vietnamese is allowed ONLY in: user-facing UI text rendered in the browser
-  (e.g. `<h1>Äáº·t phĂ²ng</h1>`), and in plain-text documentation files
+  (e.g. `<h1>Đặt phòng</h1>`), and in plain-text documentation files
   (e.g. `README.md`, `NOTE.md`, `docs/`).
 
 **Good:**
@@ -60,28 +60,28 @@ const rooms = await RoomService.getAvailable(checkIn, checkOut);
 
 ```
 d:\HCSDLNC\
-â”œâ”€â”€ src/                   # Express backend
-â”‚   â”œâ”€â”€ app.js             # Main entry point
-â”‚   â”œâ”€â”€ config/            # DB connections (SQL Server, MongoDB)
-â”‚   â”œâ”€â”€ middleware/        # Auth, error handlers
-â”‚   â”œâ”€â”€ routes/            # Express routers
-â”‚   â””â”€â”€ services/          # Business logic
-â”‚
-â”œâ”€â”€ frontend/              # React (Vite) frontend
-â”‚   â””â”€â”€ src/
-â”‚       â”œâ”€â”€ components/    # Reusable UI components
-â”‚       â”œâ”€â”€ pages/         # Page-level components (route targets)
-â”‚       â”œâ”€â”€ services/      # API call helpers (axios / fetch wrappers)
-â”‚       â””â”€â”€ assets/        # Static images, fonts
-â”‚
-â”œâ”€â”€ database/
-â”‚   â”œâ”€â”€ sql/               # SQL Server migration / seed scripts
-â”‚   â””â”€â”€ mongodb/           # MongoDB seed / migration scripts
-â”‚
-â”œâ”€â”€ tests/                 # Playwright end-to-end tests
-â”œâ”€â”€ hotel/                 # Static preview of the frontend (for review)
-â”œâ”€â”€ docs/                  # Documentation, ERD diagrams, reports
-â””â”€â”€ .agent/                # AI agent instructions (AGENT.md, etc.)
+|-- src/                   # Express backend
+|     |-- app.js             # Main entry point
+|     |-- config/            # DB connections (SQL Server, MongoDB)
+|     |-- middleware/        # Auth, error handlers
+|     |-- routes/            # Express routers
+|     `-- services/          # Business logic
+|  
+|-- frontend/              # React (Vite) frontend
+|     `-- src/
+|         |-- components/    # Reusable UI components
+|         |-- pages/         # Page-level components (route targets)
+|         |-- services/      # API call helpers (axios / fetch wrappers)
+|         `-- assets/        # Static images, fonts
+|  
+|-- database/
+|     |-- sql/               # SQL Server migration / seed scripts
+|     `-- mongodb/           # MongoDB seed / migration scripts
+|  
+|-- tests/                 # Playwright end-to-end tests
+|-- hotel/                 # Static preview of the frontend (for review)
+|-- docs/                  # Documentation, ERD diagrams, reports
+`-- .agent/                # AI agent instructions (AGENT.md, etc.)
 ```
 
 - Do NOT place business logic inside route files — put it in `src/services/`.
@@ -200,7 +200,7 @@ d:\HCSDLNC\
 
 **Example:**
 - Code comment: `// Wait for the booking to be confirmed`
-- User reply: "Script sáº½ chá» cho Ä‘áº¿n khi Ä‘áº·t phĂ²ng Ä‘Æ°á»£c xĂ¡c nháº­n."
+- User reply: "Script sáº½ chá» cho Ä‘áº¿n khi Ä‘áº·t phòng Ä‘Æ°á»£c xĂ¡c nháº­n."
 
 ---
 
@@ -329,6 +329,6 @@ request.input('stay_date', sql.VarChar(10), dateStr);          // plain string, 
 ### 15.3 - Quick Debugging Guide
 
 If you encounter `Invalid SQL data type`:
-1. Find all `sql.Date` usages in the failing route → change to `sql.VarChar(10)`.
-2. Find all `new Date(...)` wrappers used alongside `sql.VarChar(10)` → remove them, pass the string directly (use `.toISOString().slice(0, 10)` if needed).
+1. Find all `sql.Date` usages in the failing route -> change to `sql.VarChar(10)`.
+2. Find all `new Date(...)` wrappers used alongside `sql.VarChar(10)` -> remove them, pass the string directly (use `.toISOString().slice(0, 10)` if needed).
 3. Scan codebase: `Select-String -Path "src\routes\*.js" -Pattern "sql\.Date[^T]"` to quickly find issues.
