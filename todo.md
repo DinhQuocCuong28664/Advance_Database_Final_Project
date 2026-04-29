@@ -29,9 +29,6 @@ Những tính năng này ảnh hưởng trực tiếp đến nghiệp vụ cốt
 - [ ] **Cơ chế Tự Động Nhả Phòng (Auto-unlock Rooms):**
   - *Vấn đề:* Khách đang thanh toán VNPay mà tắt ngang trình duyệt, phòng sẽ bị kẹt vĩnh viễn ở trạng thái `LOCKED`.
   - *Giải pháp:* Viết một Background Job (Node.js setInterval hoặc node-cron) quét các đơn hàng `LOCKED` quá 15 phút để đổi lại thành `OPEN` và giải phóng phòng.
-- [ ] **Giao diện Đặt dịch vụ phát sinh (Service Ordering UI):** 
-  - *Vấn đề:* Backend đã có sẵn các API đặt dịch vụ (Spa, Ẩm thực), thanh toán và cập nhật trạng thái. Nhưng trên Frontend chưa có giao diện cho Lễ tân (Cashier) hoặc Khách hàng bấm chọn.
-  - *Giải pháp:* Thiết kế thêm 1 bảng "Dịch vụ" trong trang `CashierPage.jsx` hoặc trang Quản lý đơn để Cashier có thể click gọi thêm dịch vụ cho khách.
 - [ ] **Luồng Check-in & Check-out tại quầy:**
   - *Vấn đề:* Lễ Tân cần giao diện rõ ràng để bấm Check-in (buộc phải gán số phòng vật lý cho khách) và Check-out (tính tổng tiền phòng + dịch vụ phát sinh).
 
