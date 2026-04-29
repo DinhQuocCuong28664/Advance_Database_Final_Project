@@ -1,6 +1,6 @@
-# CODING CONVENTIONS â€” LuxeReserve Project
+# CODING CONVENTIONS — LuxeReserve Project
 
-> Stack: React (Vite) Â· Node.js / Express Â· SQL Server Â· MongoDB Â· Playwright Â· Groovy
+> Stack: React (Vite) · Node.js / Express · SQL Server · MongoDB · Playwright · Groovy
 
 ---
 
@@ -31,21 +31,17 @@ const rooms = await RoomService.getAvailable(checkIn, checkOut);
 
 ## Rule 2: No emojis or special Unicode characters in code
 
-- Do NOT use emojis (e.g. âœ…, â ï¸, đŸ‰) inside `.js`, `.jsx`, `.groovy`,
-  `.sql`, `.json`, or `.yaml` files.
-- Exception: emoji are allowed inside React JSX/TSX **only when they are
-  intentional UI elements** visible to the user (e.g. hotel rating stars,
-  decorative icons). They must NOT appear in comments or log messages.
-- Use plain ASCII alternatives in all log / console output:
+- Do NOT use emojis inside ANY source file: `.js`, `.jsx`, `.groovy`, `.sql`, `.json`, or `.yaml`.
+- **No exceptions** - emojis cause mojibake encoding corruption on Windows (ODBC driver). See Rule 15.
+- Use plain ASCII alternatives in all code, comments, and log output:
 
   | Avoid       | Use instead |
   |-------------|-------------|
-  | âœ… / OK     | `[OK]`      |
-  | â ï¸ / WARN   | `[WARN]`    |
-  | âŒ / ERROR  | `[ERROR]`   |
-  | â†’           | `->`        |
-  | â€¦           | `...`       |
-
+  | emoji OK    | `[OK]`      |
+  | emoji WARN  | `[WARN]`    |
+  | emoji ERROR | `[ERROR]`   |
+  | arrow       | `->`        |
+  | ellipsis    | `...`       |
 ---
 
 ## Rule 3: File encoding
@@ -55,12 +51,12 @@ const rooms = await RoomService.getAvailable(checkIn, checkOut);
 - Vite / Node.js tooling expects UTF-8 without BOM; a BOM will break
   some parsers.
 - If you suspect encoding corruption (mojibake in the browser or SQL
-  Server), open the file in VS Code and check the status bar â€” it must
+  Server), open the file in VS Code and check the status bar — it must
   read `UTF-8`.
 
 ---
 
-## Rule 4: Project structure â€” where to put new files
+## Rule 4: Project structure — where to put new files
 
 ```
 d:\HCSDLNC\
@@ -88,7 +84,7 @@ d:\HCSDLNC\
 â””â”€â”€ .agent/                # AI agent instructions (AGENT.md, etc.)
 ```
 
-- Do NOT place business logic inside route files â€” put it in `src/services/`.
+- Do NOT place business logic inside route files — put it in `src/services/`.
 - Do NOT import backend modules from the `frontend/` directory or vice versa.
 
 ---
@@ -112,13 +108,13 @@ d:\HCSDLNC\
 
 - All routes must be prefixed with `/api/v1/`.
 - HTTP status codes must match the semantic meaning:
-  - `200` â€” successful read
-  - `201` â€” successful create
-  - `400` â€” bad request / validation error
-  - `401` â€” unauthenticated
-  - `403` â€” forbidden
-  - `404` â€” resource not found
-  - `500` â€” unexpected server error
+  - `200` — successful read
+  - `201` — successful create
+  - `400` — bad request / validation error
+  - `401` — unauthenticated
+  - `403` — forbidden
+  - `404` — resource not found
+  - `500` — unexpected server error
 - All error responses must follow this shape:
   ```json
   { "success": false, "message": "Human-readable error description" }
@@ -136,7 +132,7 @@ d:\HCSDLNC\
 - Table names: `PascalCase` singular (e.g. `Booking`, `HotelRoom`).
 - Primary keys: `<TableName>ID` (e.g. `BookingID`, `RoomID`).
 - Foreign keys: `<ReferencedTable>ID` (e.g. `HotelID`, `GuestID`).
-- Always use parameterized queries â€” never string-interpolate user input into SQL.
+- Always use parameterized queries — never string-interpolate user input into SQL.
 
 ### MongoDB
 - Collection names: `camelCase` plural (e.g. `reviews`, `loyaltyPoints`).
@@ -152,7 +148,7 @@ d:\HCSDLNC\
   component files.
 - Component files must export a single default export.
 - API calls must go through wrapper functions in `frontend/src/services/`
-  â€” do NOT call `fetch` / `axios` directly inside a component.
+  — do NOT call `fetch` / `axios` directly inside a component.
 - All user-visible strings may be in Vietnamese (they are UI content,
   not code). Comments in the same file must still be in English.
 
@@ -181,13 +177,13 @@ d:\HCSDLNC\
 
 ---
 
-## Rule 11: After every change â€” update NOTE.md
+## Rule 11: After every change — update NOTE.md
 
 - After completing any set of code changes, append an entry to `NOTE.md`
   listing the files modified and a brief English summary of what changed.
 - Format:
   ```
-  ## YYYY-MM-DD â€” <short title>
+  ## YYYY-MM-DD — <short title>
   - src/routes/bookingRoutes.js (line 45-60): Added loyalty points endpoint
   - frontend/src/pages/BookingPage.jsx (line 12): Imported LoyaltyBadge component
   ```
@@ -208,7 +204,7 @@ d:\HCSDLNC\
 
 ---
 
-## Rule 13: Verify names BEFORE writing code â€” never guess
+## Rule 13: Verify names BEFORE writing code — never guess
 
 - **Before** creating or modifying any file that references database objects
   (tables, columns, views, triggers, procedures), the agent MUST verify

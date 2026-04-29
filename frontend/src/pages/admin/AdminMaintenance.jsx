@@ -328,14 +328,14 @@ export default function AdminMaintenance({ hotels }) {
 
       {!loading && !hotelId && (
         <div className="svc-orders-empty">
-          <span>🏨</span>
+          <span></span>
           <p>Select a hotel to view tickets.</p>
         </div>
       )}
 
       {!loading && hotelId && tickets.length === 0 && (
         <div className="svc-orders-empty">
-          <span>🔧</span>
+          <span></span>
           <p>No maintenance tickets found.</p>
           <small>All clear  or adjust filters to see closed tickets.</small>
         </div>

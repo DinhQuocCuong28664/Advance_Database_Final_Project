@@ -232,7 +232,7 @@ export default function BookingPage() {
 
     return (
       <div className="booking-done">
-        <div className="booking-done-icon">✅</div>
+        <div className="booking-done-icon"></div>
         <p className="page-eyebrow">Booking confirmed</p>
         <h1 className="booking-done-title">You're all set!</h1>
         <p className="booking-done-sub">
@@ -412,7 +412,7 @@ export default function BookingPage() {
               </div>
 
               <div className="booking-deposit-notice">
-                <span className="deposit-notice-icon">💳</span>
+                <span className="deposit-notice-icon"></span>
                 <span>
                   By confirming, you authorise a deposit charge of{' '}
                   <strong>{fmt(depositDue, bookingCurrency)}</strong>.

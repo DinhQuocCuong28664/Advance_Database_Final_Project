@@ -156,7 +156,7 @@ function StarRating({ stars }) {
     <span className="star-rating" aria-label={`${stars} star rating`}>
       {Array.from({ length: 5 }, (_, index) => (
         <span key={index} style={{ opacity: index < stars ? 1 : 0.25 }}>
-          ★
+          
         </span>
       ))}
     </span>
@@ -195,7 +195,7 @@ function HotelCard({ hotel, checkin, checkout, guests, onPreviewDirections, dire
           <div>
             <p className="search-hotel-brand">{hotel.brand_name || hotel.chain_name || 'LuxeReserve'}</p>
             <h3 className="search-hotel-name">{hotel.hotel_name}</h3>
-            <p className="search-hotel-loc">📍 {locationText || hotel.city_name}</p>
+            <p className="search-hotel-loc"> {locationText || hotel.city_name}</p>
             <StarRating stars={hotel.star_rating || 0} />
           </div>
           <div className="search-hotel-price">

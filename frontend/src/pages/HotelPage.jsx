@@ -39,7 +39,7 @@ function StarRating({ stars }) {
   return (
     <span className="star-rating">
       {Array.from({ length: 5 }, (_, index) => (
-        <span key={index} style={{ opacity: index < stars ? 1 : 0.25 }}>★</span>
+        <span key={index} style={{ opacity: index < stars ? 1 : 0.25 }}></span>
       ))}
     </span>
   );
@@ -69,10 +69,10 @@ function RoomCard({ room, checkin, checkout, onSelect }) {
         <div>
           <h3 className="room-card-name">{room.room_type_name || room.room_type}</h3>
           <div className="room-card-meta">
-            <span>🛏️ {room.bed_type || 'Standard'}</span>
-            <span>👥 Max {room.max_adults} adults</span>
+            <span>️ {room.bed_type || 'Standard'}</span>
+            <span> Max {room.max_adults} adults</span>
             {room.floor_number && <span>Floor {room.floor_number}</span>}
-            {room.view_type && <span>🪟 {room.view_type}</span>}
+            {room.view_type && <span> {room.view_type}</span>}
             {room.category && <span className="room-cat-pill">{room.category}</span>}
           </div>
           <p className="room-card-status-text">
@@ -227,7 +227,7 @@ export default function HotelPage() {
               <p className="hotel-brand">{hotel.brand_name || hotel.chain_name || 'LuxeReserve'}</p>
               <h1 className="hotel-name">{hotel.hotel_name}</h1>
               <p className="hotel-loc">
-                📍{' '}
+                {' '}
                 {[
                   hotel.address_line_1 || hotel.address,
                   hotel.city_name,

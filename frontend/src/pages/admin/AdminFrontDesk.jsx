@@ -10,28 +10,28 @@ const PAYMENT_METHODS = [
     key: 'CASH',
     label: 'Cash',
     sublabel: 'Physical currency',
-    icon: '💵',
+    icon: '',
     note: 'Collect payment at the desk. Physical receipt required.',
   },
   {
     key: 'BANK_TRANSFER',
     label: 'Bank Transfer',
     sublabel: 'VNPay / Online Transfer',
-    icon: '🏦',
+    icon: '',
     note: 'Guest scans QR or transfers via VNPay. Verify before confirming.',
   },
   {
     key: 'CREDIT_CARD',
     label: 'Credit / Debit Card',
     sublabel: 'Visa  Mastercard  JCB',
-    icon: '💳',
+    icon: '',
     note: 'Swipe or tap card on the POS terminal. Confirm after approval.',
   },
 ];
 
-Object.assign(PAYMENT_METHODS[0], { icon: '💵' });
-Object.assign(PAYMENT_METHODS[1], { icon: '🏦' });
-Object.assign(PAYMENT_METHODS[2], { icon: '💳' });
+Object.assign(PAYMENT_METHODS[0], { icon: '' });
+Object.assign(PAYMENT_METHODS[1], { icon: '' });
+Object.assign(PAYMENT_METHODS[2], { icon: '' });
 
 //  Payment modal 
 function PaymentModal({ reservation, onConfirm, onCancel, busy }) {
@@ -1061,7 +1061,7 @@ export default function AdminFrontDesk({ hotels }) {
 
           {!svcOrdersLoading && svcOrders.length === 0 && (
             <div className="svc-orders-empty">
-              <span>🛎️</span>
+              <span>️</span>
               <p>No service orders found.</p>
               <small>Service orders refresh automatically when hotel or status changes.</small>
             </div>

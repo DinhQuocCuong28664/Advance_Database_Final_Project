@@ -738,7 +738,7 @@ export default function AdminRates({ hotels = [] }) {
 
           {!loadingPlans && ratePlans.length === 0 ? (
             <div className="svc-orders-empty">
-              <span>🧾</span>
+              <span></span>
               <p>No rate plans found for the selected filters.</p>
               <small>Create a new plan or widen the filters above.</small>
             </div>
@@ -992,7 +992,7 @@ export default function AdminRates({ hotels = [] }) {
 
           {!loadingRates && !searchedRates ? (
             <div className="svc-orders-empty">
-              <span>💰</span>
+              <span></span>
               <p>Select a hotel and date range, then load nightly rates.</p>
               <small>Use the room type filter after at least one load.</small>
             </div>
@@ -1000,7 +1000,7 @@ export default function AdminRates({ hotels = [] }) {
 
           {!loadingRates && searchedRates && roomTypes.length === 0 ? (
             <div className="svc-orders-empty">
-              <span>📭</span>
+              <span></span>
               <p>No rate rows matched the selected filters.</p>
               <small>Try another hotel, wider dates, or clear the room type filter.</small>
             </div>

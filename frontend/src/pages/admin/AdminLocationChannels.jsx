@@ -7,11 +7,11 @@ const fmtCurrency = (v) =>
   v ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 }).format(v) : '';
 
 const LOCATION_ICONS = {
-  CONTINENT: '🌐',
-  COUNTRY:   '🏳️',
-  REGION:    '🗺️',
-  CITY:      '🏙️',
-  DISTRICT:  '📍',
+  CONTINENT: '',
+  COUNTRY:   '️',
+  REGION:    '️',
+  CITY:      '️',
+  DISTRICT:  '',
 };
 
 const CHANNEL_TYPE_COLORS = {
@@ -45,7 +45,7 @@ function TreeNode({ node, depth = 0 }) {
         {node.iso_code && <span className="loc-node-code">{node.iso_code}</span>}
         <span className="loc-node-type">{node.location_type}</span>
         {node.hotel_count > 0 && (
-          <span className="loc-node-hotels">🏨 {node.hotel_count}</span>
+          <span className="loc-node-hotels"> {node.hotel_count}</span>
         )}
       </div>
       {open && hasChildren && (

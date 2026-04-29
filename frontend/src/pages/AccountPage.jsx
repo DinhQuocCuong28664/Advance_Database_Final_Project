@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -245,7 +245,7 @@ function GuestServices({ guestId }) {
   if (!activeReservation) {
     return (
       <div className="guest-svc-empty-box">
-        <span>đŸ¨</span>
+        <span></span>
         <p>You are not currently checked in.</p>
         <small>In-house services are only available during an active stay.</small>
       </div>
@@ -1088,7 +1088,7 @@ export default function AccountPage() {
                     {stays.slice(0, 5).map(s => (
                       <div key={s.stay_id} className="acct-stay-row">
                         <div className="acct-stay-icon">
-                          {s.stay_status === 'IN_HOUSE' ? 'đŸ¨' : 'đŸ§³'}
+                          {s.stay_status === 'IN_HOUSE' ? '' : ''}
                         </div>
                         <div className="acct-stay-info">
                           <strong>{s.hotel_name}</strong>

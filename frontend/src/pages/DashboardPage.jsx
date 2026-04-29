@@ -322,10 +322,10 @@ export default function DashboardPage() {
       {/*  TRUST STRIP  */}
       <section className="trust-strip">
         {[
-          { icon: '💎', title: 'Curated luxury', desc: 'Every property vetted for exceptional standards.' },
-          { icon: '🔒', title: 'Secure booking', desc: 'Your data and payments are always protected.' },
-          { icon: '🎁', title: 'Loyalty rewards', desc: 'Earn points on every stay. Redeem for upgrades.' },
-          { icon: '🌐', title: 'Global network', desc: "Properties across Asia's top destinations." },
+          { icon: '', title: 'Curated luxury', desc: 'Every property vetted for exceptional standards.' },
+          { icon: '', title: 'Secure booking', desc: 'Your data and payments are always protected.' },
+          { icon: '', title: 'Loyalty rewards', desc: 'Earn points on every stay. Redeem for upgrades.' },
+          { icon: '', title: 'Global network', desc: "Properties across Asia's top destinations." },
         ].map((t) => (
           <div key={t.title} className="trust-item">
             <span className="trust-icon">{t.icon}</span>

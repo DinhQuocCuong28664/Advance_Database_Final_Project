@@ -20,8 +20,8 @@ const STATUS_STYLE = {
   VERIFIED:    { bg: 'var(--hk-verified-bg)', color: 'var(--hk-verified-color)' },
 };
 const TASK_ICON = {
-  CLEANING:     '🧹', DEEP_CLEAN: '🧼', TURNDOWN: '🛏️',
-  INSPECTION:   '🔍', LINEN_CHANGE: '🧺', OTHER: '✨',
+  CLEANING:     '', DEEP_CLEAN: '', TURNDOWN: '️',
+  INSPECTION:   '', LINEN_CHANGE: '', OTHER: '',
 };
 
 // Valid next steps for each status
@@ -311,12 +311,12 @@ export default function AdminHousekeeping({ hotels }) {
 
       {!loading && hotelId && tasks.length === 0 && (
         <div className="svc-orders-empty">
-          <span>🧹</span><p>No housekeeping tasks found.</p>
+          <span></span><p>No housekeeping tasks found.</p>
           <small>Adjust filters or create a new task.</small>
         </div>
       )}
       {!loading && !hotelId && (
-        <div className="svc-orders-empty"><span>🏨</span><p>Select a hotel to view tasks.</p></div>
+        <div className="svc-orders-empty"><span></span><p>Select a hotel to view tasks.</p></div>
       )}
 
       {tasks.length > 0 && (

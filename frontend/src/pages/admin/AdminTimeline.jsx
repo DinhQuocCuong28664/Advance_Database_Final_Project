@@ -4,19 +4,19 @@ import { useFlash } from '../../context/useFlash';
 
 const STATUS_CONFIG = {
   PENDING:     { color: 'var(--timeline-pending)', bg: 'var(--timeline-pending-bg)', icon: '⏳', label: 'Pending' },
-  CONFIRMED:   { color: 'var(--timeline-confirmed)', bg: 'var(--timeline-confirmed-bg)', icon: '✅', label: 'Confirmed' },
-  CHECKED_IN:  { color: 'var(--timeline-checkedin)', bg: 'var(--timeline-checkedin-bg)', icon: '🏨', label: 'Checked In' },
-  CHECKED_OUT: { color: 'var(--timeline-checkedout)', bg: 'var(--timeline-checkedout-bg)', icon: '👋', label: 'Checked Out' },
-  CANCELLED:   { color: 'var(--timeline-cancelled)', bg: 'var(--timeline-cancelled-bg)', icon: '❌', label: 'Cancelled' },
-  NO_SHOW:     { color: 'var(--timeline-noshow)', bg: 'var(--timeline-noshow-bg)', icon: '👻', label: 'No Show' },
-  TRANSFERRED: { color: 'var(--timeline-transferred)', bg: 'var(--timeline-transferred-bg)', icon: '🔄', label: 'Transferred' },
+  CONFIRMED:   { color: 'var(--timeline-confirmed)', bg: 'var(--timeline-confirmed-bg)', icon: '', label: 'Confirmed' },
+  CHECKED_IN:  { color: 'var(--timeline-checkedin)', bg: 'var(--timeline-checkedin-bg)', icon: '', label: 'Checked In' },
+  CHECKED_OUT: { color: 'var(--timeline-checkedout)', bg: 'var(--timeline-checkedout-bg)', icon: '', label: 'Checked Out' },
+  CANCELLED:   { color: 'var(--timeline-cancelled)', bg: 'var(--timeline-cancelled-bg)', icon: '', label: 'Cancelled' },
+  NO_SHOW:     { color: 'var(--timeline-noshow)', bg: 'var(--timeline-noshow-bg)', icon: '', label: 'No Show' },
+  TRANSFERRED: { color: 'var(--timeline-transferred)', bg: 'var(--timeline-transferred-bg)', icon: '', label: 'Transferred' },
 };
 
 const EVENT_CONFIG = {
-  BOOKED:      { label: 'Booked',      icon: '✅', color: 'var(--timeline-booked)', bg: 'var(--timeline-booked-bg)' },
-  CANCELLED:   { label: 'Cancelled',   icon: '❌', color: 'var(--timeline-cancelled)', bg: 'var(--timeline-cancelled-bg)' },
-  CHECKED_IN:  { label: 'Checked in',  icon: '🏨', color: 'var(--timeline-checkedin)', bg: 'var(--timeline-checkedin-bg)' },
-  CHECKED_OUT: { label: 'Checked out', icon: '👋', color: 'var(--timeline-checkedout)', bg: 'var(--timeline-checkedout-bg)' },
+  BOOKED:      { label: 'Booked',      icon: '', color: 'var(--timeline-booked)', bg: 'var(--timeline-booked-bg)' },
+  CANCELLED:   { label: 'Cancelled',   icon: '', color: 'var(--timeline-cancelled)', bg: 'var(--timeline-cancelled-bg)' },
+  CHECKED_IN:  { label: 'Checked in',  icon: '', color: 'var(--timeline-checkedin)', bg: 'var(--timeline-checkedin-bg)' },
+  CHECKED_OUT: { label: 'Checked out', icon: '', color: 'var(--timeline-checkedout)', bg: 'var(--timeline-checkedout-bg)' },
 };
 
 const getStatusCfg = (status) => STATUS_CONFIG[status] || { color: 'var(--channel-default-color)', bg: 'var(--channel-default-bg)', icon: '•', label: status };
@@ -267,14 +267,14 @@ export default function AdminTimeline({ hotels = [] }) {
 
       {!loading && !searched ? (
         <div className="svc-orders-empty">
-          <span style={{ fontSize: '2.5rem' }}>🕒</span>
+          <span style={{ fontSize: '2.5rem' }}></span>
           <p>Set filters and click <strong>Search</strong> to view hotel operations history.</p>
         </div>
       ) : null}
 
       {!loading && searched && mode === 'operations' && operations.length === 0 ? (
         <div className="svc-orders-empty">
-          <span style={{ fontSize: '2.5rem' }}>📭</span>
+          <span style={{ fontSize: '2.5rem' }}></span>
           <p>No reservation operations found for the selected filters.</p>
         </div>
       ) : null}
@@ -289,7 +289,7 @@ export default function AdminTimeline({ hotels = [] }) {
 
       {!loading && searched && mode === 'audit' && history.length === 0 ? (
         <div className="svc-orders-empty">
-          <span style={{ fontSize: '2.5rem' }}>📭</span>
+          <span style={{ fontSize: '2.5rem' }}></span>
           <p>No status changes found for the selected filters.</p>
         </div>
       ) : null}

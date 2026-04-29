@@ -4,9 +4,9 @@ import { useFlash } from '../../context/useFlash';
 
 //  Constants 
 const STATUS_CONFIG = {
-  ACTIVE:   { label: 'Active',   icon: '✅', bg: 'var(--pay-captured-bg)', color: 'var(--kpi-active)', btn: 'Activate' },
-  LOCKED:   { label: 'Locked',   icon: '🔒', bg: 'var(--priority-high-bg)', color: 'var(--kpi-locked)', btn: 'Lock' },
-  DISABLED: { label: 'Disabled', icon: '⛔', bg: 'var(--priority-critical-bg)', color: 'var(--kpi-disabled)', btn: 'Disable' },
+  ACTIVE:   { label: 'Active',   icon: '', bg: 'var(--pay-captured-bg)', color: 'var(--kpi-active)', btn: 'Activate' },
+  LOCKED:   { label: 'Locked',   icon: '', bg: 'var(--priority-high-bg)', color: 'var(--kpi-locked)', btn: 'Lock' },
+  DISABLED: { label: 'Disabled', icon: '', bg: 'var(--priority-critical-bg)', color: 'var(--kpi-disabled)', btn: 'Disable' },
 };
 
 const TIER_CONFIG = {

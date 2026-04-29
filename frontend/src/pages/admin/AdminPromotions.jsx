@@ -304,7 +304,7 @@ export default function AdminPromotions({ hotels }) {
 
       {!loading && promos.length === 0 && (
         <div className="svc-orders-empty">
-          <span>🎁</span><p>No active promotions found.</p>
+          <span></span><p>No active promotions found.</p>
           <small>Create one above or adjust the hotel filter.</small>
         </div>
       )}

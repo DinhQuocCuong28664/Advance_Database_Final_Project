@@ -20,23 +20,23 @@ import AdminReports from './admin/AdminReports';
 import ToastContainer from '../components/layout/ToastContainer';
 
 const ADMIN_TABS = [
-  { key: 'frontdesk', label: '🏨 Front Desk', note: 'Arrivals, departures, transfers, and stay actions' },
-  { key: 'inventory', label: '⚙️ Inventory', note: 'Room availability and status control' },
-  { key: 'housekeeping', label: '🧹 Housekeeping', note: 'Cleaning tasks, assignments, and room status' },
-  { key: 'maintenance', label: '🔧 Maintenance', note: 'Issue tracking, repairs, and room status' },
-  { key: 'invoice', label: '📋 Invoices', note: 'Generate and issue guest invoices' },
-  { key: 'rates', label: '💰 Rates', note: 'Manage nightly room rates with Price Guard protection' },
-  { key: 'promotions', label: '🎁 Promotions', note: 'Create and manage hotel promotions and offers' },
-  { key: 'channels', label: '🌐 Channels', note: 'Booking channel stats and location hierarchy tree' },
-  { key: 'payments', label: '💳 Payments', note: 'Payment history, filters and transaction review' },
-  { key: 'accounts', label: '👤 Accounts', note: 'System and guest login management' },
-  { key: 'timeline', label: '🕒 Timeline', note: 'Reservation status audit trail and history' },
-  { key: 'reports', label: '📊 Reports', note: 'KPIs, exports, and revenue analytics' },
+  { key: 'frontdesk', label: ' Front Desk', note: 'Arrivals, departures, transfers, and stay actions' },
+  { key: 'inventory', label: '️ Inventory', note: 'Room availability and status control' },
+  { key: 'housekeeping', label: ' Housekeeping', note: 'Cleaning tasks, assignments, and room status' },
+  { key: 'maintenance', label: ' Maintenance', note: 'Issue tracking, repairs, and room status' },
+  { key: 'invoice', label: ' Invoices', note: 'Generate and issue guest invoices' },
+  { key: 'rates', label: ' Rates', note: 'Manage nightly room rates with Price Guard protection' },
+  { key: 'promotions', label: ' Promotions', note: 'Create and manage hotel promotions and offers' },
+  { key: 'channels', label: ' Channels', note: 'Booking channel stats and location hierarchy tree' },
+  { key: 'payments', label: ' Payments', note: 'Payment history, filters and transaction review' },
+  { key: 'accounts', label: ' Accounts', note: 'System and guest login management' },
+  { key: 'timeline', label: ' Timeline', note: 'Reservation status audit trail and history' },
+  { key: 'reports', label: ' Reports', note: 'KPIs, exports, and revenue analytics' },
 ];
 
 const MANAGER_TABS = [
-  { key: 'rates', label: '💰 Rates', note: 'Manage nightly room rates with Price Guard protection' },
-  { key: 'reports', label: '📊 Reports', note: 'KPIs, exports, and revenue analytics' },
+  { key: 'rates', label: ' Rates', note: 'Manage nightly room rates with Price Guard protection' },
+  { key: 'reports', label: ' Reports', note: 'KPIs, exports, and revenue analytics' },
 ];
 
 export default function AdminPage() {

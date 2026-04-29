@@ -284,7 +284,7 @@ export default function AdminInvoice({ hotels }) {
 
       {!listBusy && invoices.length === 0 && (
         <div className="svc-orders-empty">
-          <span>📋</span><p>No invoices yet.</p>
+          <span></span><p>No invoices yet.</p>
           <small>Select a hotel and click "Load invoices", or generate one from a reservation above.</small>
         </div>
       )}
