@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { apiRequest } from '../../lib/api';
 import { useFlash } from '../../context/useFlash';
+import { useAuth } from '../../context/AuthContext';
 
 const TASK_TYPES = ['CLEANING', 'DEEP_CLEAN', 'TURNDOWN', 'INSPECTION', 'LINEN_CHANGE', 'OTHER'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -41,6 +42,9 @@ const EMPTY_FORM = { room_id: '', task_type: 'CLEANING', priority_level: 'MEDIUM
 export default function AdminHousekeeping({ hotels }) {
   const { setFlash } = useFlash();
 
+  const { user } = useAuth();
+  const currentUserId = user?.user_id || user?.sub;
+
   const [hotelId,   setHotelId]   = useState(hotels[0]?.hotel_id || '');
   const [tasks,     setTasks]     = useState([]);
   const [summary,   setSummary]   = useState({});
@@ -49,6 +53,7 @@ export default function AdminHousekeeping({ hotels }) {
   const [loading,   setLoading]   = useState(false);
   const [filterStatus,   setFilterStatus]   = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [myTasksOnly,    setMyTasksOnly]    = useState(false);
 
   const [showForm,   setShowForm]   = useState(false);
   const [form,       setForm]       = useState(EMPTY_FORM);
@@ -91,12 +96,13 @@ export default function AdminHousekeeping({ hotels }) {
   const loadStaff = useCallback(async () => {
     try {
       const p = await apiRequest('/admin/accounts');
-      setStaff((p.data?.system_users || []).filter((user) => {
-        const roles = String(user.role_code || '')
+      // Bug 3 fix: only show HK_MANAGER in the assign dropdown
+      setStaff((p.data?.system_users || []).filter((u) => {
+        const roles = String(u.role_code || '')
           .split(',')
-          .map((role) => role.trim())
+          .map((r) => r.trim())
           .filter(Boolean);
-        return !roles.includes('ADMIN') && !roles.includes('MANAGER');
+        return roles.includes('HK_MANAGER');
       }));
     } catch { /* ignore */ }
   }, []);
@@ -243,8 +249,27 @@ export default function AdminHousekeeping({ hotels }) {
         <button type="button" className="primary-button"
           onClick={() => loadTasks(hotelId, filterStatus, filterPriority)}
           disabled={!hotelId || loading}>
-          {loading ? 'Loading...' : ' Refresh'}
+          {loading ? 'Loading...' : 'Refresh'}
         </button>
+        {/* Bug 4: My Tasks filter */}
+        {currentUserId && (
+          <button
+            type="button"
+            className={myTasksOnly ? 'primary-button' : 'ghost-button'}
+            style={{ position: 'relative' }}
+            onClick={() => setMyTasksOnly(v => !v)}
+          >
+            {myTasksOnly && (
+              <span style={{
+                position: 'absolute', top: -4, right: -4,
+                width: 8, height: 8, borderRadius: '50%',
+                background: 'var(--flash-error, #e53e3e)',
+                animation: 'pulse 1.4s infinite',
+              }} />
+            )}
+            My Tasks
+          </button>
+        )}
       </div>
 
       {/*  Stats  */}
@@ -321,7 +346,9 @@ export default function AdminHousekeeping({ hotels }) {
 
       {tasks.length > 0 && (
         <div className="maint-list">
-          {tasks.map(task => {
+          {tasks
+            .filter(task => !myTasksOnly || String(task.assigned_staff_id) === String(currentUserId))
+            .map(task => {
             const pri  = PRIORITY_STYLE[task.priority_level] || {};
             const stat = STATUS_STYLE[task.task_status]      || {};
             const isBusy = statusBusy === task.hk_task_id;

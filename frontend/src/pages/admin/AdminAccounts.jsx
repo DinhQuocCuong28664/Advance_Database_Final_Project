@@ -18,6 +18,16 @@ const TIER_CONFIG = {
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit' }) : 'Never';
 
+const ROLE_OPTIONS = [
+  { value: 'FRONT_DESK', label: 'Front Desk' },
+  { value: 'HK_MANAGER', label: 'Housekeeping Manager' },
+  { value: 'CASHIER',    label: 'Cashier' },
+  { value: 'MANAGER',    label: 'Revenue Manager' },
+  { value: 'ADMIN',      label: 'System Administrator' },
+];
+
+const EMPTY_STAFF_FORM = { username: '', full_name: '', email: '', password: '', role_code: 'FRONT_DESK', department: '', job_title: '' };
+
 //  StatusPill 
 function StatusPill({ status }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.DISABLED;
@@ -163,9 +173,47 @@ function GuestRow({ guest, onStatusChange }) {
 
 //  Main AdminAccounts 
 export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
+  const { setFlash } = useFlash();
   const [search, setSearch]     = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
-  const [activeSection, setActiveSection] = useState('system'); // 'system' | 'guest'
+  const [activeSection, setActiveSection] = useState('system');
+
+  // Bug 1: New staff form state
+  const [showNewStaff, setShowNewStaff] = useState(false);
+  const [staffForm,    setStaffForm]    = useState(EMPTY_STAFF_FORM);
+  const [staffBusy,    setStaffBusy]    = useState(false);
+
+  async function handleCreateStaff(e) {
+    e.preventDefault();
+    setStaffBusy(true);
+    try {
+      const res = await apiRequest('/admin/accounts/system', {
+        method: 'POST',
+        body: JSON.stringify(staffForm),
+      });
+      setFlash({ tone: 'success', text: `Account created: ${res.data.username} (${res.data.role_code})` });
+      // Optimistically add to snapshot
+      setAccountSnapshot(cur => ({
+        ...cur,
+        system_users: [...(cur.system_users || []), {
+          user_id: res.data.user_id,
+          username: res.data.username,
+          full_name: res.data.full_name,
+          role_code: res.data.role_code,
+          department: staffForm.department,
+          email: staffForm.email,
+          account_status: 'ACTIVE',
+          last_login_at: null,
+        }],
+      }));
+      setStaffForm(EMPTY_STAFF_FORM);
+      setShowNewStaff(false);
+    } catch (err) {
+      setFlash({ tone: 'error', text: err.message });
+    } finally {
+      setStaffBusy(false);
+    }
+  }
 
   // Get current user ID from JWT for self-lock guard
   const currentUserId = useMemo(() => {
@@ -222,13 +270,84 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
 
   return (
     <section className="page-card page-card-wide" id="admin-accounts">
+      {/* Bug 1: New Staff Popup */}
+      {showNewStaff && (
+        <div className="pm-overlay" onClick={e => { if (e.target === e.currentTarget) setShowNewStaff(false); }}>
+          <div className="pm-dialog" style={{ maxWidth: 480 }}>
+            <div className="pm-header">
+              <div>
+                <p className="pm-eyebrow">Access Control</p>
+                <h2 className="pm-title">Create New Staff Account</h2>
+              </div>
+              <button type="button" className="pm-close" onClick={() => setShowNewStaff(false)} />
+            </div>
+            <form onSubmit={handleCreateStaff} style={{ padding: '0 24px 24px', display: 'grid', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
+                  Full Name *
+                  <input type="text" required value={staffForm.full_name}
+                    onChange={e => setStaffForm(f => ({ ...f, full_name: e.target.value }))}
+                    placeholder="Jane Smith" />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
+                  Username *
+                  <input type="text" required value={staffForm.username}
+                    onChange={e => setStaffForm(f => ({ ...f, username: e.target.value }))}
+                    placeholder="jsmith" autoComplete="off" />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
+                  Email
+                  <input type="email" value={staffForm.email}
+                    onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="jane@hotel.com" />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
+                  Password *
+                  <input type="password" required value={staffForm.password}
+                    onChange={e => setStaffForm(f => ({ ...f, password: e.target.value }))}
+                    autoComplete="new-password" placeholder="Min. 8 characters" />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
+                  Role *
+                  <select required value={staffForm.role_code}
+                    onChange={e => setStaffForm(f => ({ ...f, role_code: e.target.value }))}>
+                    {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  </select>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
+                  Department
+                  <input type="text" value={staffForm.department}
+                    onChange={e => setStaffForm(f => ({ ...f, department: e.target.value }))}
+                    placeholder="Housekeeping, F&amp;B..." />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)', gridColumn: '1/-1' }}>
+                  Job Title
+                  <input type="text" value={staffForm.job_title}
+                    onChange={e => setStaffForm(f => ({ ...f, job_title: e.target.value }))}
+                    placeholder="Floor Supervisor..." />
+                </label>
+              </div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+                <button type="button" className="ghost-button" onClick={() => { setShowNewStaff(false); setStaffForm(EMPTY_STAFF_FORM); }}>Cancel</button>
+                <button type="submit" className="primary-button" disabled={staffBusy}>
+                  {staffBusy ? 'Creating...' : 'Create Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/*  Header  */}
-      <div className="admin-section-header" style={{ marginBottom: 24 }}>
+      <div className="admin-section-header" style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p className="page-eyebrow">Access Control</p>
           <h2 className="page-title">Account Management</h2>
           <p className="page-sub">Manage login access for system staff and registered guests.</p>
         </div>
+        <button type="button" className="primary-button" onClick={() => setShowNewStaff(true)}>
+          + New Staff
+        </button>
       </div>
 
       {/*  KPI Strip  */}

@@ -142,9 +142,75 @@ router.get('/accounts', requireAdminUser, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// POST /api/v1/admin/accounts/system  Create new system user + assign role
+router.post('/accounts/system', requireAdminUser, async (req, res) => {
+  const { username, full_name, email, password, role_code, department, job_title, hotel_id } = req.body;
+
+  if (!username || !full_name || !password || !role_code) {
+    return res.status(400).json({ success: false, message: 'username, full_name, password, role_code are required' });
+  }
+
+  const VALID_ROLES = ['ADMIN', 'FRONT_DESK', 'MANAGER', 'HK_MANAGER', 'CASHIER'];
+  if (!VALID_ROLES.includes(role_code)) {
+    return res.status(400).json({ success: false, message: `role_code must be one of: ${VALID_ROLES.join(', ')}` });
+  }
+
+  try {
+    const bcrypt = require('bcryptjs');
+    const pool   = getSqlPool();
+
+    // Check duplicate username
+    const dup = await pool.request()
+      .input('username', sql.VarChar(100), username)
+      .query('SELECT user_id FROM SystemUser WHERE username = @username');
+    if (dup.recordset.length > 0) {
+      return res.status(409).json({ success: false, message: 'Username already exists' });
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
+
+    // Insert SystemUser
+    const inserted = await pool.request()
+      .input('hotel_id',   sql.BigInt,      hotel_id   || null)
+      .input('username',   sql.VarChar(100), username)
+      .input('password',   sql.VarChar(255), password_hash)
+      .input('full_name',  sql.NVarChar(150), full_name)
+      .input('email',      sql.VarChar(254), email      || null)
+      .input('job_title',  sql.NVarChar(100), job_title  || null)
+      .input('department', sql.NVarChar(100), department || null)
+      .query(`
+        INSERT INTO SystemUser (hotel_id, username, password_hash, full_name, email, job_title, department, account_status, created_at, updated_at)
+        OUTPUT INSERTED.user_id
+        VALUES (@hotel_id, @username, @password, @full_name, @email, @job_title, @department, 'ACTIVE', GETDATE(), GETDATE())
+      `);
+
+    const newUserId = inserted.recordset[0].user_id;
+
+    // Assign role
+    const roleRow = await pool.request()
+      .input('role_code', sql.VarChar(50), role_code)
+      .query('SELECT role_id FROM Role WHERE role_code = @role_code');
+
+    if (roleRow.recordset.length > 0) {
+      await pool.request()
+        .input('user_id',     sql.BigInt, newUserId)
+        .input('role_id',     sql.BigInt, roleRow.recordset[0].role_id)
+        .input('assigned_by', sql.BigInt, req.auth.sub || null)
+        .query(`
+          INSERT INTO UserRole (user_id, role_id, assigned_at, assigned_by)
+          VALUES (@user_id, @role_id, GETDATE(), @assigned_by)
+        `);
+    }
+
+    res.status(201).json({ success: true, data: { user_id: newUserId, username, full_name, role_code } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 // PUT /api/v1/admin/accounts/system/:id  update system user account status
 router.put('/accounts/system/:id', requireAdminUser, async (req, res) => {
+
   try {
     const userId = parseInt(req.params.id, 10);
     const { account_status } = req.body;
