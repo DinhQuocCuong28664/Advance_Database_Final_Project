@@ -210,7 +210,10 @@ export default function AdminFrontDesk({ hotels }) {
   const { setFlash } = useFlash();
   const { authSession } = useAuth();
 
-  const [hotelId, setHotelId] = useState(() => (hotels[0] ? String(hotels[0].hotel_id) : ''));
+  const [hotelId, setHotelId] = useState(() => {
+    if (authSession?.user?.hotel_id) return String(authSession.user.hotel_id);
+    return hotels[0] ? String(hotels[0].hotel_id) : '';
+  });
   const [deskDate, setDeskDate] = useState(todayString());
   const [loadingDesk, setLoadingDesk] = useState(false);
   const [arrivals, setArrivals] = useState([]);
@@ -793,7 +796,7 @@ export default function AdminFrontDesk({ hotels }) {
       <form className="inventory-toolbar" onSubmit={(event) => { event.preventDefault(); loadDesk(); }}>
         <label>
           Hotel
-          <select value={hotelId} onChange={(event) => setHotelId(event.target.value)}>
+          <select value={hotelId} onChange={(event) => setHotelId(event.target.value)} disabled={!!authSession?.user?.hotel_id}>
             <option value="">Select hotel</option>
             {hotels.map((hotel) => (
               <option key={hotel.hotel_id} value={hotel.hotel_id}>
@@ -1026,7 +1029,7 @@ export default function AdminFrontDesk({ hotels }) {
             <div className="svc-orders-toolbar-left">
               <label>
                 Hotel
-                <select value={hotelId} onChange={e => { setHotelId(e.target.value); setSvcOrders([]); }}
+                <select value={hotelId} onChange={e => { setHotelId(e.target.value); setSvcOrders([]); }} disabled={!!authSession?.user?.hotel_id}
                   style={{ marginLeft: 8 }}>
                   <option value="">Select hotel</option>
                   {hotels.map(h => (

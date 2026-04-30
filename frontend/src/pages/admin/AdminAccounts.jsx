@@ -26,7 +26,7 @@ const ROLE_OPTIONS = [
   { value: 'ADMIN',      label: 'System Administrator' },
 ];
 
-const EMPTY_STAFF_FORM = { username: '', full_name: '', email: '', password: '', role_code: 'FRONT_DESK', department: '', job_title: '' };
+const EMPTY_STAFF_FORM = { username: '', full_name: '', email: '', password: '', role_code: 'FRONT_DESK', department: '', job_title: '', hotel_id: '' };
 
 //  StatusPill 
 function StatusPill({ status }) {
@@ -70,7 +70,7 @@ function QuickActions({ current, onSet, busy, selfLock }) {
 }
 
 //  System User Row 
-function SystemUserRow({ user, onStatusChange, currentUserId }) {
+function SystemUserRow({ user, hotels = [], onStatusChange, currentUserId }) {
   const [busy, setBusy] = useState(false);
   const { setFlash } = useFlash();
   const isSelf = String(user.user_id) === String(currentUserId);
@@ -104,6 +104,7 @@ function SystemUserRow({ user, onStatusChange, currentUserId }) {
         <div className="acct-row-meta">
           <span>@{user.username}</span>
           {user.role_code && <span> {user.role_code}</span>}
+          {user.hotel_id && <span> {hotels.find(h => h.hotel_id === user.hotel_id)?.hotel_name || `Hotel #${user.hotel_id}`}</span>}
           {user.department && <span> {user.department}</span>}
           {user.email && <span> {user.email}</span>}
         </div>
@@ -172,7 +173,7 @@ function GuestRow({ guest, onStatusChange }) {
 }
 
 //  Main AdminAccounts 
-export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
+export default function AdminAccounts({ accountSnapshot, setAccountSnapshot, hotels = [] }) {
   const { setFlash } = useFlash();
   const [search, setSearch]     = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -202,6 +203,7 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
           role_code: res.data.role_code,
           department: staffForm.department,
           email: staffForm.email,
+          hotel_id: staffForm.hotel_id ? Number(staffForm.hotel_id) : null,
           account_status: 'ACTIVE',
           last_login_at: null,
         }],
@@ -320,6 +322,14 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
                     onChange={e => setStaffForm(f => ({ ...f, department: e.target.value }))}
                     placeholder="Housekeeping, F&amp;B..." />
                 </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
+                  Assigned Hotel
+                  <select value={staffForm.hotel_id}
+                    onChange={e => setStaffForm(f => ({ ...f, hotel_id: e.target.value }))}>
+                    <option value="">All Hotels (Global)</option>
+                    {hotels.map(h => <option key={h.hotel_id} value={h.hotel_id}>{h.hotel_name}</option>)}
+                  </select>
+                </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)', gridColumn: '1/-1' }}>
                   Job Title
                   <input type="text" value={staffForm.job_title}
@@ -429,6 +439,7 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot }) {
               ? <SystemUserRow
                   key={account.user_id}
                   user={account}
+                  hotels={hotels}
                   onStatusChange={handleStatusChange}
                   currentUserId={currentUserId}
                 />

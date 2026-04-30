@@ -200,7 +200,7 @@ export default function AdminPage() {
         {isAdminUser && activeTab === 'channels' ? <AdminLocationChannels /> : null}
         {isAdminUser && activeTab === 'payments' ? <AdminPayments hotels={hotels} /> : null}
         {isAdminUser && activeTab === 'accounts' ? (
-          <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
+          <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} hotels={hotels} />
         ) : null}
         {isAdminUser && activeTab === 'timeline' ? <AdminTimeline hotels={hotels} /> : null}
         {activeTab === 'reports' ? (
