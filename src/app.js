@@ -38,6 +38,19 @@ app.use(morgan('dev'));
 // ============================================================
 // Routes
 // ============================================================
+
+// [FIX] Health check endpoint for monitoring/load balancer
+app.get('/api/v1/health', async (req, res) => {
+  try {
+    const { getSqlPool } = require('./config/database');
+    const pool = getSqlPool();
+    await pool.request().query('SELECT 1 AS ok');
+    res.json({ status: 'healthy', database: 'connected', timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(503).json({ status: 'unhealthy', database: 'disconnected', error: err.message, timestamp: new Date().toISOString() });
+  }
+});
+
 app.get('/api/v1', (req, res) => {
   res.json({
     name: 'LuxeReserve API',

@@ -102,9 +102,15 @@ router.post('/', async (req, res) => {
     }
 
     if (!guest_id) {
-      const firstName = String(guest_profile?.first_name || '').trim();
-      const lastName = String(guest_profile?.last_name || '').trim();
-      const email = String(guest_profile?.email || '').trim();
+      if (!guest_profile || typeof guest_profile !== 'object') {
+        return res.status(400).json({
+          success: false,
+          error: 'Provide guest_id or guest_profile object with first_name, last_name, and email',
+        });
+      }
+      const firstName = String(guest_profile.first_name || '').trim();
+      const lastName = String(guest_profile.last_name || '').trim();
+      const email = String(guest_profile.email || '').trim();
       if (!firstName || !lastName || !email) {
         return res.status(400).json({
           success: false,
@@ -304,16 +310,19 @@ router.post('/', async (req, res) => {
       const requiresDeposit = guarantee_type === 'DEPOSIT';
       const depositAmount = requiresDeposit ? Math.round(reservationTotal * 0.3 * 100) / 100 : 0;
 
-      // [Rule 14] STEP 1: Lock rooms via sp_ReserveRoom (Pessimistic Locking)
-      // sp_ReserveRoom uses its own internal transaction with UPDLOCK+HOLDLOCK
-      // and logs to InventoryLockLog automatically.
-      // We call it BEFORE the outer transaction to avoid nested transaction issues.
+      // [FIX] CRITICAL: sp_ReserveRoom now runs INSIDE the transaction
+      // Previously it ran outside, risking permanent locks if server crashed mid-transaction.
+      // We use a savepoint approach: if any night fails, we rollback to savepoint
+      // and the outer transaction handles the final rollback.
+      const SAVEPOINT_NAME = 'sp_reserve_rooms';
+      await new sql.Request(transaction).query(`SAVE TRAN ${SAVEPOINT_NAME}`);
+
       for (let i = 0; i < nightCount; i++) {
         const stayDate = new Date(checkin);
         stayDate.setDate(stayDate.getDate() + i);
         const dateStr = stayDate.toISOString().slice(0, 10);
 
-        const spRequest = pool.request();
+        const spRequest = new sql.Request(transaction);
         spRequest.input('room_id', sql.BigInt, room_id);
         spRequest.input('stay_date', sql.VarChar(10), dateStr);
         spRequest.input('reservation_code', sql.VarChar(50), reservationCode);
@@ -326,18 +335,10 @@ router.post('/', async (req, res) => {
         const lockMessage = spResult.output.result_message;
 
         if (lockStatus !== 0) {
-          // SP already rolled back and logged the failure
+          // Rollback to savepoint to undo any partial locks
+          await new sql.Request(transaction).query(`ROLLBACK TRAN ${SAVEPOINT_NAME}`);
+          await transaction.rollback();
           const httpStatus = lockStatus === 2 ? 409 : 500;
-          // Release already-reserved dates (rollback partial)
-          for (let j = 0; j < i; j++) {
-            const prevDate = new Date(checkin);
-            prevDate.setDate(prevDate.getDate() + j);
-            const prevStr = prevDate.toISOString().slice(0, 10);
-            await pool.request()
-              .input('roomId', sql.BigInt, room_id)
-              .input('stayDate', sql.VarChar(10), prevStr)
-              .query(`UPDATE RoomAvailability SET availability_status = 'OPEN', sellable_flag = 1, version_no = version_no + 1, updated_at = GETDATE() WHERE room_id = @roomId AND stay_date = @stayDate`);
-          }
           return res.status(httpStatus).json({
             success: false,
             error: `Booking failed: ${lockMessage}`,
@@ -472,18 +473,23 @@ router.post('/', async (req, res) => {
 
       //  Fire-and-forget: booking confirmation email 
       try {
-        const guestEmail = guest_profile?.email ||
-          (resolvedGuestId
-            ? (await getSqlPool().request()
-                .input('gid', sql.BigInt, resolvedGuestId)
-                .query('SELECT email, first_name, last_name FROM Guest WHERE guest_id = @gid')
-              ).recordset[0]?.email
-            : null);
+        let guestEmail = null;
+        let guestName = 'Guest';
 
-        const guestName = [
-          guest_profile?.first_name,
-          guest_profile?.last_name,
-        ].filter(Boolean).join(' ') || 'Guest';
+        if (guest_profile && typeof guest_profile === 'object') {
+          guestEmail = guest_profile.email || null;
+          guestName = [guest_profile.first_name, guest_profile.last_name].filter(Boolean).join(' ') || 'Guest';
+        }
+
+        if (!guestEmail && resolvedGuestId) {
+          const guestRow = await getSqlPool().request()
+            .input('gid', sql.BigInt, resolvedGuestId)
+            .query('SELECT email, first_name, last_name FROM Guest WHERE guest_id = @gid');
+          if (guestRow.recordset.length > 0) {
+            guestEmail = guestRow.recordset[0].email;
+            guestName = [guestRow.recordset[0].first_name, guestRow.recordset[0].last_name].filter(Boolean).join(' ') || 'Guest';
+          }
+        }
 
         // Fetch hotel name for email
         const hotelRow = await getSqlPool().request()

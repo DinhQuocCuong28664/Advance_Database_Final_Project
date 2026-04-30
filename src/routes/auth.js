@@ -5,9 +5,47 @@
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 const { attachAuthContext, requireAuth, issueAuthToken } = require('../middleware/auth');
+
+// [FIX] SECURITY: Rate limiting for auth endpoints
+// Login: max 10 attempts per 15 min per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Registration: max 5 per 15 min per IP
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: 'Too many registration attempts. Please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// OTP verification: max 5 attempts per 15 min per IP (brute force protection)
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: 'Too many verification attempts. Please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Password reset: max 3 per 15 min per IP
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  message: { success: false, message: 'Too many password reset attempts. Please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 const {
   isMailConfigured,
   sendGuestVerificationOtp,
@@ -322,7 +360,7 @@ async function sendPasswordResetOtpForGuestAuth(pool, guestAuthId) {
 
 router.use(attachAuthContext);
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { login, password } = req.body;
 
@@ -356,7 +394,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/admin/login', async (req, res) => {
+router.post('/admin/login', loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -376,7 +414,7 @@ router.post('/admin/login', async (req, res) => {
   }
 });
 
-router.post('/guest/register', async (req, res) => {
+router.post('/guest/register', registerLimiter, async (req, res) => {
   try {
     const {
       guest_id,
@@ -577,7 +615,7 @@ router.post('/guest/booking-email-otp', async (req, res) => {
   }
 });
 
-router.post('/guest/forgot-password', async (req, res) => {
+router.post('/guest/forgot-password', passwordResetLimiter, async (req, res) => {
   try {
     const loginEmail = String(req.body?.login_email || '').trim();
     if (!loginEmail) {
@@ -610,7 +648,7 @@ router.post('/guest/forgot-password', async (req, res) => {
   }
 });
 
-router.post('/guest/reset-password', async (req, res) => {
+router.post('/guest/reset-password', passwordResetLimiter, async (req, res) => {
   try {
     const loginEmail = String(req.body?.login_email || '').trim();
     const otpCode = String(req.body?.otp_code || '').trim();
@@ -678,7 +716,7 @@ router.post('/guest/reset-password', async (req, res) => {
   }
 });
 
-router.post('/guest/resend-verification', async (req, res) => {
+router.post('/guest/resend-verification', otpLimiter, async (req, res) => {
   try {
     const { login_email } = req.body;
     if (!login_email) {
@@ -714,7 +752,7 @@ router.post('/guest/resend-verification', async (req, res) => {
   }
 });
 
-router.post('/guest/verify-email', async (req, res) => {
+router.post('/guest/verify-email', otpLimiter, async (req, res) => {
   try {
     const { login_email, otp_code } = req.body;
 
@@ -786,7 +824,7 @@ router.post('/guest/verify-email', async (req, res) => {
   }
 });
 
-router.post('/guest/login', async (req, res) => {
+router.post('/guest/login', loginLimiter, async (req, res) => {
   try {
     const { login, password } = req.body;
 
