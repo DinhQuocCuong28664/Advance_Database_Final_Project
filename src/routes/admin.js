@@ -636,7 +636,8 @@ router.get('/rates', requireAdminOrManagerUser, async (req, res) => {
       conditions.push('rt.room_type_id = @roomTypeId');
     }
 
-    request.input('limit', sql.Int, parseInt(limit));
+    const safeLimit = Math.min(Math.max(parseInt(limit) || 300, 1), 1000);
+    request.input('limit', sql.Int, safeLimit);
     const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
     const result = await request.query(`
@@ -767,7 +768,7 @@ router.get('/history', requireAdminUser, async (req, res) => {
       ) sr
       LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
       LEFT JOIN Room rm            ON rr.room_id        = rm.room_id
-      LEFT JOIN Hotel h            ON rm.hotel_id       = h.hotel_id
+      LEFT JOIN Hotel h            ON r.hotel_id        = h.hotel_id
       ${whereClause}
       ORDER BY rsh.changed_at DESC, rsh.status_history_id DESC
     `);

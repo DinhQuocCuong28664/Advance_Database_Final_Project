@@ -101,6 +101,21 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required fields: hotel_id, room_id, checkin_date, checkout_date' });
     }
 
+    // [FIX] Validate adult_count and child_count are non-negative integers
+    if (adult_count !== undefined && adult_count !== null) {
+      if (!Number.isInteger(Number(adult_count)) || Number(adult_count) < 0) {
+        return res.status(400).json({ success: false, message: 'adult_count must be a non-negative integer' });
+      }
+    }
+    if (child_count !== undefined && child_count !== null) {
+      if (!Number.isInteger(Number(child_count)) || Number(child_count) < 0) {
+        return res.status(400).json({ success: false, message: 'child_count must be a non-negative integer' });
+      }
+    }
+    if ((adult_count || 0) + (child_count || 0) === 0) {
+      return res.status(400).json({ success: false, message: 'At least one guest (adult or child) is required' });
+    }
+
     if (!guest_id) {
       if (!guest_profile || typeof guest_profile !== 'object') {
         return res.status(400).json({
@@ -162,6 +177,26 @@ router.post('/', async (req, res) => {
       if (hotelCurrencyResult.recordset.length === 0) {
         await transaction.rollback();
         return res.status(404).json({ success: false, message: 'Hotel or room not found, or room does not belong to selected hotel' });
+      }
+
+      // [FIX] Check room_status and maintenance_status before booking
+      const roomStatusCheck = await new sql.Request(transaction)
+        .input('roomId', sql.BigInt, room_id)
+        .query(`
+          SELECT room_status, maintenance_status
+          FROM Room
+          WHERE room_id = @roomId
+        `);
+      if (roomStatusCheck.recordset.length > 0) {
+        const room = roomStatusCheck.recordset[0];
+        if (room.room_status !== 'AVAILABLE') {
+          await transaction.rollback();
+          return res.status(409).json({ success: false, message: `Room is not available (status: ${room.room_status})` });
+        }
+        if (room.maintenance_status !== 'NORMAL') {
+          await transaction.rollback();
+          return res.status(409).json({ success: false, message: `Room is under maintenance (status: ${room.maintenance_status})` });
+        }
       }
 
       const reservationCurrency = hotelCurrencyResult.recordset[0].currency_code || currency_code || 'VND';

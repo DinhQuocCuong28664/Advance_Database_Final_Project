@@ -89,6 +89,16 @@ router.post('/order', requireAuth, async (req, res) => {
       });
     }
 
+    // [FIX] Validate quantity is a positive integer
+    if (quantity !== undefined && quantity !== null) {
+      if (!Number.isInteger(Number(quantity)) || Number(quantity) <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'quantity must be a positive integer'
+        });
+      }
+    }
+
     const pool = getSqlPool();
 
     // Validate reservation exists and is in a valid state (CONFIRMED or CHECKED_IN)
@@ -98,7 +108,7 @@ router.post('/order', requireAuth, async (req, res) => {
         SELECT r.reservation_id, r.reservation_status, r.hotel_id, r.guest_id,
                rr.reservation_room_id
         FROM Reservation r
-        LEFT JOIN ReservationRoom rr ON r.reservation_id = rr.reservation_id
+        LEFT JOIN ReservationRoom rr ON r.reservation_id = rr.reservation_id AND rr.occupancy_status <> 'CANCELLED'
         WHERE r.reservation_id = @resvId
       `);
 

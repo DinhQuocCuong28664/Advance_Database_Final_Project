@@ -157,14 +157,30 @@ app.use('/api/v1/maintenance', maintenanceRoutes);
 app.use('/api/v1/invoices', invoiceRoutes);
 app.use('/api/v1/vnpay',   vnpayRoutes);
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  const originalEnd = res.end;
+  res.end = function (...args) {
+    const duration = Date.now() - start;
+    const userId = req.auth?.sub || 'anonymous';
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms user=${userId}`);
+    originalEnd.apply(this, args);
+  };
+  next();
+});
+
 // ============================================================
-// Error Handler
+// Error Handler (Standardized)
 // ============================================================
 app.use((err, req, res, next) => {
   console.error('[ERROR] Unhandled Error:', err);
   res.status(500).json({
     success: false,
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
+    },
   });
 });
 

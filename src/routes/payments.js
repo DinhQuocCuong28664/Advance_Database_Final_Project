@@ -216,7 +216,7 @@ router.get('/', requireSystemUser, async (req, res) => {
       JOIN Guest g       ON r.guest_id        = g.guest_id
       LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
       LEFT JOIN Room rm            ON rr.room_id        = rm.room_id
-      LEFT JOIN Hotel h            ON rm.hotel_id       = h.hotel_id
+      LEFT JOIN Hotel h            ON r.hotel_id        = h.hotel_id
       ${whereClause}
       ORDER BY p.paid_at DESC, p.payment_id DESC
     `);

@@ -199,7 +199,7 @@ router.put('/:id/status', async (req, res) => {
     if (!status || !validFlow[status]) {
       return res.status(400).json({
         success: false,
-        error: `Invalid status. Allowed transitions: ASSIGNEDIN_PROGRESSDONEVERIFIED`
+        error: `Invalid status. Allowed transitions: ASSIGNED → IN_PROGRESS → DONE → VERIFIED`
       });
     }
 

@@ -78,6 +78,15 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // [FIX] Validate severity_level is one of the allowed values
+    const validSeverityLevels = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    if (severity_level && !validSeverityLevels.includes(severity_level.toUpperCase())) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid severity_level. Must be one of: ${validSeverityLevels.join(', ')}`
+      });
+    }
+
     const pool = getSqlPool();
     const transaction = new sql.Transaction(pool);
     await transaction.begin();

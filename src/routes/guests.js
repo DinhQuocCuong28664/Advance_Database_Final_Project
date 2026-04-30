@@ -48,16 +48,28 @@ async function generateRedemptionCode(requestFactory) {
   throw new Error('Unable to generate unique loyalty voucher code');
 }
 
-// GET /api/v1/guests
+// GET /api/v1/guests  List all guests (paginated)
 router.get('/', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
-    const result = await pool.request().query(`
-      SELECT guest_id, guest_code, title, first_name, last_name, full_name,
-             email, phone_number, nationality_country_code, vip_flag
-      FROM Guest ORDER BY full_name
-    `);
-    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.page_size, 10) || 20));
+    const offset = (page - 1) * pageSize;
+
+    const countResult = await pool.request().query(`SELECT COUNT(*) AS total FROM Guest`);
+    const totalCount = countResult.recordset[0].total;
+
+    const result = await pool.request()
+      .input('offset', sql.BigInt, offset)
+      .input('pageSize', sql.BigInt, pageSize)
+      .query(`
+        SELECT guest_id, guest_code, title, first_name, last_name, full_name,
+               email, phone_number, nationality_country_code, vip_flag
+        FROM Guest
+        ORDER BY full_name
+        OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY
+      `);
+    res.json({ success: true, count: result.recordset.length, total: totalCount, page, page_size: pageSize, data: result.recordset });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

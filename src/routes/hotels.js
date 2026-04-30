@@ -14,8 +14,20 @@ router.get('/', async (req, res) => {
     const pool = getSqlPool();
     const mongo = getMongoDb();
 
+    // Pagination
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.page_size, 10) || 20));
+    const offset = (page - 1) * pageSize;
+
+    // Count total
+    const countResult = await pool.request().query(`SELECT COUNT(*) AS total FROM Hotel WHERE status = 'ACTIVE'`);
+    const totalCount = countResult.recordset[0].total;
+
     // SQL: operational data
-    const sqlResult = await pool.request().query(`
+    const sqlResult = await pool.request()
+      .input('offset', sql.BigInt, offset)
+      .input('pageSize', sql.BigInt, pageSize)
+      .query(`
       WITH LocationAncestors AS (
         SELECT
           h.hotel_id,
@@ -64,6 +76,8 @@ router.get('/', async (req, res) => {
         ORDER BY depth ASC
       ) country
       WHERE h.status = 'ACTIVE'
+      ORDER BY h.hotel_name
+      OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY
       OPTION (MAXRECURSION 10)
     `);
 
@@ -83,7 +97,7 @@ router.get('/', async (req, res) => {
       location_detail: mongoMap[h.hotel_id]?.location || null,
     }));
 
-    res.json({ success: true, count: hotels.length, data: hotels });
+    res.json({ success: true, count: hotels.length, total: totalCount, page, page_size: pageSize, data: hotels });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -317,8 +331,9 @@ router.get('/:id/reviews', async (req, res) => {
         `),
       pool.request()
         .input('hotelId', sql.BigInt, hotelId)
+        .input('revLimit', sql.Int, limit)
         .query(`
-          SELECT TOP (${limit})
+          SELECT TOP (@revLimit)
             hr.hotel_review_id,
             hr.rating_score,
             hr.review_title,
