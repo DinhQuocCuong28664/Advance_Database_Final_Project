@@ -455,7 +455,7 @@ export default function AdminRates({ hotels = [] }) {
         method: 'PUT',
         body: JSON.stringify({
           final_rate: newRate,
-          price_source: 'MANUAL_OVERRIDE',
+          price_source: 'MANUAL',
           updated_by: currentUserId,
         }),
       });

@@ -573,7 +573,7 @@ router.get('/rates', requireAdminOrManagerUser, async (req, res) => {
         rr.room_rate_id, rr.rate_date,
         rr.base_rate, rr.final_rate,
         rr.price_source, rr.demand_level, rr.updated_at,
-        CAST(CASE WHEN rr.price_source = 'MANUAL_OVERRIDE' THEN 1 ELSE 0 END AS BIT) AS is_override,
+        CAST(CASE WHEN rr.price_source = 'MANUAL' THEN 1 ELSE 0 END AS BIT) AS is_override,
         rt.room_type_id, rt.room_type_name,
         h.hotel_id, h.hotel_name, h.currency_code,
         rp.rate_plan_code, rp.rate_plan_name,
