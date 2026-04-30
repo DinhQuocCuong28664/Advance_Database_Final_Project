@@ -50,28 +50,6 @@
 
 ### 2.1 Lỗi logic nghiêm trọng
 
-#### ❌ **reservations.js - sp_ReserveRoom gọi OUTSIDE transaction**
-```javascript
-// Dòng ~230: Gọi sp_ReserveRoom trên pool.request() KHÔNG transaction
-const spRequest = pool.request();  // <-- KHÔNG transaction
-// Trong khi đó các bước sau (STEP 2,3,4) dùng transaction
-```
-**Vấn đề**: Nếu server crash sau khi lock rooms nhưng trước khi commit transaction, rooms sẽ bị lock vĩnh viễn. Cần có cleanup mechanism.
-
-**Giải pháp**: 
-- Thêm `sp_ReleaseExpiredLocks` chạy background
-- Hoặc chuyển sp_ReserveRoom vào trong transaction với `XACT_ABORT ON`
-
-#### ❌ **reservations.js - Release partial locks không dùng transaction**
-```javascript
-// Dòng ~248: Release các date đã lock khi thất bại
-for (let j = 0; j < i; j++) {
-  await pool.request()  // <-- KHÔNG transaction, có thể partial update
-    .query(`UPDATE RoomAvailability SET ...`);
-}
-```
-**Vấn đề**: Nếu release 3 ngày mà ngày thứ 2 fail, 2 ngày kia vẫn OPEN nhưng ngày thứ 2 vẫn BOOKED.
-
 #### ❌ **reservations.js - Không validate room_id thuộc hotel_id**
 ```javascript
 // Chỉ validate currency_code, không validate room thuộc hotel
@@ -87,16 +65,6 @@ const hotelCurrencyResult = await new sql.Request(transaction)
 Không check `Room.room_status = 'AVAILABLE'` hoặc `Room.maintenance_status = 'NORMAL'` trước khi gọi sp_ReserveRoom.
 
 ### 2.2 Lỗi bảo mật
-
-#### ❌ **Thiếu rate limiting**
-- `POST /api/v1/auth/guest/login` - không rate limit, dễ bị brute force
-- `POST /api/v1/auth/guest/register` - không rate limit
-- `POST /api/v1/auth/guest/forgot-password` - không rate limit
-- `POST /api/v1/auth/guest/resend-verification` - không rate limit
-
-#### ❌ **OTP không có rate limit**
-- `POST /api/v1/auth/guest/verify-email` - có thể brute force OTP 6 số (1/1,000,000 mỗi lần thử)
-- `POST /api/v1/auth/guest/reset-password` - tương tự
 
 #### ❌ **Thiếu input validation/sanitization**
 - `POST /api/v1/reservations` - không validate `adult_count`, `child_count` là số dương
@@ -282,21 +250,11 @@ Khi book phòng, UI chờ API response mới update - không có optimistic UI.
 
 ### 5.2 Security Optimization
 
-1. **Add rate limiting**:
-   ```javascript
-   const rateLimit = require('express-rate-limit');
-   app.use('/api/v1/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }));
-   ```
-
-2. **OTP brute force protection**: 
-   - Lock OTP sau 5 lần thử sai
-   - Tăng thời gian expire OTP nhưng giảm số lần thử
-
-3. **Input validation middleware**: 
+1. **Input validation middleware**: 
    - Sử dụng `express-validator` hoặc `joi` cho tất cả endpoints
    - Validate types, ranges, formats
 
-4. **SQL Injection protection**: 
+2. **SQL Injection protection**: 
    - Hiện tại đã dùng parameterized queries - OK
    - Nhưng cần kiểm tra các chỗ dùng string concatenation (ví dụ: `TOP (${limit})`)
 
@@ -305,15 +263,10 @@ Khi book phòng, UI chờ API response mới update - không có optimistic UI.
 1. **Add transaction retry logic**:
    - Khi gặp deadlock, retry transaction 3 lần với exponential backoff
 
-2. **Add health check endpoint**:
-   ```javascript
-   GET /api/v1/health -> { status: 'ok', sql: true, mongo: true, uptime: 12345 }
-   ```
-
-3. **Add request logging middleware**:
+2. **Add request logging middleware**:
    - Log tất cả requests với duration, status code, user_id
 
-4. **Implement graceful degradation**:
+3. **Implement graceful degradation**:
    - Nếu MongoDB down, hotels list vẫn trả về SQL data (không có description/images)
    - Nếu mail service down, booking vẫn thành công (chỉ log lỗi)
 
@@ -379,12 +332,6 @@ Khi book phòng, UI chờ API response mới update - không có optimistic UI.
 
 ## 6. TỔNG KẾT MỨC ĐỘ ƯU TIÊN
 
-### 🔴 Critical (Cần fix ngay):
-1. ✅ **sp_ReserveRoom gọi outside transaction** - **ĐÃ FIX**: Chuyển vào trong transaction với SAVEPOINT
-2. ✅ **Release partial locks không dùng transaction** - **ĐÃ FIX**: Dùng SAVEPOINT rollback
-3. ✅ **Thiếu rate limiting trên auth endpoints** - **ĐÃ FIX**: Thêm `express-rate-limit` cho login, register, forgot-password, reset-password, verify-email, resend-verification
-4. ✅ **OTP brute force protection** - **ĐÃ FIX**: OTP endpoints có rate limit 5 lần/15 phút
-
 ### 🟡 High (Cần fix trong tuần):
 1. Thêm database indexes
 2. Batch sp_ReserveRoom calls
@@ -395,9 +342,8 @@ Khi book phòng, UI chờ API response mới update - không có optimistic UI.
 ### 🟢 Medium (Cần fix trong tháng):
 1. Redis caching
 2. Transaction retry logic
-3. ✅ **Health check endpoint** - **ĐÃ FIX**: `GET /api/v1/health` kiểm tra SQL Server connection
-4. Missing admin UIs
-5. Guest self-service UIs
+3. Missing admin UIs
+4. Guest self-service UIs
 
 ### 🔵 Low (Nice to have):
 1. TypeScript migration
