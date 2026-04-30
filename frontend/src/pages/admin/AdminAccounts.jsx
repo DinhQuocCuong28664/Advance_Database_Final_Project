@@ -70,7 +70,7 @@ function QuickActions({ current, onSet, busy, selfLock }) {
 }
 
 //  System User Row 
-function SystemUserRow({ user, hotels = [], onStatusChange, currentUserId }) {
+function SystemUserRow({ user, hotels = [], onStatusChange, onEdit, currentUserId }) {
   const [busy, setBusy] = useState(false);
   const { setFlash } = useFlash();
   const isSelf = String(user.user_id) === String(currentUserId);
@@ -113,12 +113,15 @@ function SystemUserRow({ user, hotels = [], onStatusChange, currentUserId }) {
           <span className="acct-last-login">Last login: {fmtDate(user.last_login_at)}</span>
         </div>
       </div>
-      <QuickActions
-        current={user.account_status}
-        onSet={handleSet}
-        busy={busy}
-        selfLock={isSelf}
-      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+        <QuickActions
+          current={user.account_status}
+          onSet={handleSet}
+          busy={busy}
+          selfLock={isSelf}
+        />
+        <button className="ghost-button" style={{ padding: '4px 12px', fontSize: '0.8rem' }} onClick={() => onEdit(user)}>Edit Profile</button>
+      </div>
     </div>
   );
 }
@@ -179,37 +182,69 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot, hot
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [activeSection, setActiveSection] = useState('system');
 
-  // Bug 1: New staff form state
-  const [showNewStaff, setShowNewStaff] = useState(false);
+  // Staff form state (Create & Edit)
+  const [showStaffModal, setShowStaffModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState(null);
   const [staffForm,    setStaffForm]    = useState(EMPTY_STAFF_FORM);
   const [staffBusy,    setStaffBusy]    = useState(false);
 
-  async function handleCreateStaff(e) {
+  function openCreateStaff() {
+    setEditingUserId(null);
+    setStaffForm(EMPTY_STAFF_FORM);
+    setShowStaffModal(true);
+  }
+
+  function openEditStaff(user) {
+    setEditingUserId(user.user_id);
+    setStaffForm({
+      username: user.username || '',
+      full_name: user.full_name || '',
+      email: user.email || '',
+      password: '', // Leave empty when editing
+      role_code: user.role_code || 'FRONT_DESK',
+      department: user.department || '',
+      job_title: user.job_title || '',
+      hotel_id: user.hotel_id ? String(user.hotel_id) : '',
+    });
+    setShowStaffModal(true);
+  }
+
+  async function handleSaveStaff(e) {
     e.preventDefault();
     setStaffBusy(true);
     try {
-      const res = await apiRequest('/admin/accounts/system', {
-        method: 'POST',
-        body: JSON.stringify(staffForm),
-      });
-      setFlash({ tone: 'success', text: `Account created: ${res.data.username} (${res.data.role_code})` });
-      // Optimistically add to snapshot
-      setAccountSnapshot(cur => ({
-        ...cur,
-        system_users: [...(cur.system_users || []), {
-          user_id: res.data.user_id,
-          username: res.data.username,
-          full_name: res.data.full_name,
-          role_code: res.data.role_code,
-          department: staffForm.department,
-          email: staffForm.email,
-          hotel_id: staffForm.hotel_id ? Number(staffForm.hotel_id) : null,
-          account_status: 'ACTIVE',
-          last_login_at: null,
-        }],
-      }));
+      if (editingUserId) {
+        // Edit Profile
+        const res = await apiRequest(`/admin/accounts/system/${editingUserId}/profile`, {
+          method: 'PUT',
+          body: JSON.stringify(staffForm),
+        });
+        setFlash({ tone: 'success', text: `Profile updated: ${res.data.username}` });
+        setAccountSnapshot(cur => ({
+          ...cur,
+          system_users: cur.system_users.map(u => u.user_id === editingUserId ? { ...u, ...res.data, hotel_id: res.data.hotel_id || null } : u),
+        }));
+      } else {
+        // Create New
+        const res = await apiRequest('/admin/accounts/system', {
+          method: 'POST',
+          body: JSON.stringify(staffForm),
+        });
+        setFlash({ tone: 'success', text: `Account created: ${res.data.username} (${res.data.role_code})` });
+        setAccountSnapshot(cur => ({
+          ...cur,
+          system_users: [...(cur.system_users || []), {
+            ...res.data,
+            department: staffForm.department,
+            email: staffForm.email,
+            hotel_id: staffForm.hotel_id ? Number(staffForm.hotel_id) : null,
+            account_status: 'ACTIVE',
+            last_login_at: null,
+          }],
+        }));
+      }
       setStaffForm(EMPTY_STAFF_FORM);
-      setShowNewStaff(false);
+      setShowStaffModal(false);
     } catch (err) {
       setFlash({ tone: 'error', text: err.message });
     } finally {
@@ -273,17 +308,18 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot, hot
   return (
     <section className="page-card page-card-wide" id="admin-accounts">
       {/* Bug 1: New Staff Popup */}
-      {showNewStaff && (
-        <div className="pm-overlay" onClick={e => { if (e.target === e.currentTarget) setShowNewStaff(false); }}>
+      {/* Bug 1: New Staff Popup */}
+      {showStaffModal && (
+        <div className="pm-overlay" onClick={e => { if (e.target === e.currentTarget) setShowStaffModal(false); }}>
           <div className="pm-dialog" style={{ maxWidth: 480 }}>
             <div className="pm-header">
               <div>
                 <p className="pm-eyebrow">Access Control</p>
-                <h2 className="pm-title">Create New Staff Account</h2>
+                <h2 className="pm-title">{editingUserId ? 'Edit Staff Profile' : 'Create New Staff Account'}</h2>
               </div>
-              <button type="button" className="pm-close" onClick={() => setShowNewStaff(false)} />
+              <button type="button" className="pm-close" onClick={() => setShowStaffModal(false)} />
             </div>
-            <form onSubmit={handleCreateStaff} style={{ padding: '0 24px 24px', display: 'grid', gap: 14 }}>
+            <form onSubmit={handleSaveStaff} style={{ padding: '0 24px 24px', display: 'grid', gap: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
                   Full Name *
@@ -295,6 +331,7 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot, hot
                   Username *
                   <input type="text" required value={staffForm.username}
                     onChange={e => setStaffForm(f => ({ ...f, username: e.target.value }))}
+                    disabled={!!editingUserId}
                     placeholder="jsmith" autoComplete="off" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
@@ -304,10 +341,11 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot, hot
                     placeholder="jane@hotel.com" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
-                  Password *
-                  <input type="password" required value={staffForm.password}
+                  Password {editingUserId && '(Leave blank to keep)'}
+                  <input type="password" required={!editingUserId} value={staffForm.password}
                     onChange={e => setStaffForm(f => ({ ...f, password: e.target.value }))}
-                    autoComplete="new-password" placeholder="Min. 8 characters" />
+                    disabled={!!editingUserId}
+                    autoComplete="new-password" placeholder={editingUserId ? "Cannot edit here" : "Min. 8 characters"} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
                   Role *
@@ -338,9 +376,9 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot, hot
                 </label>
               </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-                <button type="button" className="ghost-button" onClick={() => { setShowNewStaff(false); setStaffForm(EMPTY_STAFF_FORM); }}>Cancel</button>
+                <button type="button" className="ghost-button" onClick={() => { setShowStaffModal(false); setStaffForm(EMPTY_STAFF_FORM); }}>Cancel</button>
                 <button type="submit" className="primary-button" disabled={staffBusy}>
-                  {staffBusy ? 'Creating...' : 'Create Account'}
+                  {staffBusy ? 'Saving...' : (editingUserId ? 'Save Profile' : 'Create Account')}
                 </button>
               </div>
             </form>
@@ -355,7 +393,7 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot, hot
           <h2 className="page-title">Account Management</h2>
           <p className="page-sub">Manage login access for system staff and registered guests.</p>
         </div>
-        <button type="button" className="primary-button" onClick={() => setShowNewStaff(true)}>
+        <button type="button" className="primary-button" onClick={openCreateStaff}>
           + New Staff
         </button>
       </div>
@@ -441,6 +479,7 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot, hot
                   user={account}
                   hotels={hotels}
                   onStatusChange={handleStatusChange}
+                  onEdit={openEditStaff}
                   currentUserId={currentUserId}
                 />
               : <GuestRow

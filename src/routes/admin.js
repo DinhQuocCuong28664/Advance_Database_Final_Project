@@ -249,6 +249,77 @@ router.put('/accounts/system/:id', requireAdminUser, async (req, res) => {
   }
 });
 
+// PUT /api/v1/admin/accounts/system/:id/profile  update system user profile (including hotel_id)
+router.put('/accounts/system/:id/profile', requireAdminUser, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { full_name, email, department, job_title, hotel_id, role_code } = req.body;
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ success: false, message: 'Invalid system user ID' });
+    }
+
+    const VALID_ROLES = ['ADMIN', 'FRONT_DESK', 'MANAGER', 'HK_MANAGER', 'CASHIER'];
+    if (role_code && !VALID_ROLES.includes(role_code)) {
+      return res.status(400).json({ success: false, message: `role_code must be one of: ${VALID_ROLES.join(', ')}` });
+    }
+
+    const pool = getSqlPool();
+    
+    // Update SystemUser
+    const result = await pool.request()
+      .input('id', sql.BigInt, userId)
+      .input('hotel_id', sql.BigInt, hotel_id || null)
+      .input('full_name', sql.NVarChar(150), full_name)
+      .input('email', sql.VarChar(254), email || null)
+      .input('job_title', sql.NVarChar(100), job_title || null)
+      .input('department', sql.NVarChar(100), department || null)
+      .query(`
+        UPDATE SystemUser
+        SET hotel_id = @hotel_id,
+            full_name = @full_name,
+            email = @email,
+            job_title = @job_title,
+            department = @department,
+            updated_at = GETDATE()
+        OUTPUT INSERTED.user_id, INSERTED.username, INSERTED.full_name, INSERTED.hotel_id, INSERTED.department, INSERTED.email, INSERTED.job_title
+        WHERE user_id = @id
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'System user not found' });
+    }
+
+    // Update Role if provided
+    if (role_code) {
+      const roleRow = await pool.request()
+        .input('role_code', sql.VarChar(50), role_code)
+        .query('SELECT role_id FROM Role WHERE role_code = @role_code');
+        
+      if (roleRow.recordset.length > 0) {
+        await pool.request()
+          .input('user_id', sql.BigInt, userId)
+          .input('role_id', sql.BigInt, roleRow.recordset[0].role_id)
+          .input('assigned_by', sql.BigInt, req.auth.sub || null)
+          .query(`
+            MERGE INTO UserRole AS target
+            USING (SELECT @user_id AS user_id, @role_id AS role_id) AS source
+            ON (target.user_id = source.user_id)
+            WHEN MATCHED THEN 
+              UPDATE SET role_id = source.role_id, assigned_at = GETDATE(), assigned_by = @assigned_by
+            WHEN NOT MATCHED THEN
+              INSERT (user_id, role_id, assigned_at, assigned_by)
+              VALUES (source.user_id, source.role_id, GETDATE(), @assigned_by);
+          `);
+      }
+    }
+
+    res.json({ success: true, data: { ...result.recordset[0], role_code } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // PUT /api/v1/admin/accounts/guest/:id  update guest login account status
 router.put('/accounts/guest/:id', requireAdminUser, async (req, res) => {
   try {
