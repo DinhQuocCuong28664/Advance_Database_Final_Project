@@ -35,7 +35,9 @@ export function AuthProvider({ children }) {
   const hasSystemRole  = (roleCode) => systemRoles.includes(roleCode);
   const isAdminUser    = isSystemUser && hasSystemRole('ADMIN');
   const isManagerUser  = isSystemUser && hasSystemRole('MANAGER');
-  const isCashierUser  = isSystemUser && (hasSystemRole('CASHIER') || hasSystemRole('FRONT_DESK'));
+  const isCashierUser  = isSystemUser && hasSystemRole('CASHIER');
+  const isFrontDeskUser= isSystemUser && hasSystemRole('FRONT_DESK');
+  const isHkManagerUser= isSystemUser && hasSystemRole('HK_MANAGER');
 
   useEffect(() => {
     async function syncSession() {
@@ -190,6 +192,8 @@ export function AuthProvider({ children }) {
         isAdminUser,
         isManagerUser,
         isCashierUser,
+        isFrontDeskUser,
+        isHkManagerUser,
         guestAccounts,
         login,
         registerGuest,

@@ -8,13 +8,11 @@ import BookingPage from './pages/BookingPage';
 import ReservationPage from './pages/ReservationPage';
 import VnpayReturnPage from './pages/VnpayReturnPage';
 import AdminPage from './pages/AdminPage';
-import CashierPage from './pages/CashierPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import AccountPage from './pages/AccountPage';
-import ComingSoonPage from './pages/ComingSoonPage';
 import './App.css';
 
 export default function App() {
@@ -37,8 +35,6 @@ export default function App() {
         <Route path="reset-password" element={<ResetPasswordPage />} />
       </Route>
       <Route path="admin" element={<AdminPage />} />
-      <Route path="cashier" element={<CashierPage />} />
-      <Route path="coming-soon" element={<ComingSoonPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

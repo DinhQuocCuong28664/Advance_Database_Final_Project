@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 const { sendBookingConfirmation, sendCancellationNotice, sendCheckinReminder } = require('../services/mail');
-const { requireAuth, requireSystemUser } = require('../middleware/auth');
+const { requireAuth, requireSystemUser, requireSystemRole } = require('../middleware/auth');
 
 async function generateGuestCode(pool) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -749,7 +749,7 @@ router.get('/:code', async (req, res) => {
 
 // POST /api/v1/reservations/:id/checkin  Check-in
 // [Rule 14] Uses sp_CheckIn stored procedure for atomicity
-router.post('/:id/checkin', requireSystemUser, async (req, res) => {
+router.post('/:id/checkin', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -782,7 +782,7 @@ router.post('/:id/checkin', requireSystemUser, async (req, res) => {
 
 // POST /api/v1/reservations/:id/checkout  Check-out
 // [Rule 14] Uses sp_CheckOut stored procedure for atomicity
-router.post('/:id/checkout', requireSystemUser, async (req, res) => {
+router.post('/:id/checkout', requireSystemRole(['FRONT_DESK', 'CASHIER', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -902,7 +902,7 @@ router.post('/:id/guest-cancel', requireAuth, async (req, res) => {
 // Hotel initiates cancellation  FULL REFUND (hotel's fault)
 // [Rule 14] Uses sp_HotelCancel stored procedure for atomicity
 // 
-router.post('/:id/hotel-cancel', requireSystemUser, async (req, res) => {
+router.post('/:id/hotel-cancel', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -950,7 +950,7 @@ router.post('/:id/hotel-cancel', requireSystemUser, async (req, res) => {
 // POST /api/v1/reservations/:id/transfer
 // Room Transfer  calls sp_TransferRoom (Pessimistic Locking)
 // 
-router.post('/:id/transfer', requireSystemUser, async (req, res) => {
+router.post('/:id/transfer', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1059,7 +1059,7 @@ router.post('/:id/transfer', requireSystemUser, async (req, res) => {
 // GET /api/v1/reservations/:id/guests
 // List additional guests for a reservation
 // 
-router.get('/:id/guests', requireSystemUser, async (req, res) => {
+router.get('/:id/guests', requireSystemRole(['FRONT_DESK', 'CASHIER', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1086,7 +1086,7 @@ router.get('/:id/guests', requireSystemUser, async (req, res) => {
 // Add an additional guest to a reservation
 // Body: full_name, age_category, nationality_country_code, document_type, document_no, special_note
 // 
-router.post('/:id/guests', requireSystemUser, async (req, res) => {
+router.post('/:id/guests', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1139,7 +1139,7 @@ router.post('/:id/guests', requireSystemUser, async (req, res) => {
 // DELETE /api/v1/reservations/:id/guests/:guestId
 // Remove an additional guest (non-primary only)
 // 
-router.delete('/:id/guests/:guestId', requireSystemUser, async (req, res) => {
+router.delete('/:id/guests/:guestId', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId   = parseInt(req.params.id);

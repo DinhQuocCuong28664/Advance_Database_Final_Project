@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
+const { requireSystemUser, requireSystemRole } = require('../middleware/auth');
 
 function normalizeSqlDateTime(value) {
   if (!value) return null;
@@ -30,11 +31,34 @@ function normalizeSqlDateTime(value) {
   ].join(' ');
 }
 
+// GET /api/v1/housekeeping/staff
+// List staff with HK_MANAGER role
+// 
+router.get('/staff', requireSystemRole(['FRONT_DESK', 'HK_MANAGER', 'MANAGER', 'ADMIN']), async (req, res) => {
+  try {
+    const pool = getSqlPool();
+    const result = await pool.request().query(`
+      SELECT su.user_id, su.username, su.full_name, r.role_code
+      FROM SystemUser su
+      JOIN UserRole ur ON su.user_id = ur.user_id
+      JOIN Role r ON ur.role_id = r.role_id
+      WHERE r.role_code = 'HK_MANAGER' AND su.account_status = 'ACTIVE'
+    `);
+    
+    res.json({
+      success: true,
+      data: result.recordset
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // 
 // GET /api/v1/housekeeping?hotel_id=1&status=OPEN
 // List housekeeping tasks with filters
 // 
-router.get('/', async (req, res) => {
+router.get('/', requireSystemUser, async (req, res) => {
   try {
     const pool = getSqlPool();
     const { hotel_id, status, priority } = req.query;
@@ -99,7 +123,7 @@ router.get('/', async (req, res) => {
 // POST /api/v1/housekeeping
 // Create housekeeping task manually
 // 
-router.post('/', async (req, res) => {
+router.post('/', requireSystemRole(['HK_MANAGER', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const { hotel_id, room_id, task_type, priority_level, note, scheduled_for, assigned_staff_id } = req.body;
 
@@ -137,7 +161,7 @@ router.post('/', async (req, res) => {
 // PUT /api/v1/housekeeping/:id/assign
 // Assign staff to task
 // 
-router.put('/:id/assign', async (req, res) => {
+router.put('/:id/assign', requireSystemRole(['HK_MANAGER', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const taskId = parseInt(req.params.id);
     const { staff_id, scheduled_for } = req.body;
@@ -181,7 +205,7 @@ router.put('/:id/assign', async (req, res) => {
 // Update task status with Room sync
 // ASSIGNED  IN_PROGRESS  DONE  VERIFIED
 // 
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', requireSystemRole(['HK_MANAGER', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const taskId = parseInt(req.params.id);
     const { status, note } = req.body;
