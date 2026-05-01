@@ -10,18 +10,8 @@ const { MongoClient } = require('mongodb');
 // ============================================================
 // SQL Server Configuration
 // ============================================================
-<<<<<<< Updated upstream
-=======
-<<<<<<< Updated upstream
-const sqlServer = process.env.SQL_SERVER || 'localhost';
-const sqlInstance = process.env.SQL_INSTANCE || '';
-const isDefaultInstance = !sqlInstance || sqlInstance.toUpperCase() === 'MSSQLSERVER';
-const serverStr = isDefaultInstance ? sqlServer : `${sqlServer}\\${sqlInstance}`;
-=======
 const instanceName = process.env.SQL_INSTANCE && process.env.SQL_INSTANCE.toUpperCase() !== 'MSSQLSERVER' ? process.env.SQL_INSTANCE : '';
->>>>>>> Stashed changes
 
->>>>>>> Stashed changes
 const sqlConfig = {
   server: process.env.SQL_SERVER || 'localhost',
   database: process.env.SQL_DATABASE || 'LuxeReserve',
@@ -29,20 +19,6 @@ const sqlConfig = {
     encrypt: false,
     trustServerCertificate: true,
     enableArithAbort: true,
-<<<<<<< Updated upstream
-    instanceName: process.env.SQL_INSTANCE || 'SQLEXPRESS',
-  },
-  ...(process.env.SQL_TRUSTED_CONNECTION === 'true'
-    ? { connectionString: `Driver={SQL Server};Server=${process.env.SQL_SERVER || 'localhost'}\\${process.env.SQL_INSTANCE || 'SQLEXPRESS'};Database=${process.env.SQL_DATABASE || 'LuxeReserve'};Trusted_Connection=yes;`, driver: 'msnodesqlv8' }
-    : { user: process.env.SQL_USER, password: process.env.SQL_PASSWORD, options: { instanceName: process.env.SQL_INSTANCE || 'SQLEXPRESS', encrypt: false, trustServerCertificate: true, enableArithAbort: true } }
-=======
-<<<<<<< Updated upstream
-    instanceName: isDefaultInstance ? undefined : sqlInstance,
-  },
-  ...(process.env.SQL_TRUSTED_CONNECTION === 'true'
-    ? { connectionString: `Driver={ODBC Driver 17 for SQL Server};Server=${serverStr};Database=${process.env.SQL_DATABASE || 'LuxeReserve'};Trusted_Connection=yes;`, driver: 'msnodesqlv8' }
-    : { user: process.env.SQL_USER, password: process.env.SQL_PASSWORD }
-=======
     ...(instanceName ? { instanceName } : {}),
   },
   ...(process.env.SQL_TRUSTED_CONNECTION === 'true'
@@ -54,8 +30,6 @@ const sqlConfig = {
         user: process.env.SQL_USER, 
         password: process.env.SQL_PASSWORD 
       }
->>>>>>> Stashed changes
->>>>>>> Stashed changes
   ),
   pool: {
     max: 10,

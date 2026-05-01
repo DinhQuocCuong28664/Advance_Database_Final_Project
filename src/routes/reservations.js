@@ -729,22 +729,8 @@ router.get('/:code', async (req, res) => {
   }
 });
 
-<<<<<<< Updated upstream
 // POST /api/reservations/:id/checkin  Check-in
-=======
-<<<<<<< Updated upstream
-// POST /api/v1/reservations/:id/checkin  Check-in
-// [Rule 14] Uses sp_CheckIn stored procedure for atomicity
-=======
-<<<<<<< Updated upstream
-// POST /api/reservations/:id/checkin  Check-in
->>>>>>> Stashed changes
->>>>>>> Stashed changes
-router.post('/:id/checkin', requireSystemUser, async (req, res) => {
-=======
-// POST /api/v1/reservations/:id/checkin
 router.post('/:id/checkin', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN']), async (req, res) => {
->>>>>>> Stashed changes
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -810,22 +796,8 @@ router.post('/:id/checkin', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN']
   }
 });
 
-<<<<<<< Updated upstream
 // POST /api/reservations/:id/checkout  Check-out
-=======
-<<<<<<< Updated upstream
-// POST /api/v1/reservations/:id/checkout  Check-out
-// [Rule 14] Uses sp_CheckOut stored procedure for atomicity
-=======
-<<<<<<< Updated upstream
-// POST /api/reservations/:id/checkout  Check-out
->>>>>>> Stashed changes
->>>>>>> Stashed changes
-router.post('/:id/checkout', requireSystemUser, async (req, res) => {
-=======
-// POST /api/v1/reservations/:id/checkout
 router.post('/:id/checkout', requireSystemRole(['FRONT_DESK', 'CASHIER', 'MANAGER', 'ADMIN']), async (req, res) => {
->>>>>>> Stashed changes
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1078,20 +1050,8 @@ router.post('/:id/guest-cancel', requireAuth, async (req, res) => {
 // 
 // POST /api/reservations/:id/hotel-cancel
 // Hotel initiates cancellation  FULL REFUND (hotel's fault)
-<<<<<<< Updated upstream
-=======
-<<<<<<< Updated upstream
-// [Rule 14] Uses sp_HotelCancel stored procedure for atomicity
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 // 
-router.post('/:id/hotel-cancel', requireSystemUser, async (req, res) => {
-=======
-// [Rule 14] Uses sp_HotelCancel stored
 router.post('/:id/hotel-cancel', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN']), async (req, res) => {
->>>>>>> Stashed changes
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1341,24 +1301,10 @@ router.post('/:id/transfer', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN'
 
 
 // 
-<<<<<<< Updated upstream
 // GET /api/reservations/:id/guests
-=======
-<<<<<<< Updated upstream
-// GET /api/v1/reservations/:id/guests
-=======
-<<<<<<< Updated upstream
-// GET /api/reservations/:id/guests
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 // List additional guests for a reservation
 // 
-router.get('/:id/guests', requireSystemUser, async (req, res) => {
-=======
-// GET /api/v1/reservations/:id/guests
-// List additional guests
 router.get('/:id/guests', requireSystemRole(['FRONT_DESK', 'CASHIER', 'MANAGER', 'ADMIN']), async (req, res) => {
->>>>>>> Stashed changes
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1385,7 +1331,7 @@ router.get('/:id/guests', requireSystemRole(['FRONT_DESK', 'CASHIER', 'MANAGER',
 // Add an additional guest to a reservation
 // Body: full_name, age_category, nationality_country_code, document_type, document_no, special_note
 // 
-router.post('/:id/guests', requireSystemUser, async (req, res) => {
+router.post('/:id/guests', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const pool = getSqlPool();
     const resvId = parseInt(req.params.id);
@@ -1435,24 +1381,10 @@ router.post('/:id/guests', requireSystemUser, async (req, res) => {
 });
 
 // 
-<<<<<<< Updated upstream
 // DELETE /api/reservations/:id/guests/:guestId
-=======
-<<<<<<< Updated upstream
-// DELETE /api/v1/reservations/:id/guests/:guestId
-=======
-<<<<<<< Updated upstream
-// DELETE /api/reservations/:id/guests/:guestId
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 // Remove an additional guest (non-primary only)
 // 
-router.delete('/:id/guests/:guestId', requireSystemUser, async (req, res) => {
-=======
-// DELETE /api/v1/reservations/:id/guests/:guestId
-// Remove guest from reservation
 router.delete('/:id/guests/:guestId', requireSystemRole(['FRONT_DESK', 'MANAGER', 'ADMIN']), async (req, res) => {
->>>>>>> Stashed changes
   try {
     const pool = getSqlPool();
     const resvId   = parseInt(req.params.id);

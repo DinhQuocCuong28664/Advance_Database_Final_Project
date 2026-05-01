@@ -7,6 +7,32 @@ const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 
+// GET /api/rooms?hotel_id=1
+router.get('/', async (req, res) => {
+  try {
+    const { hotel_id } = req.query;
+    if (!hotel_id) {
+      return res.status(400).json({ success: false, error: 'Missing hotel_id' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('hotelId', sql.BigInt, parseInt(hotel_id))
+      .query(`
+        SELECT r.room_id, r.room_number, r.floor_number, r.room_status, r.maintenance_status,
+               rt.room_type_name, rt.category
+        FROM Room r
+        JOIN RoomType rt ON r.room_type_id = rt.room_type_id
+        WHERE r.hotel_id = @hotelId
+        ORDER BY r.floor_number, r.room_number
+      `);
+
+    res.json({ success: true, count: result.recordset.length, data: result.recordset });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET /api/rooms/availability?hotel_id=1&checkin=2026-04-05&checkout=2026-04-08
 router.get('/availability', async (req, res) => {
   try {

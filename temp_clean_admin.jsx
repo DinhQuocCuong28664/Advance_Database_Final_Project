@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -20,42 +20,34 @@ import AdminReports from './admin/AdminReports';
 import ToastContainer from '../components/layout/ToastContainer';
 
 const ADMIN_TABS = [
-  { key: 'frontdesk', label: '🏨 Front Desk', note: 'Arrivals, departures, transfers, and stay actions' },
-  { key: 'inventory', label: '⚙️ Inventory', note: 'Room availability and status control' },
-  { key: 'housekeeping', label: '🧹 Housekeeping', note: 'Cleaning tasks, assignments, and room status' },
-  { key: 'maintenance', label: '🔧 Maintenance', note: 'Issue tracking, repairs, and room status' },
-  { key: 'invoice', label: '📋 Invoices', note: 'Generate and issue guest invoices' },
-  { key: 'rates', label: '💰 Rates', note: 'Manage nightly room rates with Price Guard protection' },
-  { key: 'promotions', label: '🎁 Promotions', note: 'Create and manage hotel promotions and offers' },
-  { key: 'channels', label: '🌐 Channels', note: 'Booking channel stats and location hierarchy tree' },
-  { key: 'payments', label: '💳 Payments', note: 'Payment history, filters and transaction review' },
-  { key: 'accounts', label: '👤 Accounts', note: 'System and guest login management' },
-  { key: 'timeline', label: '🕒 Timeline', note: 'Reservation status audit trail and history' },
-  { key: 'reports', label: '📊 Reports', note: 'KPIs, exports, and revenue analytics' },
+  { key: 'frontdesk', label: '≡ƒÅ¿ Front Desk', note: 'Arrivals, departures, transfers, and stay actions' },
+  { key: 'inventory', label: 'ΓÜÖ∩╕Å Inventory', note: 'Room availability and status control' },
+  { key: 'housekeeping', label: '≡ƒº╣ Housekeeping', note: 'Cleaning tasks, assignments, and room status' },
+  { key: 'maintenance', label: '≡ƒöº Maintenance', note: 'Issue tracking, repairs, and room status' },
+  { key: 'invoice', label: '≡ƒôï Invoices', note: 'Generate and issue guest invoices' },
+  { key: 'rates', label: '≡ƒÆ░ Rates', note: 'Manage nightly room rates with Price Guard protection' },
+  { key: 'promotions', label: '≡ƒÄü Promotions', note: 'Create and manage hotel promotions and offers' },
+  { key: 'channels', label: '≡ƒîÉ Channels', note: 'Booking channel stats and location hierarchy tree' },
+  { key: 'payments', label: '≡ƒÆ│ Payments', note: 'Payment history, filters and transaction review' },
+  { key: 'accounts', label: '≡ƒæñ Accounts', note: 'System and guest login management' },
+  { key: 'timeline', label: '≡ƒòÆ Timeline', note: 'Reservation status audit trail and history' },
+  { key: 'reports', label: '≡ƒôè Reports', note: 'KPIs, exports, and revenue analytics' },
 ];
 
 const MANAGER_TABS = [
-  { key: 'rates', label: '💰 Rates', note: 'Manage nightly room rates with Price Guard protection' },
-  { key: 'reports', label: '📊 Reports', note: 'KPIs, exports, and revenue analytics' },
+  { key: 'rates', label: '≡ƒÆ░ Rates', note: 'Manage nightly room rates with Price Guard protection' },
+  { key: 'reports', label: '≡ƒôè Reports', note: 'KPIs, exports, and revenue analytics' },
 ];
 
 export default function AdminPage() {
   const navigate = useNavigate();
-  const { isSystemUser, isAdminUser, isManagerUser, isFrontDeskUser, isCashierUser, isHkManagerUser, authSession, logout } = useAuth();
+  const { isSystemUser, isAdminUser, isManagerUser, authSession, logout } = useAuth();
   const { setFlash, clearToasts } = useFlash();
 
-  const availableTabs = useMemo(() => {
-    const tabs = [];
-    if (isAdminUser) return ADMIN_TABS;
-    
-    if (isManagerUser) tabs.push(...MANAGER_TABS, ...ADMIN_TABS.filter(t => ['frontdesk', 'inventory', 'housekeeping', 'invoice', 'payments', 'timeline'].includes(t.key)));
-    if (isFrontDeskUser) tabs.push(...ADMIN_TABS.filter(t => ['frontdesk', 'inventory', 'housekeeping', 'invoice'].includes(t.key)));
-    if (isCashierUser) tabs.push(...ADMIN_TABS.filter(t => ['invoice', 'payments', 'frontdesk'].includes(t.key)));
-    if (isHkManagerUser) tabs.push(...ADMIN_TABS.filter(t => ['housekeeping', 'maintenance'].includes(t.key)));
-
-    // Deduplicate by key
-    return tabs.filter((t, index, self) => index === self.findIndex((x) => x.key === t.key));
-  }, [isAdminUser, isManagerUser, isFrontDeskUser, isCashierUser, isHkManagerUser]);
+  const availableTabs = useMemo(
+    () => (isAdminUser ? ADMIN_TABS : MANAGER_TABS),
+    [isAdminUser]
+  );
 
   const [hotels, setHotels] = useState([]);
   const [rateAlerts, setRateAlerts] = useState([]);
@@ -75,7 +67,7 @@ export default function AdminPage() {
   }, [activeTab, availableTabs]);
 
   useEffect(() => {
-    if (!isSystemUser) {
+    if (!isSystemUser || (!isAdminUser && !isManagerUser)) {
       return;
     }
 
@@ -122,6 +114,10 @@ export default function AdminPage() {
     return <Navigate to="/login" replace state={{ nextUrl: '/admin' }} />;
   }
 
+  if (!isAdminUser && !isManagerUser) {
+    return <Navigate to="/cashier" replace />;
+  }
+
   function handleLogout() {
     clearToasts();
     logout();
@@ -136,12 +132,13 @@ export default function AdminPage() {
       <main className="page-stack">
         <section className="admin-hero">
           <div className="admin-hero-copy">
-            <p className="page-eyebrow">Staff Workspace</p>
+            <p className="page-eyebrow">{isAdminUser ? 'Admin dashboard' : 'Manager dashboard'}</p>
             <h1 className="page-title">
-              LuxeReserve System Control
+              {isAdminUser ? 'Operations control for LuxeReserve.' : 'Revenue control for LuxeReserve.'}
             </h1>
             <p className="page-text">
-              Welcome back, {authSession?.user?.full_name}. Use the module bar below to navigate your assigned operational areas.
+              Welcome back, {authSession?.user?.full_name}. Use the module bar below to move directly to
+              {isAdminUser ? ' operations, controls, and reporting.' : ' pricing and reporting.'}
             </p>
           </div>
           <div className="admin-hero-actions">
@@ -172,7 +169,7 @@ export default function AdminPage() {
           <div className="admin-tabs-head">
             <div>
               <p className="page-eyebrow">Modules</p>
-              <h2>Workspace Modules</h2>
+              <h2>{isAdminUser ? 'Admin workspace' : 'Manager workspace'}</h2>
             </div>
             <span className="admin-status-pill">{activeTabMeta?.note}</span>
           </div>
@@ -193,19 +190,19 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {activeTab === 'frontdesk' ? <AdminFrontDesk hotels={hotels} /> : null}
-        {activeTab === 'inventory' ? <AdminInventory hotels={hotels} loadingHotels={loadingHotels} /> : null}
-        {activeTab === 'housekeeping' ? <AdminHousekeeping hotels={hotels} /> : null}
-        {activeTab === 'maintenance' ? <AdminMaintenance hotels={hotels} /> : null}
-        {activeTab === 'invoice' ? <AdminInvoice hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'frontdesk' ? <AdminFrontDesk hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'inventory' ? <AdminInventory hotels={hotels} loadingHotels={loadingHotels} /> : null}
+        {isAdminUser && activeTab === 'housekeeping' ? <AdminHousekeeping hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'maintenance' ? <AdminMaintenance hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'invoice' ? <AdminInvoice hotels={hotels} /> : null}
         {activeTab === 'rates' ? <AdminRates hotels={hotels} /> : null}
-        {activeTab === 'promotions' ? <AdminPromotions hotels={hotels} /> : null}
-        {activeTab === 'channels' ? <AdminLocationChannels /> : null}
-        {activeTab === 'payments' ? <AdminPayments hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'promotions' ? <AdminPromotions hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'channels' ? <AdminLocationChannels /> : null}
+        {isAdminUser && activeTab === 'payments' ? <AdminPayments hotels={hotels} /> : null}
         {isAdminUser && activeTab === 'accounts' ? (
           <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
         ) : null}
-        {activeTab === 'timeline' ? <AdminTimeline hotels={hotels} /> : null}
+        {isAdminUser && activeTab === 'timeline' ? <AdminTimeline hotels={hotels} /> : null}
         {activeTab === 'reports' ? (
           <AdminReports
             reportSummary={reportSummary}

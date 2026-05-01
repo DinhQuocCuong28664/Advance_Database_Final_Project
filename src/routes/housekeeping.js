@@ -10,11 +10,6 @@ const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
 const { requireSystemUser, requireSystemRole } = require('../middleware/auth');
 
-<<<<<<< Updated upstream
-=======
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
 function normalizeSqlDateTime(value) {
   if (!value) return null;
 
@@ -36,8 +31,6 @@ function normalizeSqlDateTime(value) {
   ].join(' ');
 }
 
-<<<<<<< Updated upstream
-=======
 // GET /api/v1/housekeeping/staff
 // List staff with HK_MANAGER role
 // 
@@ -61,10 +54,8 @@ router.get('/staff', requireSystemRole(['FRONT_DESK', 'HK_MANAGER', 'MANAGER', '
   }
 });
 
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 // 
-// GET /api/housekeeping?hotel_id=1&status=OPEN
+// GET /api/v1/housekeeping?hotel_id=1&status=OPEN
 // List housekeeping tasks with filters
 // 
 router.get('/', requireSystemUser, async (req, res) => {

@@ -90,29 +90,8 @@ export default function AdminHousekeeping({ hotels }) {
 
   const loadStaff = useCallback(async () => {
     try {
-<<<<<<< Updated upstream
-      const p = await apiRequest('/admin/accounts');
-<<<<<<< Updated upstream
-      setStaff((p.data?.system_users || []).filter((user) => {
-        const roles = String(user.role_code || '')
-=======
-<<<<<<< Updated upstream
-      // Bug 3 fix: only show HK_MANAGER in the assign dropdown
-      setStaff((p.data?.system_users || []).filter((u) => {
-        const roles = String(u.role_code || '')
->>>>>>> Stashed changes
-          .split(',')
-          .map((role) => role.trim())
-          .filter(Boolean);
-        return !roles.includes('ADMIN') && !roles.includes('MANAGER');
-      }));
-=======
-      setStaff((p.data?.system_users || []).filter(u => !['ADMIN'].includes(u.role)));
-=======
       const p = await apiRequest('/housekeeping/staff');
       setStaff(p.data || []);
->>>>>>> Stashed changes
->>>>>>> Stashed changes
     } catch { /* ignore */ }
   }, []);
 
