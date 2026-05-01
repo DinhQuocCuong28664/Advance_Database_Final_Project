@@ -51,6 +51,10 @@ export default function CashierPage() {
   if (!isCashierUser && (isAdminUser || isManagerUser)) {
     return <Navigate to="/admin" replace />;
   }
+  // HK_MANAGER has no dedicated UI yet - show coming soon page
+  if (!isCashierUser && !isAdminUser && !isManagerUser) {
+    return <Navigate to="/coming-soon" replace />;
+  }
 
   function handleSignOut() {
     logout();

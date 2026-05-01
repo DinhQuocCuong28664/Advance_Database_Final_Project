@@ -86,6 +86,7 @@ function requireSystemRole(roleCodes) {
 const requireAdminUser = requireSystemRole('ADMIN');
 const requireManagerUser = requireSystemRole('MANAGER');
 const requireAdminOrManagerUser = requireSystemRole(['ADMIN', 'MANAGER']);
+const requireHousekeepingManagerUser = requireSystemRole('HK_MANAGER');
 
 module.exports = {
   attachAuthContext,
@@ -95,6 +96,7 @@ module.exports = {
   requireAdminUser,
   requireManagerUser,
   requireAdminOrManagerUser,
+  requireHousekeepingManagerUser,
   hasSystemRole,
   issueAuthToken,
 };

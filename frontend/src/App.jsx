@@ -14,6 +14,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import AccountPage from './pages/AccountPage';
+import ComingSoonPage from './pages/ComingSoonPage';
 import './App.css';
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
       </Route>
       <Route path="admin" element={<AdminPage />} />
       <Route path="cashier" element={<CashierPage />} />
+      <Route path="coming-soon" element={<ComingSoonPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
