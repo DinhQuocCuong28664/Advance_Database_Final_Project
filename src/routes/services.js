@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { getSqlPool, sql } = require('../config/database');
-const { requireAuth, requireSystemUser } = require('../middleware/auth');
+const { requireAuth, requireSystemUser, requireSystemRole } = require('../middleware/auth');
 
 function ensureReservationAccess(req, res, guestId) {
   if (req.auth?.user_type === 'SYSTEM_USER') {
@@ -294,7 +294,7 @@ router.get('/orders', requireAuth, async (req, res) => {
 // PUT /api/services/orders/:id/status
 // Update service order status (CONFIRMED, DELIVERED, CANCELLED)
 // 
-router.put('/orders/:id/status', requireSystemUser, async (req, res) => {
+router.put('/orders/:id/status', requireSystemRole(['FRONT_DESK', 'CASHIER', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
     const { status } = req.body;
@@ -363,7 +363,7 @@ router.put('/orders/:id/status', requireSystemUser, async (req, res) => {
 // POST /api/services/orders/:id/pay
 // Pay for a specific incidental service order
 // 
-router.post('/orders/:id/pay', requireSystemUser, async (req, res) => {
+router.post('/orders/:id/pay', requireSystemRole(['FRONT_DESK', 'CASHIER', 'MANAGER', 'ADMIN']), async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
     const { payment_method } = req.body;

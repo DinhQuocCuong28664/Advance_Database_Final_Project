@@ -41,6 +41,7 @@ const MANAGER_TABS = [
 
 export default function AdminPage() {
   const navigate = useNavigate();
+<<<<<<< Updated upstream
   const { isSystemUser, isAdminUser, isManagerUser, authSession, logout } = useAuth();
   const { setFlash, clearToasts } = useFlash();
 
@@ -49,6 +50,30 @@ export default function AdminPage() {
     [isAdminUser]
   );
 
+=======
+<<<<<<< Updated upstream
+  const { isSystemUser, isAdminUser, authSession, logout } = useAuth();
+  const { setFlash, clearToasts } = useFlash();
+
+=======
+  const { isSystemUser, isAdminUser, isManagerUser, isFrontDeskUser, isCashierUser, isHkManagerUser, authSession, logout } = useAuth();
+  const { setFlash, clearToasts } = useFlash();
+
+  const availableTabs = useMemo(() => {
+    const tabs = [];
+    if (isAdminUser) return ADMIN_TABS;
+    
+    if (isManagerUser) tabs.push(...MANAGER_TABS, ...ADMIN_TABS.filter(t => ['frontdesk', 'inventory', 'housekeeping', 'invoice', 'payments', 'timeline'].includes(t.key)));
+    if (isFrontDeskUser) tabs.push(...ADMIN_TABS.filter(t => ['frontdesk', 'inventory', 'housekeeping', 'invoice'].includes(t.key)));
+    if (isCashierUser) tabs.push(...ADMIN_TABS.filter(t => ['invoice', 'payments', 'frontdesk'].includes(t.key)));
+    if (isHkManagerUser) tabs.push(...ADMIN_TABS.filter(t => ['housekeeping', 'maintenance'].includes(t.key)));
+
+    // Deduplicate by key
+    return tabs.filter((t, index, self) => index === self.findIndex((x) => x.key === t.key));
+  }, [isAdminUser, isManagerUser, isFrontDeskUser, isCashierUser, isHkManagerUser]);
+
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
   const [hotels, setHotels] = useState([]);
   const [rateAlerts, setRateAlerts] = useState([]);
   const [accountSnapshot, setAccountSnapshot] = useState({ system_users: [], guest_accounts: [] });
@@ -61,13 +86,24 @@ export default function AdminPage() {
   const [loadingReport, setLoadingReport] = useState(false);
 
   useEffect(() => {
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+    if (!isSystemUser || !isAdminUser) {
+=======
+>>>>>>> Stashed changes
     if (!availableTabs.some((tab) => tab.key === activeTab)) {
       setActiveTab(availableTabs[0]?.key || 'rates');
     }
   }, [activeTab, availableTabs]);
 
   useEffect(() => {
+<<<<<<< Updated upstream
     if (!isSystemUser || (!isAdminUser && !isManagerUser)) {
+=======
+    if (!isSystemUser) {
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
       return;
     }
 
@@ -113,10 +149,18 @@ export default function AdminPage() {
   if (!isSystemUser) {
     return <Navigate to="/login" replace state={{ nextUrl: '/admin' }} />;
   }
+<<<<<<< Updated upstream
 
   if (!isAdminUser && !isManagerUser) {
+=======
+<<<<<<< Updated upstream
+  // Logged in but not ADMIN  cashier portal
+  if (!isAdminUser) {
+>>>>>>> Stashed changes
     return <Navigate to="/cashier" replace />;
   }
+=======
+>>>>>>> Stashed changes
 
   function handleLogout() {
     clearToasts();
@@ -132,6 +176,7 @@ export default function AdminPage() {
       <main className="page-stack">
         <section className="admin-hero">
           <div className="admin-hero-copy">
+<<<<<<< Updated upstream
             <p className="page-eyebrow">{isAdminUser ? 'Admin dashboard' : 'Manager dashboard'}</p>
             <h1 className="page-title">
               {isAdminUser ? 'Operations control for LuxeReserve.' : 'Revenue control for LuxeReserve.'}
@@ -139,6 +184,22 @@ export default function AdminPage() {
             <p className="page-text">
               Welcome back, {authSession?.user?.full_name}. Use the module bar below to move directly to
               {isAdminUser ? ' operations, controls, and reporting.' : ' pricing and reporting.'}
+=======
+<<<<<<< Updated upstream
+            <p className="page-eyebrow">Admin dashboard</p>
+            <h1 className="page-title">Operations control for LuxeReserve.</h1>
+            <p className="page-text">
+              Welcome back, {authSession?.user?.full_name}. Use the tab bar below to switch between front desk,
+              inventory, account management, and reports without scrolling through the entire admin stack.
+=======
+            <p className="page-eyebrow">Staff Workspace</p>
+            <h1 className="page-title">
+              LuxeReserve System Control
+            </h1>
+            <p className="page-text">
+              Welcome back, {authSession?.user?.full_name}. Use the module bar below to navigate your assigned operational areas.
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
             </p>
           </div>
           <div className="admin-hero-actions">
@@ -169,7 +230,15 @@ export default function AdminPage() {
           <div className="admin-tabs-head">
             <div>
               <p className="page-eyebrow">Modules</p>
+<<<<<<< Updated upstream
               <h2>{isAdminUser ? 'Admin workspace' : 'Manager workspace'}</h2>
+=======
+<<<<<<< Updated upstream
+              <h2>Admin workspace</h2>
+=======
+              <h2>Workspace Modules</h2>
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
             </div>
             <span className="admin-status-pill">{activeTabMeta?.note}</span>
           </div>
@@ -190,6 +259,7 @@ export default function AdminPage() {
           </div>
         </section>
 
+<<<<<<< Updated upstream
         {isAdminUser && activeTab === 'frontdesk' ? <AdminFrontDesk hotels={hotels} /> : null}
         {isAdminUser && activeTab === 'inventory' ? <AdminInventory hotels={hotels} loadingHotels={loadingHotels} /> : null}
         {isAdminUser && activeTab === 'housekeeping' ? <AdminHousekeeping hotels={hotels} /> : null}
@@ -200,7 +270,38 @@ export default function AdminPage() {
         {isAdminUser && activeTab === 'channels' ? <AdminLocationChannels /> : null}
         {isAdminUser && activeTab === 'payments' ? <AdminPayments hotels={hotels} /> : null}
         {isAdminUser && activeTab === 'accounts' ? (
+<<<<<<< Updated upstream
           <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
+=======
+          <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} hotels={hotels} />
+=======
+<<<<<<< Updated upstream
+        {activeTab === 'frontdesk'    ? <AdminFrontDesk hotels={hotels} /> : null}
+        {activeTab === 'inventory'    ? <AdminInventory hotels={hotels} loadingHotels={loadingHotels} /> : null}
+        {activeTab === 'housekeeping' ? <AdminHousekeeping hotels={hotels} /> : null}
+        {activeTab === 'maintenance'  ? <AdminMaintenance hotels={hotels} /> : null}
+        {activeTab === 'invoice'      ? <AdminInvoice hotels={hotels} /> : null}
+        {activeTab === 'rates'        ? <AdminRates hotels={hotels} /> : null}
+        {activeTab === 'promotions'   ? <AdminPromotions hotels={hotels} /> : null}
+        {activeTab === 'channels'   ? <AdminLocationChannels /> : null}
+        {activeTab === 'payments'   ? <AdminPayments hotels={hotels} /> : null}
+        {activeTab === 'accounts' ? (
+          <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} />
+=======
+        {activeTab === 'frontdesk' ? <AdminFrontDesk hotels={hotels} /> : null}
+        {activeTab === 'inventory' ? <AdminInventory hotels={hotels} loadingHotels={loadingHotels} /> : null}
+        {activeTab === 'housekeeping' ? <AdminHousekeeping hotels={hotels} /> : null}
+        {activeTab === 'maintenance' ? <AdminMaintenance hotels={hotels} /> : null}
+        {activeTab === 'invoice' ? <AdminInvoice hotels={hotels} /> : null}
+        {activeTab === 'rates' ? <AdminRates hotels={hotels} /> : null}
+        {activeTab === 'promotions' ? <AdminPromotions hotels={hotels} /> : null}
+        {activeTab === 'channels' ? <AdminLocationChannels /> : null}
+        {activeTab === 'payments' ? <AdminPayments hotels={hotels} /> : null}
+        {activeTab === 'accounts' ? (
+          <AdminAccounts accountSnapshot={accountSnapshot} setAccountSnapshot={setAccountSnapshot} hotels={hotels} />
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
         ) : null}
         {isAdminUser && activeTab === 'timeline' ? <AdminTimeline hotels={hotels} /> : null}
         {activeTab === 'reports' ? (
