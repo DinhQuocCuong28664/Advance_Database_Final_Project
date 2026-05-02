@@ -215,7 +215,12 @@ export default function BookingPage() {
       }
 
     } catch (err) {
-      setError(err.message);
+      const errMsg = err.message || '';
+      if (errMsg.includes('REJECTED') || errMsg.includes('Room not available') || errMsg.includes('Booking failed')) {
+        setError('Rất tiếc! Phòng vừa được người khác đặt trước đó vài mili-giây. Vui lòng chọn phòng khác!');
+      } else {
+        setError(errMsg);
+      }
     } finally {
       setBusy(false);
     }
