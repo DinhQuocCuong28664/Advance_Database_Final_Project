@@ -237,4 +237,140 @@ router.delete('/:id', requireAdminUser, async (req, res) => {
   }
 });
 
+// POST /api/v1/promotions/validate-voucher  Validate a loyalty voucher code
+// Returns discount info if valid, or error if expired/not applicable
+router.post('/validate-voucher', async (req, res) => {
+  try {
+    const { hotel_id, guest_id, voucher_code, subtotal_amount } = req.body;
+
+    if (!hotel_id || !voucher_code) {
+      return res.status(400).json({ success: false, message: 'hotel_id and voucher_code are required' });
+    }
+
+    const effectiveGuestId = guest_id || (req.auth?.user_type === 'GUEST' ? req.auth.sub : null);
+    if (!effectiveGuestId) {
+      return res.status(400).json({ success: false, message: 'Guest identification is required' });
+    }
+
+    const pool = getSqlPool();
+    const result = await pool.request()
+      .input('guestId', sql.BigInt, parseInt(effectiveGuestId, 10))
+      .input('hotelId', sql.BigInt, parseInt(hotel_id, 10))
+      .input('voucherCode', sql.VarChar(50), String(voucher_code || '').trim().toUpperCase())
+      .query(`
+        SELECT TOP 1
+          lr.loyalty_redemption_id,
+          lr.issued_promo_code,
+          lr.points_spent,
+          lr.expires_at,
+          lr.status AS redemption_status,
+          p.promotion_id,
+          p.promotion_code,
+          p.promotion_name,
+          p.promotion_type,
+          p.discount_value,
+          p.currency_code,
+          p.applies_to,
+          p.hotel_id AS promotion_hotel_id,
+          p.brand_id AS promotion_brand_id,
+          requestedHotel.brand_id AS requested_brand_id,
+          CASE
+            WHEN p.hotel_id IS NOT NULL AND p.hotel_id = @hotelId THEN 1
+            WHEN p.brand_id IS NOT NULL AND p.brand_id = requestedHotel.brand_id THEN 1
+            WHEN p.hotel_id IS NULL AND p.brand_id IS NULL THEN 1
+            ELSE 0
+          END AS applies_to_hotel
+        FROM LoyaltyRedemption lr
+        JOIN Promotion p ON lr.promotion_id = p.promotion_id
+        JOIN Hotel requestedHotel ON requestedHotel.hotel_id = @hotelId
+        WHERE lr.guest_id = @guestId
+          AND lr.issued_promo_code = @voucherCode
+          AND p.status = 'ACTIVE'
+      `);
+
+    const voucher = result.recordset[0];
+
+    if (!voucher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Voucher not found. Please check the code and try again.',
+      });
+    }
+
+    // Check if voucher is already used
+    if (voucher.redemption_status !== 'ISSUED') {
+      return res.status(409).json({
+        success: false,
+        message: `This voucher has already been ${voucher.redemption_status === 'REDEEMED' ? 'redeemed' : 'used'}.`,
+      });
+    }
+
+    // Check if voucher has expired
+    const now = new Date();
+    const expiresAt = new Date(voucher.expires_at);
+    if (expiresAt <= now) {
+      return res.status(410).json({
+        success: false,
+        message: 'This voucher has expired.',
+        data: {
+          voucher_code: voucher.issued_promo_code,
+          promotion_name: voucher.promotion_name,
+          expires_at: voucher.expires_at,
+          expired: true,
+        },
+      });
+    }
+
+    // Check if voucher applies to this hotel
+    if (voucher.applies_to_hotel !== 1) {
+      return res.status(409).json({
+        success: false,
+        message: 'This voucher does not apply to the selected hotel.',
+      });
+    }
+
+    // Check if voucher is SERVICE_ONLY (can't be used for booking)
+    if (String(voucher.applies_to || '').toUpperCase() === 'SERVICE_ONLY') {
+      return res.status(409).json({
+        success: false,
+        message: 'This voucher can only be used for in-stay services, not for booking.',
+      });
+    }
+
+    // Compute discount amount
+    const subtotal = Number(subtotal_amount || 0);
+    const discountValue = Number(voucher.discount_value || 0);
+    let discountAmount = 0;
+
+    if (subtotal > 0 && discountValue > 0) {
+      const promoType = String(voucher.promotion_type || '').toUpperCase();
+      if (['PERCENT_OFF', 'PERCENTAGE'].includes(promoType)) {
+        discountAmount = Math.min(subtotal, Math.round((subtotal * discountValue) * 100) / 10000);
+      } else if (['VALUE_CREDIT', 'FIXED_AMOUNT'].includes(promoType)) {
+        discountAmount = Math.min(subtotal, discountValue);
+      }
+    }
+
+    const finalAmount = Math.max(0, subtotal - discountAmount);
+
+    res.json({
+      success: true,
+      data: {
+        valid: true,
+        voucher_code: voucher.issued_promo_code,
+        promotion_name: voucher.promotion_name,
+        promotion_type: voucher.promotion_type,
+        discount_value: voucher.discount_value,
+        currency_code: voucher.currency_code,
+        discount_amount: discountAmount,
+        subtotal_amount: subtotal,
+        final_amount: finalAmount,
+        expires_at: voucher.expires_at,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

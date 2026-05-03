@@ -61,6 +61,7 @@ export default function BookingPage() {
   const [emailStatus, setEmailStatus] = useState({ checking: false, exists: false, checkedEmail: '' });
   const [otpBusy, setOtpBusy] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [voucherStatus, setVoucherStatus] = useState({ checking: false, valid: null, data: null, error: null });
   const enteredLoyaltyCode = String(form.loyalty_redemption_code || '').trim().toUpperCase();
 
   function setField(key, val) {
@@ -98,6 +99,51 @@ export default function BookingPage() {
 
     return () => window.clearTimeout(timer);
   }, [form.email, isGuestUser]);
+
+  // Auto-check voucher validity when code changes
+  useEffect(() => {
+    const code = String(form.loyalty_redemption_code || '').trim().toUpperCase();
+    if (!code || code.length < 3) {
+      setVoucherStatus({ checking: false, valid: null, data: null, error: null });
+      return;
+    }
+
+    const guestId = isGuestUser ? authSession?.user?.guest_id : null;
+    if (!guestId) {
+      setVoucherStatus({ checking: false, valid: null, data: null, error: null });
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setVoucherStatus((current) => ({ ...current, checking: true }));
+      try {
+        const payload = await apiRequest('/promotions/validate-voucher', {
+          method: 'POST',
+          body: JSON.stringify({
+            hotel_id: Number(hotelId),
+            guest_id: guestId,
+            voucher_code: code,
+            subtotal_amount: subtotal,
+          }),
+        });
+        setVoucherStatus({
+          checking: false,
+          valid: true,
+          data: payload.data,
+          error: null,
+        });
+      } catch (err) {
+        setVoucherStatus({
+          checking: false,
+          valid: false,
+          data: null,
+          error: err.message,
+        });
+      }
+    }, 500);
+
+    return () => window.clearTimeout(timer);
+  }, [form.loyalty_redemption_code, hotelId, isGuestUser, authSession, subtotal]);
 
   async function handleSendBookingOtp() {
     const email = String(form.email || '').trim();
@@ -371,6 +417,27 @@ export default function BookingPage() {
                   <small className="booking-field-help">
                     Redeem member-only rewards in your account first, then apply the issued code here.
                   </small>
+                  {voucherStatus.checking && (
+                    <span className="booking-voucher-checking">Checking voucher...</span>
+                  )}
+                  {!voucherStatus.checking && voucherStatus.valid === true && voucherStatus.data && (
+                    <div className="booking-voucher-valid">
+                      <span className="booking-voucher-valid-icon">&#10003;</span>
+                      <span>
+                        <strong>{voucherStatus.data.promotion_name}</strong> — 
+                        discount <strong>{fmt(voucherStatus.data.discount_amount, bookingCurrency)}</strong>
+                        {voucherStatus.data.discount_amount > 0 && (
+                          <> (final: <strong>{fmt(voucherStatus.data.final_amount, bookingCurrency)}</strong>)</>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {!voucherStatus.checking && voucherStatus.valid === false && voucherStatus.error && (
+                    <div className="booking-voucher-invalid">
+                      <span className="booking-voucher-invalid-icon">&#10007;</span>
+                      <span>{voucherStatus.error}</span>
+                    </div>
+                  )}
                 </label>
                 <label className="field-span-2">
                   Special requests (optional)
@@ -464,10 +531,25 @@ export default function BookingPage() {
               <span>Guests</span><strong>{guests}</strong>
             </div>
             <hr className="booking-summary-divider" />
-            <div className="booking-summary-total">
-              <span>Total stay</span>
-              <strong>{fmt(subtotal, bookingCurrency)}</strong>
-            </div>
+            {/* Show discount if voucher is valid */}
+            {voucherStatus.valid === true && voucherStatus.data && voucherStatus.data.discount_amount > 0 && (
+              <>
+                <div className="booking-summary-row booking-discount-row">
+                  <span>Discount ({voucherStatus.data.promotion_name})</span>
+                  <strong className="discount-amount">-{fmt(voucherStatus.data.discount_amount, bookingCurrency)}</strong>
+                </div>
+                <div className="booking-summary-total booking-final-total">
+                  <span>Total after discount</span>
+                  <strong>{fmt(voucherStatus.data.final_amount, bookingCurrency)}</strong>
+                </div>
+              </>
+            )}
+            {(!voucherStatus.valid || !voucherStatus.data || voucherStatus.data.discount_amount <= 0) && (
+              <div className="booking-summary-total">
+                <span>Total stay</span>
+                <strong>{fmt(subtotal, bookingCurrency)}</strong>
+              </div>
+            )}
             <hr className="booking-summary-divider" />
             <div className="booking-summary-row booking-deposit-row">
               <span>Deposit now (30%)</span>

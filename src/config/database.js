@@ -23,7 +23,7 @@ const sqlConfig = {
   },
   ...(process.env.SQL_TRUSTED_CONNECTION === 'true'
     ? { 
-        connectionString: `Driver={ODBC Driver 17 for SQL Server};Server=${process.env.SQL_SERVER || 'localhost'}${instanceName ? '\\\\' + instanceName : ''};Database=${process.env.SQL_DATABASE || 'LuxeReserve'};Trusted_Connection=yes;`, 
+        connectionString: `Driver={ODBC Driver 17 for SQL Server};Server=${process.env.SQL_SERVER || 'localhost'}${instanceName ? '\\' + instanceName : ''};Database=${process.env.SQL_DATABASE || 'LuxeReserve'};Trusted_Connection=yes;`, 
         driver: 'msnodesqlv8' 
       }
     : { 

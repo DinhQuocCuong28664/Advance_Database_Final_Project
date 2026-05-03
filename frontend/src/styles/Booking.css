@@ -163,6 +163,57 @@
 .booking-deposit-row span { color: #c8a96e !important; font-weight: 600; }
 .deposit-highlight { color: #c8a96e !important; font-size: 1rem !important; }
 
+/* Voucher status indicators */
+.booking-voucher-checking {
+  display: block;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  font-weight: 400;
+  margin-top: 4px;
+}
+.booking-voucher-valid {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(46, 125, 50, 0.08);
+  border: 1px solid rgba(46, 125, 50, 0.25);
+  color: #2e7d32;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.booking-voucher-valid-icon {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.booking-voucher-invalid {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(198, 40, 40, 0.08);
+  border: 1px solid rgba(198, 40, 40, 0.25);
+  color: #c62828;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.booking-voucher-invalid-icon {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* Discount row in sidebar */
+.booking-discount-row span { color: #81c784 !important; font-weight: 500; }
+.booking-discount-row .discount-amount { color: #81c784 !important; }
+.booking-final-total span { color: rgba(255,255,255,0.7); font-size: 0.95rem; }
+.booking-final-total strong { color: #a5d6a7 !important; font-size: 1.3rem; font-family: var(--font-display); }
+
 @media (max-width: 920px) {
   .booking-layout {
     grid-template-columns: 1fr;
