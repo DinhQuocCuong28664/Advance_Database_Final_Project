@@ -58,7 +58,7 @@ function normalizeIssueTicket(ticket) {
   return {
     id: ticket.maintenance_ticket_id,
     category: category?.label || String(ticket.issue_category || '').replace(/_/g, ' '),
-    icon: category?.icon || 'âï',
+    icon: category?.icon || '',
     desc: ticket.issue_description,
     status: ticket.status,
     at: ticket.reported_at
@@ -544,7 +544,7 @@ function LoyaltyRewardsPanel({ guestId, onProfileRefresh }) {
         </div>
         {rewards.length === 0 ? (
           <div className="svc-orders-empty">
-            <span>đŸ</span>
+            <span>Rewards</span>
             <p>No loyalty rewards are configured yet.</p>
             <small>Ask the hotel team to publish member-only reward promotions with a points cost.</small>
           </div>
@@ -603,7 +603,7 @@ function LoyaltyRewardsPanel({ guestId, onProfileRefresh }) {
         </div>
         {redemptions.length === 0 ? (
           <div className="svc-orders-empty">
-            <span>đŸ</span>
+            <span>Vouchers</span>
             <p>No vouchers issued yet.</p>
             <small>Redeemed vouchers will appear here and can be applied during booking.</small>
           </div>
@@ -718,7 +718,7 @@ function BookingReviewsPanel({ guestId }) {
   if (reservations.length === 0) {
     return (
       <div className="svc-orders-empty" style={{ padding: '36px 0' }}>
-        <span>đŸ“</span>
+        <span>Reservations</span>
         <p>No reservations found for this account yet.</p>
       </div>
     );
@@ -1185,7 +1185,7 @@ export default function AccountPage() {
               </div>
               {loyaltyAccounts.length === 0 && (
                 <div className="svc-orders-empty" style={{ padding: '40px 0' }}>
-                  <span>đŸ’</span>
+                  <span>Loyalty</span>
                   <p>No loyalty account linked yet.</p>
                   <small>Your points and tier benefits will appear here once enrolled.</small>
                 </div>
@@ -1322,7 +1322,7 @@ export default function AccountPage() {
                 ) : (
                   <div className="acct-profile-grid">
                     <div><span>Full name</span><strong>{guestProfile?.full_name || authSession.user.full_name}</strong></div>
-                    <div><span>Phone</span><strong>{guestProfile ? `${guestProfile.phone_country_code || ''}${guestProfile.phone_number || ''}`.trim() || 'â”' : 'â”'}</strong></div>
+                    <div><span>Phone</span><strong>{guestProfile ? `${guestProfile.phone_country_code || ''}${guestProfile.phone_number || ''}`.trim() || '-' : '-'}</strong></div>
                     {profileMsg?.type === 'ok' && (
                       <div style={{ gridColumn: '1/-1' }}>
                         <p style={{ fontSize: '0.85rem', color: 'var(--success)', margin: 0 }}>{profileMsg.text}</p>
