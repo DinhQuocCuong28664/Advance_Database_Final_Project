@@ -82,7 +82,7 @@ CREATE TABLE Location (
 
 ## 3. CHECK Constraints for Data Integrity
 
-**Files:** Multiple — `02_create_tables.sql`, `20_loyalty_rewards.sql`, `22_add_hotel_reviews.sql`
+**Files:** Multiple — `02_create_tables.sql`, `06_seed_data.sql`
 
 **Description:** Extensive use of CHECK constraints to enforce domain integrity at the database level, preventing invalid data from being inserted regardless of the application layer.
 
@@ -92,10 +92,10 @@ CREATE TABLE Location (
 -- RoomFeature: at least one FK must be NOT NULL (02_create_tables.sql:268)
 CONSTRAINT CK_RoomFeature_AtLeastOneFK CHECK (room_id IS NOT NULL OR room_type_id IS NOT NULL)
 
--- HotelReview: rating must be 1-5 (22_add_hotel_reviews.sql:27)
+-- HotelReview: rating must be 1-5 (02_create_tables.sql)
 CONSTRAINT CK_HotelReview_Rating CHECK (rating_score BETWEEN 1 AND 5)
 
--- Promotion: voucher days must be >= 1 (20_loyalty_rewards.sql:29-31)
+-- Promotion: voucher days must be >= 1 (02_create_tables.sql)
 CONSTRAINT CK_Promo_VoucherDays CHECK (voucher_valid_days IS NULL OR voucher_valid_days >= 1)
 
 -- Room: multiple status constraints (02_create_tables.sql:245-247)
@@ -489,7 +489,7 @@ END
 
 ## 12. Multi-Step Check-in / Check-out Stored Procedures
 
-**File:** `database/sql/23_advanced_stored_procedures.sql`
+**File:** `database/sql/07_advanced_stored_procedures.sql`
 
 ### sp_CheckIn (Lines 20–82)
 
@@ -580,7 +580,7 @@ END
 
 ## 13. Guest & Hotel Cancellation Stored Procedures
 
-**File:** `database/sql/23_advanced_stored_procedures.sql`
+**File:** `database/sql/07_advanced_stored_procedures.sql`
 
 ### sp_GuestCancel (Lines 193–278)
 
@@ -683,7 +683,7 @@ END
 
 ## 14. Cursor-based Cleanup Sweep Procedure
 
-**File:** `database/sql/23_advanced_stored_procedures.sql` — Lines 487–534
+**File:** `database/sql/07_advanced_stored_procedures.sql` — Lines 487–534
 
 **Description:** `sp_CleanupAbandonedReservations` uses a **cursor** to iterate over all CONFIRMED reservations older than a configurable window that have no captured payment, cancelling each one.
 
@@ -744,7 +744,7 @@ END
 
 ## 15. Auto-Status-History Trigger
 
-**File:** `database/sql/23_advanced_stored_procedures.sql` — Lines 553–592
+**File:** `database/sql/07_advanced_stored_procedures.sql` — Lines 553–592
 
 **Description:** `trg_Reservation_StatusHistory` automatically inserts a record into `ReservationStatusHistory` whenever `reservation_status` changes, with auto-generated reason text.
 
@@ -792,7 +792,7 @@ END
 
 ## 16. Audit Triggers (Payment, Guest, GuestAuth)
 
-**File:** `database/sql/24_audit_triggers.sql` — Lines 20–224
+**File:** `database/sql/08_audit_triggers.sql` — Lines 20–224
 
 ### trg_Payment_AuditLog (Lines 20–89)
 
@@ -1007,7 +1007,7 @@ CREATE TABLE HotelAmenity (
 
 ## 18. MERGE (Upsert) for Idempotent Seeding
 
-**File:** `database/sql/07_auth_extension.sql` — Lines 42–57
+**File:** `database/sql/06_seed_data.sql` — GuestAuth seed section
 
 **Description:** Uses the T-SQL `MERGE` statement to perform an upsert — insert if not exists, update if exists. This makes seed scripts idempotent (safe to run multiple times).
 
@@ -1082,7 +1082,7 @@ CREATE TABLE Promotion (
 
 ## 20. Composite Indexes for Query Performance
 
-**Files:** Multiple — throughout `02_create_tables.sql`, `03_create_views.sql`, `22_add_hotel_reviews.sql`
+**Files:** Multiple — throughout `02_create_tables.sql`, `03_create_views.sql`
 
 **Description:** Strategic composite indexes are created to optimize the most common query patterns.
 
@@ -1135,13 +1135,13 @@ CREATE INDEX IX_LoyaltyRedemption_GuestStatus
 | 9 | Pessimistic Locking | `05_create_procedures.sql` | 31–34, 161–162 |
 | 10 | Savepoint Transactions | `05_create_procedures.sql` | 19–26 |
 | 11 | Atomic Room Transfer | `05_create_procedures.sql` | 124–328 |
-| 12 | Check-in / Check-out SPs | `23_advanced_stored_procedures.sql` | 20–82, 97–178 |
-| 13 | Guest/Hotel Cancel SPs | `23_advanced_stored_procedures.sql` | 193–278, 292–399 |
-| 14 | Cursor Cleanup Sweep | `23_advanced_stored_procedures.sql` | 487–534 |
-| 15 | Auto-Status-History Trigger | `23_advanced_stored_procedures.sql` | 553–592 |
-| 16 | Audit Triggers (3 tables) | `24_audit_triggers.sql` | 20–224 |
+| 12 | Check-in / Check-out SPs | `07_advanced_stored_procedures.sql` | 20–82, 97–178 |
+| 13 | Guest/Hotel Cancel SPs | `07_advanced_stored_procedures.sql` | 193–278, 292–399 |
+| 14 | Cursor Cleanup Sweep | `07_advanced_stored_procedures.sql` | 487–534 |
+| 15 | Auto-Status-History Trigger | `07_advanced_stored_procedures.sql` | 553–592 |
+| 16 | Audit Triggers (3 tables) | `08_audit_triggers.sql` | 20–224 |
 | 17 | Hybrid SQL + MongoDB | `02_create_tables.sql` + MongoDB | Link key pattern |
-| 18 | MERGE Upsert | `07_auth_extension.sql` | 42–57 |
+| 18 | Auth Seed | `06_seed_data.sql` | GuestAuth seed section |
 | 19 | Temporal Validity | `02_create_tables.sql` | HotelPolicy, RatePlan, Promotion |
 | 20 | Composite Indexes | Multiple files | 20+ indexes |
 

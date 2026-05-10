@@ -81,8 +81,10 @@ Run SQL scripts in order (located in `/database/sql/`):
 03_create_views.sql
 04_create_triggers.sql
 05_create_procedures.sql
-11_email_verification.sql
 06_seed_data.sql
+07_advanced_stored_procedures.sql
+08_audit_triggers.sql
+09_seed_demo_operations.sql
 ```
 
 `06_seed_data.sql` is now the single consolidated demo seed.
@@ -92,6 +94,10 @@ room features, and the normalized demo accounts:
 - `admin / admin`
 - `cashier / cashier`
 - `manager / manager`
+- `frontdesk / cashier`
+- `hkmanager / cashier`
+- `housekeeping / cashier`
+- `maintenance / cashier`
 - `dqc / dqc`
 
 The guest demo account logs in with guest code `dqc`.

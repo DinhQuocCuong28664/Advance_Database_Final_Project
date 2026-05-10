@@ -269,26 +269,27 @@ async function _recordVnpayPayment(result: VnpayResult, source: string) {
       .query(`
         SELECT payment_id FROM Payment
         WHERE reservation_id = @resvId AND payment_type = @type
-          AND payment_status IN ('CAPTURED', 'PENDING')
+          AND payment_status IN ('CAPTURED', 'INITIATED', 'AUTHORIZED')
       `);
 
     const payStatus  = result.responseCode === '00' ? 'CAPTURED' : 'FAILED';
     const payDate    = result.payDate || null;
     const transNo    = result.transactionNo || null;
     const bankCode   = result.bankCode || null;
+    const payRef     = `VNPAY-${result.txnRef}`;
 
     if (existing.recordset.length > 0) {
       // Update existing record
       await pool.request()
         .input('id', sql.BigInt, existing.recordset[0].payment_id)
         .input('status', sql.VarChar(20), payStatus)
-        .input('transNo', sql.VarChar(50), transNo)
-        .input('bankCode', sql.VarChar(20), bankCode)
+        .input('transNo', sql.VarChar(120), transNo)
+        .input('bankCode', sql.NVarChar(255), bankCode)
         .query(`
           UPDATE Payment
           SET payment_status = @status,
-              transaction_ref = @transNo,
-              payment_notes   = @bankCode,
+              gateway_transaction_id = @transNo,
+              failure_reason = CASE WHEN @status = 'FAILED' THEN @bankCode ELSE failure_reason END,
               updated_at      = GETDATE()
           WHERE payment_id = @id
         `);
@@ -296,20 +297,21 @@ async function _recordVnpayPayment(result: VnpayResult, source: string) {
       // Insert new record
       await pool.request()
         .input('resvId', sql.BigInt, resvId)
+        .input('ref', sql.VarChar(80), payRef)
         .input('amount', sql.Decimal(18, 2), result.amount)
         .input('method', sql.VarChar(30), 'VNPAY')
         .input('currency', sql.VarChar(10), 'VND')
         .input('type', sql.VarChar(20), 'DEPOSIT')
         .input('status', sql.VarChar(20), payStatus)
-        .input('transNo', sql.VarChar(50), transNo)
-        .input('bankCode', sql.VarChar(20), bankCode)
+        .input('transNo', sql.VarChar(120), transNo)
+        .input('bankCode', sql.NVarChar(255), bankCode)
         .query(`
           INSERT INTO Payment
-            (reservation_id, amount, payment_method, currency_code,
-             payment_type, payment_status, transaction_ref, payment_notes)
+            (reservation_id, payment_reference, amount, payment_method, currency_code,
+             payment_type, payment_status, gateway_transaction_id, failure_reason, paid_at)
           VALUES
-            (@resvId, @amount, @method, @currency,
-             @type, @status, @transNo, @bankCode)
+            (@resvId, @ref, @amount, @method, @currency,
+             @type, @status, @transNo, CASE WHEN @status = 'FAILED' THEN @bankCode ELSE NULL END, GETDATE())
         `);
     }
   } catch (err: any) {

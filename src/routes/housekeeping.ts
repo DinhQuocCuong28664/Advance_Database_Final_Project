@@ -44,7 +44,7 @@ router.get('/staff', requireSystemRole(['FRONT_DESK', 'HK_MANAGER', 'MANAGER', '
       FROM SystemUser su
       JOIN UserRole ur ON su.user_id = ur.user_id
       JOIN Role r ON ur.role_id = r.role_id
-      WHERE r.role_code = 'HK_MANAGER' AND su.account_status = 'ACTIVE'
+      WHERE r.role_code IN ('HOUSEKEEPING', 'HK_MANAGER') AND su.account_status = 'ACTIVE'
     `);
     
     res.json({
@@ -60,7 +60,7 @@ router.get('/staff', requireSystemRole(['FRONT_DESK', 'HK_MANAGER', 'MANAGER', '
 // GET /api/v1/housekeeping?hotel_id=1&status=OPEN
 // List housekeeping tasks with filters
 // 
-router.get('/', requireSystemUser, async (req: Request, res: Response) => {
+router.get('/', requireSystemRole(['HOUSEKEEPING', 'HK_MANAGER', 'FRONT_DESK', 'MANAGER', 'ADMIN']), async (req: Request, res: Response) => {
   try {
     const pool = getSqlPool();
     const { hotel_id, status, priority } = req.query;
@@ -207,7 +207,7 @@ router.put('/:id/assign', requireSystemRole(['HK_MANAGER', 'MANAGER', 'ADMIN']),
 // Update task status with Room sync
 // ASSIGNED  IN_PROGRESS  DONE  VERIFIED
 // 
-router.put('/:id/status', requireSystemRole(['HK_MANAGER', 'MANAGER', 'ADMIN']), async (req: Request, res: Response) => {
+router.put('/:id/status', requireSystemRole(['HOUSEKEEPING', 'HK_MANAGER', 'MANAGER', 'ADMIN']), async (req: Request, res: Response) => {
   try {
     const taskId = parseInt(String(req.params.id), 10);
     const { status, note } = req.body;

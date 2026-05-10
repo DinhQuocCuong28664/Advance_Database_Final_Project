@@ -1,5 +1,5 @@
 -- ============================================================
--- 24_audit_triggers.sql
+-- 08_audit_triggers.sql
 -- Rule 14.2.4: Audit triggers for sensitive tables
 -- Tables: Payment, Guest, GuestAuth
 -- All changes on these tables are logged to AuditLog via trigger

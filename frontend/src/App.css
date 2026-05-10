@@ -5,12 +5,19 @@
 
 /*  Responsive overrides (cross-page)  */
 @media (max-width: 900px) {
+  .hero-main { grid-template-columns: 1fr; }
+  .hero-copy { padding: 0; }
+  .hero-visual { min-height: 360px; }
+  .hero-visual img { min-height: 360px; }
   .hero-search-form { grid-template-columns: 1fr 1fr; }
   .hero-search-btn { grid-column: 1 / -1; }
+  .experience-strip { grid-template-columns: 1fr; }
+  .membership-section { grid-template-columns: 1fr; max-width: none; }
   .dest-grid { grid-template-columns: repeat(2, 1fr); }
   .featured-grid { grid-template-columns: 1fr; }
   .promo-grid { grid-template-columns: repeat(2, 1fr); }
   .trust-strip { grid-template-columns: repeat(2, 1fr); }
+  .editorial-banner { align-items: flex-start; flex-direction: column; }
   .search-body { grid-template-columns: 1fr; }
   .search-sidebar { position: static; }
   .search-top-form { grid-template-columns: 1fr 1fr; }
@@ -21,8 +28,28 @@
 }
 
 @media (max-width: 640px) {
-  .hero-section { padding: 32px 20px; }
+  .hero-section { padding: 24px 18px; border-radius: 24px; }
+  .hero-title { font-size: clamp(2.4rem, 16vw, 4.4rem); }
+  .hero-actions .primary-button,
+  .hero-actions .glass-button { width: 100%; justify-content: center; }
+  .hero-stats span { flex: 1 1 100%; justify-content: center; }
+  .hero-visual { min-height: 280px; border-radius: 22px; }
+  .hero-visual img { min-height: 280px; }
+  .hero-floating-card { display: none; }
   .hero-search-form { grid-template-columns: 1fr; }
+  .experience-card,
+  .editorial-banner { padding: 22px; }
+  .luxury-marquee { width: 100vw; margin-left: calc(50% - 50vw); }
+  .luxury-marquee-track { animation-duration: 12s; }
+  .luxury-marquee img { width: 240px; height: 280px; margin: 0 8px; }
+  .brand-row { gap: 18px; font-size: 1.1rem; }
+  .membership-card { padding: 24px; border-radius: 28px; }
+  .membership-actions .primary-button,
+  .membership-actions .glass-button { width: 100%; justify-content: center; }
+  .collection-showcase { gap: 48px; }
+  .collection-item > div { margin-left: 18px; }
+  .collection-item img { border-radius: 22px; }
+  .partner-cta { border-radius: 28px; }
   .dest-grid { grid-template-columns: 1fr; }
   .promo-grid { grid-template-columns: 1fr; }
   .trust-strip { grid-template-columns: 1fr; }

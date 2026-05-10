@@ -441,6 +441,24 @@ GO
 PRINT '[OK] GuestAuth';
 GO
 
+CREATE TABLE EmailVerificationOtp (
+    email_otp_id      BIGINT IDENTITY(1,1) PRIMARY KEY,
+    guest_auth_id     BIGINT        NOT NULL,
+    otp_code          VARCHAR(10)   NOT NULL,
+    purpose           VARCHAR(20)   NOT NULL DEFAULT 'ACTIVATE',
+    expires_at        DATETIME      NOT NULL,
+    consumed_at       DATETIME      NULL,
+    created_at        DATETIME      NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_EmailOtp_GuestAuth FOREIGN KEY (guest_auth_id) REFERENCES GuestAuth(guest_auth_id),
+    CONSTRAINT CK_EmailOtp_Purpose CHECK (purpose IN ('ACTIVATE', 'BOOKING_ACCESS', 'PASSWORD_RESET'))
+);
+CREATE INDEX IX_EmailOtp_GuestAuth ON EmailVerificationOtp(guest_auth_id, created_at DESC);
+GO
+
+PRINT '[OK] EmailVerificationOtp';
+GO
+
 -- ============================================================
 -- DOMAIN 6: SYSTEM USERS & ROLES
 -- ============================================================
@@ -834,7 +852,7 @@ CREATE TABLE Payment (
     CONSTRAINT FK_Payment_Resv      FOREIGN KEY (reservation_id) REFERENCES Reservation(reservation_id),
     CONSTRAINT UQ_Payment_Ref       UNIQUE (payment_reference),
     CONSTRAINT CK_Payment_Type      CHECK (payment_type IN ('DEPOSIT','PREPAYMENT','FULL_PAYMENT','REFUND','INCIDENTAL_HOLD')),
-    CONSTRAINT CK_Payment_Method    CHECK (payment_method IN ('CREDIT_CARD','BANK_TRANSFER','WALLET','CASH','CORPORATE_BILLING','POINTS')),
+    CONSTRAINT CK_Payment_Method    CHECK (payment_method IN ('CREDIT_CARD','BANK_TRANSFER','WALLET','VNPAY','CASH','CORPORATE_BILLING','POINTS','SYSTEM_CREDIT')),
     CONSTRAINT CK_Payment_Status    CHECK (payment_status IN ('INITIATED','AUTHORIZED','CAPTURED','FAILED','REFUNDED','VOIDED'))
 );
 CREATE INDEX IX_Payment_ResvStatus ON Payment(reservation_id, payment_status);
@@ -1088,7 +1106,7 @@ CREATE TABLE AuditLog (
     audit_log_id    BIGINT IDENTITY(1,1) PRIMARY KEY,
     entity_name     VARCHAR(100)    NOT NULL,
     entity_pk       VARCHAR(100)    NOT NULL,
-    action_type     VARCHAR(15)     NOT NULL,
+    action_type     VARCHAR(30)     NOT NULL,
     old_value_json  NVARCHAR(MAX)   NULL,
     new_value_json  NVARCHAR(MAX)   NULL,
     changed_by      BIGINT          NULL,
@@ -1096,7 +1114,7 @@ CREATE TABLE AuditLog (
     source_module   VARCHAR(100)    NULL,
 
     CONSTRAINT FK_Audit_User    FOREIGN KEY (changed_by) REFERENCES SystemUser(user_id),
-    CONSTRAINT CK_Audit_Action  CHECK (action_type IN ('INSERT','UPDATE','DELETE','STATUS_CHANGE'))
+    CONSTRAINT CK_Audit_Action  CHECK (action_type IN ('INSERT','UPDATE','DELETE','STATUS_CHANGE','PROFILE_UPDATE','PASSWORD_CHANGE','EMAIL_VERIFIED','ACCOUNT_STATUS_CHANGE','AUTH_UPDATE'))
 );
 GO
 

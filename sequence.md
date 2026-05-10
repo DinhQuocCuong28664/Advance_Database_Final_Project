@@ -515,4 +515,4 @@ sequenceDiagram
 
 ---
 
-*Generated from `database/sql/05_create_procedures.sql`, `database/sql/23_advanced_stored_procedures.sql`, `database/sql/24_audit_triggers.sql`, and `database/sql/04_create_triggers.sql`.*
+*Generated from `database/sql/05_create_procedures.sql`, `database/sql/07_advanced_stored_procedures.sql`, `database/sql/08_audit_triggers.sql`, and `database/sql/04_create_triggers.sql`.*

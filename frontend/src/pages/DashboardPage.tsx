@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { apiRequest } from '../lib/api';
 import { resolveHotelImage, imgError } from '../utils/hotelImages';
+import heroImage from '../assets/hero.png';
 import '../styles/Home.css';
 
 //  tiny helpers 
@@ -157,6 +158,131 @@ function HeroSearch() {
 
 //  Destination Card 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80';
+const MARQUEE_IMAGES = [
+  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=900&q=80',
+  'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=900&q=80',
+  'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=900&q=80',
+  'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=900&q=80',
+  'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=900&q=80',
+  'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=900&q=80',
+  'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=900&q=80',
+  'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=900&q=80',
+];
+
+function LuxuryMarquee() {
+  return (
+    <section className="luxury-marquee" aria-label="Luxury hotel imagery">
+      <div className="luxury-marquee-track">
+        {[...MARQUEE_IMAGES, ...MARQUEE_IMAGES].map((src, index) => (
+          <img key={`${src}-${index}`} src={src} alt="Luxury hotel preview" loading="lazy" />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function StoryQuote() {
+  return (
+    <section className="story-quote">
+      <span className="quote-mark">“</span>
+      <h2>
+        We design every reservation around <span>arrival, comfort, and memory.</span>
+      </h2>
+      <p>
+        LuxeReserve brings premium hotels, secure booking, loyalty rewards, and hotel operations together in one calm
+        guest journey.
+      </p>
+      <div className="brand-row" aria-label="Partner brands">
+        <strong>Luxe</strong>
+        <strong>Aurora</strong>
+        <strong>Maison</strong>
+      </div>
+      <img
+        src="https://images.unsplash.com/photo-1590490360182-c33d57733427?w=900&q=80"
+        alt="Luxury suite interior"
+        loading="lazy"
+      />
+    </section>
+  );
+}
+
+function MembershipSection() {
+  const navigate = useNavigate();
+  return (
+    <section className="membership-section">
+      <div className="membership-card membership-card-dark">
+        <p className="page-eyebrow">Signature stay</p>
+        <h3>Suite Escape</h3>
+        <p>Designed for guests who want ocean views, flexible check-in, and a polished arrival experience.</p>
+        <div className="membership-price">From $500<span> / night</span></div>
+        <div className="membership-actions">
+          <button className="primary-button" type="button" onClick={() => navigate('/search')}>
+            Reserve now
+          </button>
+          <button className="glass-button" type="button" onClick={() => navigate('/reservation')}>
+            Existing booking
+          </button>
+        </div>
+      </div>
+      <div className="membership-card membership-card-light">
+        <p className="page-eyebrow">Loyalty</p>
+        <h3>Private Rewards</h3>
+        <p>Earn points, redeem upgrades, and keep your preferences ready for every LuxeReserve property.</p>
+        <div className="membership-price">VIP<span> tiers</span></div>
+        <button className="ghost-button" type="button" onClick={() => navigate('/register')}>
+          Join rewards
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function CollectionShowcase() {
+  const projects = [
+    {
+      name: 'Coastal calm',
+      desc: 'Beachfront properties with spa rituals and private terraces.',
+      image: 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=1200&q=80',
+    },
+    {
+      name: 'City after dark',
+      desc: 'Skyline suites near dining, business districts, and nightlife.',
+      image: 'https://images.unsplash.com/photo-1549294413-26f195200c16?w=1200&q=80',
+    },
+    {
+      name: 'Heritage weekends',
+      desc: 'Boutique stays shaped by local craft, quiet courtyards, and long breakfasts.',
+      image: 'https://images.unsplash.com/photo-1519449556851-5720b33024e7?w=1200&q=80',
+    },
+  ];
+
+  return (
+    <section className="collection-showcase">
+      {projects.map((project) => (
+        <article className="collection-item" key={project.name}>
+          <div>
+            <h3>{project.name}</h3>
+            <p>{project.desc}</p>
+          </div>
+          <img src={project.image} alt={project.name} loading="lazy" />
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function PartnerCta() {
+  const navigate = useNavigate();
+  return (
+    <section className="partner-cta">
+      <h2>Reserve beautifully.</h2>
+      <button className="primary-button partner-button" type="button" onClick={() => navigate('/search')}>
+        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=80" alt="Concierge" />
+        Start with LuxeReserve
+      </button>
+    </section>
+  );
+}
 
 function DestCard({ city, country, count, image }: DestinationGroup) {
   const navigate = useNavigate();
@@ -249,14 +375,61 @@ export default function DashboardPage() {
     <div className="home-page">
       {/*  HERO  */}
       <section className="hero-section">
-        <div className="hero-copy">
-          <p className="hero-eyebrow">LuxeReserve</p>
-          <h1 className="hero-title">
-            Extraordinary stays,<br />perfectly reserved.
-          </h1>
-          <p className="hero-sub">Discover premium hotels across Asia's most iconic destinations.</p>
+        <div className="hero-main">
+          <div className="hero-copy">
+            <p className="hero-eyebrow">LuxeReserve Private Collection</p>
+            <h1 className="hero-title">
+              Luxury hotel stays, curated for your next escape.
+            </h1>
+            <p className="hero-sub">
+              Book refined city retreats, beachfront suites, and resort hideaways with real-time availability,
+              secure payments, and loyalty rewards built in.
+            </p>
+            <div className="hero-actions">
+              <button className="primary-button" type="button" onClick={() => navigate('/search')}>
+                Explore hotels
+              </button>
+              <button className="glass-button" type="button" onClick={() => navigate('/reservation')}>
+                Find reservation
+              </button>
+            </div>
+            <div className="hero-stats" aria-label="LuxeReserve highlights">
+              <span><strong>12</strong> hotels</span>
+              <span><strong>24/7</strong> support</span>
+              <span><strong>VIP</strong> rewards</span>
+            </div>
+          </div>
+          <div className="hero-visual" aria-hidden="true">
+            <img src={heroImage} alt="" />
+            <div className="hero-floating-card hero-floating-card-top">
+              <span>Tonight's mood</span>
+              <strong>Ocean suite upgrade</strong>
+            </div>
+            <div className="hero-floating-card hero-floating-card-bottom">
+              <span>Guest rating</span>
+              <strong>4.9 / 5 excellent</strong>
+            </div>
+          </div>
         </div>
         <HeroSearch />
+      </section>
+
+      <LuxuryMarquee />
+
+      <StoryQuote />
+
+      <section className="experience-strip">
+        {[
+          { value: '01', title: 'Choose your scene', desc: 'City skyline, heritage retreat, or resort coast.' },
+          { value: '02', title: 'Reserve with clarity', desc: 'See dates, guest count, rates, and payment path upfront.' },
+          { value: '03', title: 'Arrive remembered', desc: 'Profiles, points, and preferences follow every stay.' },
+        ].map((item) => (
+          <article className="experience-card" key={item.title}>
+            <span>{item.value}</span>
+            <h3>{item.title}</h3>
+            <p>{item.desc}</p>
+          </article>
+        ))}
       </section>
 
       {/*  ALREADY HAVE A BOOKING?  */}
@@ -339,6 +512,8 @@ export default function DashboardPage() {
         </section>
       )}
 
+      <MembershipSection />
+
       {/*  PROMOTIONS  */}
       {promos.length > 0 && (
         <section className="home-section">
@@ -371,6 +546,24 @@ export default function DashboardPage() {
           </div>
         ))}
       </section>
+
+      <CollectionShowcase />
+
+      <section className="editorial-banner">
+        <div>
+          <p className="page-eyebrow">For every stay style</p>
+          <h2>From boardroom mornings to rooftop nights.</h2>
+          <p>
+            LuxeReserve connects hotel operations, payments, housekeeping, invoices, and guest profiles so your booking
+            feels polished before you arrive and effortless after checkout.
+          </p>
+        </div>
+        <button className="primary-button" type="button" onClick={() => navigate('/search')}>
+          Start planning
+        </button>
+      </section>
+
+      <PartnerCta />
     </div>
   );
 }

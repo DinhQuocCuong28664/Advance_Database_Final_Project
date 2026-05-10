@@ -45,10 +45,10 @@ BEGIN
             VALUES
                 (@reservation_code, @room_id, @stay_date, @lock_acquired_at, GETDATE(), 'FAILED', @session_id, @transaction_id, N'Inventory record not found');
 
+            -- Only rollback if we started the transaction (not nested)
             IF @TranCounter = 0
                 ROLLBACK TRANSACTION;
-            ELSE IF XACT_STATE() <> -1
-                ROLLBACK TRANSACTION @SavePointName;
+            -- If nested, just let the caller handle rollback — savepoint is discarded on RETURN
 
             RETURN;
         END
@@ -66,11 +66,10 @@ BEGIN
             VALUES
                 (@reservation_code, @room_id, @stay_date, @lock_acquired_at, GETDATE(), 'FAILED', @session_id, @transaction_id, N'Room not available, status=' + @current_status);
 
-            -- Rollback our local work cleanly without destroying Node.js transaction!
+            -- Only rollback if we started the transaction (not nested)
             IF @TranCounter = 0
                 ROLLBACK TRANSACTION;
-            ELSE IF XACT_STATE() <> -1
-                ROLLBACK TRANSACTION @SavePointName;
+            -- If nested, just let the caller handle rollback — savepoint is discarded on RETURN
 
             RETURN;
         END
@@ -106,8 +105,10 @@ BEGIN
         -- If an error happens (e.g. timeout, deadlock, string truncation), we rollback cleanly
         IF @TranCounter = 0 AND @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
-        ELSE IF @TranCounter > 0 AND XACT_STATE() <> -1
+        ELSE IF @TranCounter > 0 AND XACT_STATE() = 1
             ROLLBACK TRANSACTION @SavePointName;
+        -- If XACT_STATE() = -1 (doomed), we cannot rollback to savepoint.
+        -- The outer Node.js transaction will handle the full rollback.
 
         SET @result_status  = 9;
         SET @result_message = N'ERROR: ' + ERROR_MESSAGE();
@@ -134,7 +135,7 @@ CREATE OR ALTER PROCEDURE sp_TransferRoom
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET XACT_ABORT ON;
+    SET XACT_ABORT OFF;
 
     DECLARE @night_count      INT;
     DECLARE @i                INT = 0;
@@ -143,11 +144,16 @@ BEGIN
     DECLARE @new_status       VARCHAR(10);
     DECLARE @session_id       VARCHAR(100) = 'TRANSFER-' + CAST(@reservation_id AS VARCHAR);
     DECLARE @transaction_id   VARCHAR(100) = CAST(NEWID() AS VARCHAR(100));
+    DECLARE @TranCounter2     INT = @@TRANCOUNT;
+    DECLARE @SavePointName2   VARCHAR(32) = 'spTransferSave';
 
     SET @night_count = DATEDIFF(DAY, @checkin_date, @checkout_date);
 
     BEGIN TRY
-        BEGIN TRANSACTION;
+        IF @TranCounter2 = 0
+            BEGIN TRANSACTION;
+        ELSE
+            SAVE TRANSACTION @SavePointName2;
 
         -- ============================================================
         -- PHASE 1: Validate & release OLD room
@@ -176,7 +182,9 @@ BEGIN
                      GETDATE(), GETDATE(), 'FAILED',
                      @session_id, @transaction_id, @result_message);
 
-                ROLLBACK TRANSACTION;
+                IF @TranCounter2 = 0
+                    ROLLBACK TRANSACTION;
+                -- If nested, caller handles rollback
                 RETURN;
             END
 
@@ -233,8 +241,12 @@ BEGIN
                      GETDATE(), GETDATE(), 'FAILED',
                      @session_id, @transaction_id, @result_message);
 
-                -- ROLLBACK releases the old room changes too -> atomic
-                ROLLBACK TRANSACTION;
+                -- Atomic rollback: releases old room changes too
+                IF @TranCounter2 = 0
+                    ROLLBACK TRANSACTION;
+                ELSE IF XACT_STATE() = 1
+                    ROLLBACK TRANSACTION @SavePointName2;
+                -- If doomed (XACT_STATE = -1), outer caller handles full rollback
                 RETURN;
             END
 
@@ -298,7 +310,8 @@ BEGIN
                + N'. Reason: ' + ISNULL(@reason, N'N/A')
         FROM Reservation WHERE reservation_id = @reservation_id;
 
-        COMMIT TRANSACTION;
+        IF @TranCounter2 = 0
+            COMMIT TRANSACTION;
 
         SET @result_status = 0;
         SET @result_message = N'SUCCESS: Room transferred from room_id='
@@ -306,8 +319,12 @@ BEGIN
 
     END TRY
     BEGIN CATCH
-        IF @@TRANCOUNT > 0
+        -- Only rollback if we started the transaction
+        IF @TranCounter2 = 0 AND @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
+        ELSE IF @TranCounter2 > 0 AND XACT_STATE() = 1
+            ROLLBACK TRANSACTION @SavePointName2;
+        -- If doomed (XACT_STATE = -1), outer caller handles full rollback
 
         BEGIN TRY
             INSERT INTO InventoryLockLog

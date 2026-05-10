@@ -22,9 +22,23 @@ const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-GB', { da
 const ROLE_OPTIONS = [
   { value: 'FRONT_DESK', label: 'Front Desk' },
   { value: 'HK_MANAGER', label: 'Housekeeping Manager' },
+  { value: 'HOUSEKEEPING', label: 'Housekeeping Staff' },
+  { value: 'MAINTENANCE', label: 'Maintenance Staff' },
   { value: 'CASHIER',    label: 'Cashier' },
   { value: 'MANAGER',    label: 'Revenue Manager' },
   { value: 'ADMIN',      label: 'System Administrator' },
+];
+
+const DEPARTMENT_OPTIONS = [
+  { value: '', label: 'Select department' },
+  { value: 'FRONT_OFFICE', label: 'Front Office' },
+  { value: 'RESERVATIONS', label: 'Reservations' },
+  { value: 'HOUSEKEEPING', label: 'Housekeeping' },
+  { value: 'FINANCE', label: 'Finance' },
+  { value: 'SALES', label: 'Sales' },
+  { value: 'IT', label: 'IT' },
+  { value: 'ENGINEERING', label: 'Engineering' },
+  { value: 'MANAGEMENT', label: 'Management' },
 ];
 
 const EMPTY_STAFF_FORM = { username: '', full_name: '', email: '', password: '', role_code: 'FRONT_DESK', department: '', job_title: '', hotel_id: '' };
@@ -336,8 +350,8 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot, hot
                     placeholder="jsmith" autoComplete="off" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
-                  Email
-                  <input type="email" value={staffForm.email}
+                  Email *
+                  <input type="email" required value={staffForm.email}
                     onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="jane@hotel.com" />
                 </label>
@@ -357,9 +371,10 @@ export default function AdminAccounts({ accountSnapshot, setAccountSnapshot, hot
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
                   Department
-                  <input type="text" value={staffForm.department}
-                    onChange={e => setStaffForm(f => ({ ...f, department: e.target.value }))}
-                    placeholder="Housekeeping, F&amp;B..." />
+                  <select value={staffForm.department}
+                    onChange={e => setStaffForm(f => ({ ...f, department: e.target.value }))}>
+                    {DEPARTMENT_OPTIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                  </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-soft)' }}>
                   Assigned Hotel

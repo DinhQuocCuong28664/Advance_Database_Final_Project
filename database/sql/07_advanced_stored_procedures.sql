@@ -1,5 +1,5 @@
 -- ============================================================
--- 23_advanced_stored_procedures.sql
+-- 07_advanced_stored_procedures.sql
 -- Advanced DB: Move multi-step business logic into Stored Procedures
 -- and auto-logging into Triggers.
 --
@@ -23,9 +23,15 @@ CREATE PROCEDURE dbo.sp_CheckIn
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET XACT_ABORT ON;
+    SET XACT_ABORT OFF;
 
-    BEGIN TRANSACTION;
+    DECLARE @TranCounterCI INT = @@TRANCOUNT;
+    DECLARE @SavePointCI VARCHAR(32) = 'spCheckInSave';
+
+    IF @TranCounterCI = 0
+        BEGIN TRANSACTION;
+    ELSE
+        SAVE TRANSACTION @SavePointCI;
 
     -- STEP 1: Update reservation status (only CONFIRMED -> CHECKED_IN)
     UPDATE Reservation
@@ -35,7 +41,10 @@ BEGIN
 
     IF @@ROWCOUNT = 0
     BEGIN
-        ROLLBACK TRANSACTION;
+        IF @TranCounterCI = 0
+            ROLLBACK TRANSACTION;
+        ELSE IF XACT_STATE() = 1
+            ROLLBACK TRANSACTION @SavePointCI;
         RAISERROR('Check-in failed: reservation not found or not CONFIRMED.', 16, 1);
         RETURN;
     END
@@ -65,7 +74,8 @@ BEGIN
     VALUES
         (@reservation_id, 'CONFIRMED', 'CHECKED_IN', @agent_id, 'Guest checked in');
 
-    COMMIT TRANSACTION;
+    IF @TranCounterCI = 0
+        COMMIT TRANSACTION;
 
     -- Return success info
     SELECT
@@ -100,9 +110,15 @@ CREATE PROCEDURE dbo.sp_CheckOut
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET XACT_ABORT ON;
+    SET XACT_ABORT OFF;
 
-    BEGIN TRANSACTION;
+    DECLARE @TranCounterCO INT = @@TRANCOUNT;
+    DECLARE @SavePointCO VARCHAR(32) = 'spCheckOutSave';
+
+    IF @TranCounterCO = 0
+        BEGIN TRANSACTION;
+    ELSE
+        SAVE TRANSACTION @SavePointCO;
 
     -- STEP 1: Update reservation status (only CHECKED_IN -> CHECKED_OUT)
     UPDATE Reservation
@@ -112,7 +128,10 @@ BEGIN
 
     IF @@ROWCOUNT = 0
     BEGIN
-        ROLLBACK TRANSACTION;
+        IF @TranCounterCO = 0
+            ROLLBACK TRANSACTION;
+        ELSE IF XACT_STATE() = 1
+            ROLLBACK TRANSACTION @SavePointCO;
         RAISERROR('Check-out failed: reservation not found or not CHECKED_IN.', 16, 1);
         RETURN;
     END
@@ -161,7 +180,8 @@ BEGIN
     VALUES
         (@reservation_id, 'CHECKED_IN', 'CHECKED_OUT', @agent_id, 'Guest checked out');
 
-    COMMIT TRANSACTION;
+    IF @TranCounterCO = 0
+        COMMIT TRANSACTION;
 
     -- Return financial summary
     SELECT
@@ -196,7 +216,10 @@ CREATE PROCEDURE dbo.sp_GuestCancel
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET XACT_ABORT ON;
+    SET XACT_ABORT OFF;
+
+    DECLARE @TranCounterGC INT = @@TRANCOUNT;
+    DECLARE @SavePointGC VARCHAR(32) = 'spGuestCancelSave';
 
     -- Validate: only CONFIRMED can be guest-cancelled
     DECLARE @current_status VARCHAR(20);
@@ -217,7 +240,10 @@ BEGIN
         RETURN;
     END
 
-    BEGIN TRANSACTION;
+    IF @TranCounterGC = 0
+        BEGIN TRANSACTION;
+    ELSE
+        SAVE TRANSACTION @SavePointGC;
 
     -- STEP 1: Cancel reservation
     UPDATE Reservation

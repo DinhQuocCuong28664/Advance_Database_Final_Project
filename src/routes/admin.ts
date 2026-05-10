@@ -114,7 +114,7 @@ router.get('/accounts', requireAdminUser, async (req, res) => {
       pool.request().query(`
         SELECT su.user_id, su.username, su.full_name, su.email, su.department,
                sr.role_code,
-               su.account_status, su.last_login_at
+               su.account_status, su.last_login_at, su.hotel_id, su.job_title
         FROM SystemUser su
         OUTER APPLY (
           SELECT STRING_AGG(r.role_code, ', ') AS role_code
@@ -150,13 +150,17 @@ router.get('/accounts', requireAdminUser, async (req, res) => {
 router.post('/accounts/system', requireAdminUser, async (req, res) => {
   const { username, full_name, email, password, role_code, department, job_title, hotel_id } = req.body;
 
-  if (!username || !full_name || !password || !role_code) {
-    return res.status(400).json({ success: false, message: 'username, full_name, password, role_code are required' });
+  if (!username || !full_name || !email || !password || !role_code) {
+    return res.status(400).json({ success: false, message: 'username, full_name, email, password, role_code are required' });
   }
 
-  const VALID_ROLES = ['ADMIN', 'FRONT_DESK', 'MANAGER', 'HK_MANAGER', 'CASHIER'];
+  const VALID_ROLES = ['ADMIN', 'FRONT_DESK', 'MANAGER', 'HK_MANAGER', 'CASHIER', 'HOUSEKEEPING', 'MAINTENANCE'];
+  const VALID_DEPARTMENTS = ['FRONT_OFFICE', 'RESERVATIONS', 'HOUSEKEEPING', 'FINANCE', 'SALES', 'IT', 'ENGINEERING', 'MANAGEMENT'];
   if (!VALID_ROLES.includes(role_code)) {
     return res.status(400).json({ success: false, message: `role_code must be one of: ${VALID_ROLES.join(', ')}` });
+  }
+  if (department && !VALID_DEPARTMENTS.includes(department)) {
+    return res.status(400).json({ success: false, message: `department must be one of: ${VALID_DEPARTMENTS.join(', ')}` });
   }
 
   try {
@@ -179,7 +183,7 @@ router.post('/accounts/system', requireAdminUser, async (req, res) => {
       .input('username',   sql.VarChar(100), username)
       .input('password',   sql.VarChar(255), password_hash)
       .input('full_name',  sql.NVarChar(150), full_name)
-      .input('email',      sql.VarChar(254), email      || null)
+      .input('email',      sql.VarChar(254), email)
       .input('job_title',  sql.NVarChar(100), job_title  || null)
       .input('department', sql.NVarChar(100), department || null)
       .query(`
@@ -263,9 +267,16 @@ router.put('/accounts/system/:id/profile', requireAdminUser, async (req, res) =>
       return res.status(400).json({ success: false, message: 'Invalid system user ID' });
     }
 
-    const VALID_ROLES = ['ADMIN', 'FRONT_DESK', 'MANAGER', 'HK_MANAGER', 'CASHIER'];
+    const VALID_ROLES = ['ADMIN', 'FRONT_DESK', 'MANAGER', 'HK_MANAGER', 'CASHIER', 'HOUSEKEEPING', 'MAINTENANCE'];
+    const VALID_DEPARTMENTS = ['FRONT_OFFICE', 'RESERVATIONS', 'HOUSEKEEPING', 'FINANCE', 'SALES', 'IT', 'ENGINEERING', 'MANAGEMENT'];
     if (role_code && !VALID_ROLES.includes(role_code)) {
       return res.status(400).json({ success: false, message: `role_code must be one of: ${VALID_ROLES.join(', ')}` });
+    }
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'email is required' });
+    }
+    if (department && !VALID_DEPARTMENTS.includes(department)) {
+      return res.status(400).json({ success: false, message: `department must be one of: ${VALID_DEPARTMENTS.join(', ')}` });
     }
 
     const pool = getSqlPool();
@@ -275,7 +286,7 @@ router.put('/accounts/system/:id/profile', requireAdminUser, async (req, res) =>
       .input('id', sql.BigInt, userId)
       .input('hotel_id', sql.BigInt, hotel_id || null)
       .input('full_name', sql.NVarChar(150), full_name)
-      .input('email', sql.VarChar(254), email || null)
+      .input('email', sql.VarChar(254), email)
       .input('job_title', sql.NVarChar(100), job_title || null)
       .input('department', sql.NVarChar(100), department || null)
       .query(`
@@ -402,7 +413,7 @@ router.get('/reports/summary', requireAdminOrManagerUser, async (req, res) => {
           COUNT(*)       AS count,
           SUM(amount)    AS total_amount
         FROM Payment
-        WHERE payment_status = 'COMPLETED'
+        WHERE payment_status = 'CAPTURED'
         GROUP BY payment_method
         ORDER BY total_amount DESC
       `),
