@@ -1,0 +1,267 @@
+/**
+ * LuxeReserve - Payment Routes
+ */
+
+const express = require('express');
+const router = express.Router();
+const { getSqlPool, sql } = require('../config/database');
+const { attachAuthContext, requireSystemUser } = require('../middleware/auth');
+
+import type { Request, Response } from 'express';
+
+router.use(attachAuthContext);
+
+function normalizePaymentMethod(paymentMethod: unknown) {
+  const method = String(paymentMethod || 'CREDIT_CARD').trim().toUpperCase();
+  if (method === 'LOYALTY_POINTS') {
+    return 'POINTS';
+  }
+  if (method === 'DEBIT_CARD') {
+    return 'CREDIT_CARD';
+  }
+  return method;
+}
+
+// POST /api/v1/payments  Create payment
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const { reservation_id, payment_type, payment_method, amount, currency_code } = req.body;
+
+    if (!reservation_id || !amount) {
+      return res.status(400).json({ success: false, message: 'reservation_id and amount required' });
+    }
+
+    if (amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Amount must be greater than 0' });
+    }
+
+    const pool = getSqlPool();
+    const resolvedType = payment_type || 'FULL_PAYMENT';
+    const resolvedMethod = normalizePaymentMethod(payment_method);
+
+    // [FIX] LOGIC-5: Validate reservation exists before creating payment
+    const resvCheck = await pool.request()
+      .input('resvId', sql.BigInt, reservation_id)
+      .query(`SELECT reservation_id, guest_id, reservation_status, grand_total_amount, deposit_amount
+                   , currency_code
+              FROM Reservation WHERE reservation_id = @resvId`);
+    if (resvCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Reservation not found' });
+    }
+
+    const reservation = resvCheck.recordset[0];
+
+    // [FIX] LOGIC-6: Prevent payment on cancelled/checked-out reservations
+    if (['CANCELLED', 'CHECKED_OUT', 'NO_SHOW'].includes(reservation.reservation_status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot create payment for reservation with status: ${reservation.reservation_status}`
+      });
+    }
+
+    // [FIX] LOGIC-7: Calculate total already paid (only CAPTURED payments, excluding REFUND)
+    const paidResult = await pool.request()
+      .input('resvId', sql.BigInt, reservation_id)
+      .query(`
+        SELECT
+          ISNULL(SUM(CASE WHEN payment_type <> 'REFUND' THEN amount ELSE 0 END), 0) AS total_paid,
+          ISNULL(SUM(CASE WHEN payment_type = 'DEPOSIT' AND payment_status = 'CAPTURED' THEN amount ELSE 0 END), 0) AS total_deposit_paid
+        FROM Payment
+        WHERE reservation_id = @resvId
+          AND payment_status IN ('CAPTURED', 'AUTHORIZED')
+      `);
+
+    const totalPaid = parseFloat(paidResult.recordset[0].total_paid);
+    const totalDepositPaid = parseFloat(paidResult.recordset[0].total_deposit_paid);
+    const grandTotal = parseFloat(reservation.grand_total_amount);
+    const depositRequired = parseFloat(reservation.deposit_amount);
+    const newAmount = parseFloat(amount);
+
+    if (req.auth?.user_type === 'SYSTEM_USER') {
+      // allowed
+    } else if (req.auth?.user_type === 'GUEST') {
+      if (Number(req.auth.sub) !== Number(reservation.guest_id)) {
+        return res.status(403).json({ success: false, message: 'You are not authorised to create payments for this reservation' });
+      }
+    } else {
+      if (resolvedType !== 'DEPOSIT') {
+        return res.status(401).json({ success: false, message: 'Authentication required for non-deposit payments' });
+      }
+      if (!(depositRequired > 0)) {
+        return res.status(409).json({ success: false, message: 'This reservation does not require a deposit payment' });
+      }
+      if (newAmount !== depositRequired) {
+        return res.status(400).json({
+          success: false,
+          error: `Anonymous payments must match the exact deposit amount. Required: ${depositRequired}, attempted: ${newAmount}`,
+        });
+      }
+    }
+
+    // [FIX] LOGIC-8: Prevent total payments from exceeding grand total
+    if (totalPaid + newAmount > grandTotal) {
+      return res.status(400).json({
+        success: false,
+        error: `Payment would exceed reservation total. Grand total: ${grandTotal}, Already paid: ${totalPaid}, Attempted: ${newAmount}, Overage: ${(totalPaid + newAmount - grandTotal).toFixed(2)}`
+      });
+    }
+
+    // [FIX] LOGIC-9: For DEPOSIT type, also check against deposit_amount limit
+    if (resolvedType === 'DEPOSIT' && depositRequired > 0) {
+      if (totalDepositPaid + newAmount > depositRequired) {
+        return res.status(400).json({
+          success: false,
+          error: `Deposit would exceed required deposit amount. Deposit required: ${depositRequired}, Already deposited: ${totalDepositPaid}, Attempted: ${newAmount}, Overage: ${(totalDepositPaid + newAmount - depositRequired).toFixed(2)}`
+        });
+      }
+    }
+
+    // [FIX] LOGIC-10: FULL_PAYMENT must cover the entire remaining balance
+    const remainingBalance = grandTotal - totalPaid;
+    if (resolvedType === 'FULL_PAYMENT' && newAmount !== remainingBalance) {
+      return res.status(400).json({
+        success: false,
+        error: `FULL_PAYMENT must cover the entire remaining balance. Remaining: ${remainingBalance}, Attempted: ${newAmount}. Use payment_type 'PREPAYMENT' for partial payments.`
+      });
+    }
+
+    const payRef = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+
+    const result = await pool.request()
+      .input('resv_id', sql.BigInt, reservation_id)
+      .input('ref', sql.VarChar(80), payRef)
+      .input('type', sql.VarChar(20), resolvedType)
+      .input('method', sql.VarChar(20), resolvedMethod)
+      .input('amount', sql.Decimal(18, 2), amount)
+      .input('currency', sql.Char(3), reservation.currency_code || currency_code || 'VND')
+      .query(`
+        INSERT INTO Payment (reservation_id, payment_reference, payment_type, payment_method, payment_status, amount, currency_code, paid_at)
+        OUTPUT INSERTED.*
+        VALUES (@resv_id, @ref, @type, @method, 'CAPTURED', @amount, @currency, GETDATE())
+      `);
+
+    res.status(201).json({
+      success: true,
+      data: result.recordset[0],
+      payment_summary: {
+        grand_total: grandTotal,
+        total_paid_after: totalPaid + newAmount,
+        remaining_balance: grandTotal - (totalPaid + newAmount)
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/v1/payments
+// Supports: reservation_id, hotel_id, date_from, date_to,
+//           payment_type, payment_method, payment_status, limit
+router.get('/', requireSystemUser, async (req: Request, res: Response) => {
+  try {
+    const pool = getSqlPool();
+    const {
+      reservation_id, hotel_id,
+      date_from, date_to,
+      payment_type, payment_method, payment_status,
+      limit = 200,
+    } = req.query;
+
+    const request = pool.request();
+    const conditions: string[] = [];
+
+    if (reservation_id) {
+      request.input('resvId', sql.BigInt, parseInt(String(reservation_id), 10));
+      conditions.push('p.reservation_id = @resvId');
+    }
+    if (hotel_id) {
+      request.input('hotelId', sql.BigInt, parseInt(String(hotel_id), 10));
+      conditions.push('h.hotel_id = @hotelId');
+    }
+    if (date_from) {
+      request.input('dateFrom', sql.VarChar(10), String(date_from));
+      conditions.push('CAST(p.paid_at AS DATE) >= @dateFrom');
+    }
+    if (date_to) {
+      request.input('dateTo', sql.VarChar(10), String(date_to));
+      conditions.push('CAST(p.paid_at AS DATE) <= @dateTo');
+    }
+    if (payment_type) {
+      request.input('payType', sql.VarChar(20), String(payment_type).toUpperCase());
+      conditions.push('p.payment_type = @payType');
+    }
+    if (payment_method) {
+      request.input('payMethod', sql.VarChar(20), String(payment_method).toUpperCase());
+      conditions.push('p.payment_method = @payMethod');
+    }
+    if (payment_status) {
+      request.input('payStatus', sql.VarChar(15), String(payment_status).toUpperCase());
+      conditions.push('p.payment_status = @payStatus');
+    }
+
+    request.input('limit', sql.Int, parseInt(String(limit), 10));
+    const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    // [Rule 14] Main query with SQL-level aggregation
+    const result = await request.query(`
+      SELECT TOP (@limit)
+        p.payment_id, p.reservation_id, p.payment_reference,
+        p.payment_type, p.payment_method, p.payment_status,
+        p.amount, p.currency_code, p.paid_at, p.created_at,
+        r.reservation_code, r.grand_total_amount,
+        g.guest_id, g.first_name + ' ' + g.last_name AS guest_name,
+        g.email AS guest_email,
+        h.hotel_id, h.hotel_name,
+        rm.room_number
+      FROM Payment p
+      JOIN Reservation r ON p.reservation_id = r.reservation_id
+      JOIN Guest g       ON r.guest_id        = g.guest_id
+      LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+      LEFT JOIN Room rm            ON rr.room_id        = rm.room_id
+      LEFT JOIN Hotel h            ON r.hotel_id        = h.hotel_id
+      ${whereClause}
+      ORDER BY p.paid_at DESC, p.payment_id DESC
+    `);
+
+    const payments = result.recordset;
+
+    // [Rule 14] Compute total_captured via SQL SUM instead of JS .reduce()
+    const summaryReq = pool.request();
+    if (reservation_id) summaryReq.input('resvId', sql.BigInt, parseInt(String(reservation_id), 10));
+    if (hotel_id) summaryReq.input('hotelId', sql.BigInt, parseInt(String(hotel_id), 10));
+    if (date_from) summaryReq.input('dateFrom', sql.VarChar(10), String(date_from));
+    if (date_to) summaryReq.input('dateTo', sql.VarChar(10), String(date_to));
+    if (payment_type) summaryReq.input('payType', sql.VarChar(20), String(payment_type).toUpperCase());
+    if (payment_method) summaryReq.input('payMethod', sql.VarChar(20), String(payment_method).toUpperCase());
+    if (payment_status) summaryReq.input('payStatus', sql.VarChar(15), String(payment_status).toUpperCase());
+
+    const summaryResult = await summaryReq.query(`
+      SELECT
+        ISNULL(SUM(CASE WHEN p.payment_status = 'CAPTURED' AND p.payment_type <> 'REFUND' THEN p.amount ELSE 0 END), 0) AS total_captured
+      FROM Payment p
+      JOIN Reservation r ON p.reservation_id = r.reservation_id
+      LEFT JOIN ReservationRoom rr ON rr.reservation_id = r.reservation_id
+      LEFT JOIN Room rm ON rr.room_id = rm.room_id
+      LEFT JOIN Hotel h ON rm.hotel_id = h.hotel_id
+      ${whereClause}
+    `);
+    const totalAmount = parseFloat(summaryResult.recordset[0]?.total_captured || 0);
+
+    // by_type count: small cardinality, loop is acceptable
+    const byType: Record<string, number> = {};
+    for (const p of payments) {
+      byType[p.payment_type] = (byType[p.payment_type] || 0) + 1;
+    }
+
+    res.json({
+      success: true,
+      count: payments.length,
+      summary: { total_captured: totalAmount, by_type: byType },
+      data: payments,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+module.exports = router;

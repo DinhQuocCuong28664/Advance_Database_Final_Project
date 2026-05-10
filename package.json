@@ -2,10 +2,12 @@
   "name": "luxereserve",
   "version": "1.0.0",
   "description": "Global Luxury Hotel Reservation Engine  Polyglot Persistence (SQL Server + MongoDB)",
-  "main": "src/app.js",
+  "main": "dist/app.js",
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
+    "start": "node dist/app.js",
+    "dev": "tsx watch src/app.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "frontend:dev": "npm --prefix frontend run dev",
     "frontend:build": "npm --prefix frontend run build",
     "db:init": "sqlcmd -S localhost\\SQLEXPRESS -i database/sql/01_create_database.sql -C && sqlcmd -S localhost\\SQLEXPRESS -d LuxeReserve -i database/sql/02_create_tables.sql -C",
@@ -37,10 +39,18 @@
     "morgan": "^1.10.0",
     "msnodesqlv8": "^5.1.7",
     "mssql": "^11.0.1",
-    "nodemailer": "^7.0.5"
+    "nodemailer": "^7.0.5",
+    "qs": "^6.15.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "nodemon": "^3.1.9"
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^25.6.2",
+    "@types/qs": "^6.15.1",
+    "nodemon": "^3.1.9",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
   }
 }
